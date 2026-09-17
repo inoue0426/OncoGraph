@@ -38,3 +38,12 @@ Potential sources documented in the catalog include PubMed, ClinicalTrials.gov, 
   PMCID) for a small, curated set of cited PMIDs, fetched via the Europe PMC REST API. No abstract
   or full text is ever fetched or stored. See `docs/PUBLICATIONS.md` for the curated citations
   file this depends on and why literature-evidence linking is human-curated, not mined.
+- Reactome: gene-pathway membership from the official NCBI Gene-to-pathway mapping file, CC0.
+- CIViC: clinical evidence for a small curated gene list via the open GraphQL API, CC0.
+- DGIdb: drug-gene interactions via the open GraphQL API; redistribution is treated as
+  conservative/unknown pending explicit confirmation (see `docs/BIOLOGICAL_SOURCES.md`).
+- OncoKB: API-key-gated and terms-restricted; scaffold adapter only, no data fetched or committed.
+
+See `docs/BIOLOGICAL_SOURCES.md` for the full Issue #5 source investigation (Reactome, CIViC,
+DGIdb, OncoKB, STRING, IntAct, BioGRID, OmniPath, CellPhoneDB/CellChatDB, UniProt, ChEMBL,
+WikiPathways, PharmGKB) and what cross-source identifier resolution actually works today.

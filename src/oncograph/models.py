@@ -33,6 +33,11 @@ class EntityType(StrEnum):
     PHENOTYPE = "phenotype"
     RESPONSE = "response"
     RESISTANCE_MECHANISM = "resistance_mechanism"
+    BIOMARKER = "biomarker"
+    MUTATION = "mutation"
+    FUSION = "fusion"
+    COPY_NUMBER_ALTERATION = "copy_number_alteration"
+    EXPRESSION_SIGNATURE = "expression_signature"
 
 
 class VerificationStatus(StrEnum):

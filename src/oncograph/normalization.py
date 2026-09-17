@@ -28,6 +28,9 @@ NAMESPACE_ALIASES = {
     "cid": "pubchem",
     "reactome": "reactome",
     "go": "go",
+    "ncit": "ncit",
+    "rxcui": "rxcui",
+    "rxnorm": "rxcui",
 }
 
 

@@ -66,7 +66,24 @@ class GeneOntologyAdapter(SourceAdapter):
         if current and current.get("id"):
             yield current
 
+    def _child_counts(self) -> dict[str, int]:
+        """Direct is_a children per term -- a cheap, real proxy for genericity.
+
+        A handful of near-root terms (biological_process, molecular_function,
+        cellular_component, and their immediate children) have very large
+        child counts; that's the "low-information term" issue #5/#8 want
+        filterable without a full-graph specificity model.
+        """
+        counts: dict[str, int] = {}
+        for term in self._terms():
+            if term.get("is_obsolete") == "true":
+                continue
+            for parent in term.get("is_a", []):
+                counts[parent] = counts.get(parent, 0) + 1
+        return counts
+
     def iter_entities(self) -> Iterable[EntityRecord]:
+        child_counts = self._child_counts()
         for term in self._terms():
             if term.get("is_obsolete") == "true":
                 continue
@@ -76,7 +93,12 @@ class GeneOntologyAdapter(SourceAdapter):
                 name=str(term.get("name", go_id)),
                 identifiers=(ExternalIdentifier("go", go_id),),
                 description=str(term.get("def")) if term.get("def") else None,
-                metadata={"namespace": term.get("namespace"), "release": self.release},
+                metadata={
+                    "namespace": term.get("namespace"),
+                    "release": self.release,
+                    "is_root": not term.get("is_a"),
+                    "child_count": child_counts.get(go_id, 0),
+                },
             )
 
     def iter_edges(self) -> Iterable[EdgeRecord]:
