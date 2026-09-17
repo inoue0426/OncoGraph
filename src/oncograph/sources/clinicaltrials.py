@@ -15,6 +15,22 @@ from .base import EdgeRecord, EntityRecord, ExternalIdentifier, SourceAdapter
 from .catalog import CLINICAL_TRIALS
 from .registry import registry
 
+_MAX_CONDITIONS_TEXT = 500
+
+
+def _conditions_text(conditions: list[str] | None) -> str | None:
+    """Join a trial's free-text conditions into a short, searchable description.
+
+    Conditions are not stable identifiers (no MONDO/EFO mapping is attempted
+    here), so this is kept as plain descriptive text rather than a Disease
+    entity or edge -- consistent with never merging entities on display-name
+    matches alone.
+    """
+    if not conditions:
+        return None
+    text = "; ".join(conditions)
+    return text if len(text) <= _MAX_CONDITIONS_TEXT else text[: _MAX_CONDITIONS_TEXT - 1] + "…"
+
 
 @registry.register
 class ClinicalTrialsAdapter(SourceAdapter):
@@ -41,6 +57,7 @@ class ClinicalTrialsAdapter(SourceAdapter):
                 entity_type="trial",
                 name=row.get("brief_title") or nct_id,
                 identifiers=(ExternalIdentifier("clinicaltrials.gov", nct_id),),
+                description=_conditions_text(row.get("conditions")),
                 metadata={
                     "overall_status": row.get("overall_status"),
                     "phases": row.get("phases"),
@@ -64,6 +81,7 @@ class ClinicalTrialsAdapter(SourceAdapter):
                 context={
                     "release": self.release,
                     "overall_status": row.get("overall_status"),
+                    "phases": row.get("phases"),
                     "matched_intervention": row.get("matched_intervention"),
                 },
             )

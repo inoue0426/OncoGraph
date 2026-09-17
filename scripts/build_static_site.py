@@ -25,7 +25,7 @@ def read_entities(database: Path) -> list[dict]:
     connection.row_factory = sqlite3.Row
     try:
         rows = connection.execute(
-            "SELECT id, type, name, canonical_id FROM entity ORDER BY name"
+            "SELECT id, type, name, canonical_id, description FROM entity ORDER BY name"
         ).fetchall()
     finally:
         connection.close()
@@ -50,7 +50,7 @@ def read_relations(database: Path) -> list[dict]:
         rows = connection.execute(
             """
             SELECT r.id AS relation_id, r.subject_id, r.predicate, r.object_id,
-                   e.source, e.source_url, e.context
+                   e.source, e.source_id, e.source_url, e.context
             FROM relation r
             LEFT JOIN evidence e ON e.relation_id = r.id
             ORDER BY r.id
@@ -73,7 +73,12 @@ def read_relations(database: Path) -> list[dict]:
         if row["source"] is not None:
             context = json.loads(row["context"]) if row["context"] else None
             relation["evidence"].append(
-                {"source": row["source"], "source_url": row["source_url"], "context": context}
+                {
+                    "source": row["source"],
+                    "source_id": row["source_id"],
+                    "source_url": row["source_url"],
+                    "context": context,
+                }
             )
     return list(relations.values())
 

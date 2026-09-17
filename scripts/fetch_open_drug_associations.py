@@ -1,17 +1,26 @@
-"""Fetch drug-associated clinical trials and target-disease associations.
+"""Fetch drug-associated clinical trials, target-disease associations, and
+approved drug indications.
 
-Builds two derived, drug/target-scoped snapshots from public APIs, on top of
-the files ``scripts/fetch_open_gene_sources.py`` already fetched:
+Builds three derived, drug/target-scoped snapshots from public APIs, on top
+of the files ``scripts/fetch_open_gene_sources.py`` already fetched:
 
 - ClinicalTrials.gov API v2: trials whose interventions name-match one of our
   GtoPdb approved drugs (registry metadata only: NCT ID, title, status,
-  phase, conditions -- not full protocol text).
+  phase, conditions -- not full protocol text). A trial registration is
+  evidence a drug was *studied* for a condition, not that it works or is
+  approved.
 - Open Targets Platform GraphQL API: top-scoring disease associations for
-  each HGNC target our GtoPdb import resolves (CC0).
+  each HGNC target our GtoPdb import resolves (CC0). A computed evidence
+  aggregate, not a clinical indication.
+- Open Targets Platform GraphQL API: approved (max clinical stage
+  "APPROVAL") drug-disease indications, resolved from each GtoPdb drug name
+  via Open Targets' own ``search`` (CC0). The strongest disease-evidence tier
+  OncoGraph carries.
 
-Both are scoped to the small, curated approved-drug/target set already on
-disk, so per-record API calls (rather than a bulk download) are a deliberate
-and proportionate choice here -- see docs/SOURCES.md "Scale policy".
+All three are scoped to the small, curated approved-drug/target set already
+on disk, so per-record API calls (rather than a bulk download) are a
+deliberate and proportionate choice here -- see docs/SOURCES.md "Scale
+policy".
 
 Run after scripts/fetch_open_gene_sources.py:
     python scripts/fetch_open_drug_associations.py
@@ -34,6 +43,7 @@ HGNC_TSV = RAW_DIR / "hgnc_complete_set.txt"
 
 CLINICALTRIALS_TRIALS_JSON = RAW_DIR / "clinicaltrials_trials.json"
 OPEN_TARGETS_DISEASES_JSON = RAW_DIR / "open_targets_target_diseases.json"
+OPEN_TARGETS_INDICATIONS_JSON = RAW_DIR / "open_targets_drug_indications.json"
 
 CTGOV_API = "https://clinicaltrials.gov/api/v2/studies"
 CTGOV_PAGE_SIZE = 20
@@ -42,6 +52,9 @@ CTGOV_MIN_NAME_LENGTH = 4  # skip drug names too short/generic to search reliabl
 OPEN_TARGETS_API = "https://api.platform.opentargets.org/api/v4/graphql"
 OPEN_TARGETS_TOP_K = 10
 OPEN_TARGETS_MIN_SCORE = 0.4
+OPEN_TARGETS_MIN_DRUG_NAME_LENGTH = 4  # skip drug names too short/generic to search reliably
+OPEN_TARGETS_APPROVAL_STAGE = "APPROVAL"
+OPEN_TARGETS_MAX_INDICATIONS = 300  # per drug; approved drugs rarely have more real indications
 
 _USER_AGENT = "OncoGraph/0.1 research database"
 _HTTP_TIMEOUT = 30
@@ -54,6 +67,27 @@ query TargetDiseases($ensemblId: String!, $size: Int!) {
     associatedDiseases(page: {index: 0, size: $size}) {
       rows {
         score
+        disease { id name }
+      }
+    }
+  }
+}
+"""
+
+_DRUG_SEARCH_QUERY = """
+query DrugSearch($name: String!) {
+  search(queryString: $name, entityNames: ["drug"], page: {index: 0, size: 1}) {
+    hits { id name entity }
+  }
+}
+"""
+
+_DRUG_INDICATIONS_QUERY = """
+query DrugIndications($chemblId: String!, $size: Int!) {
+  drug(chemblId: $chemblId) {
+    indications(page: {index: 0, size: $size}) {
+      rows {
+        maxClinicalStage
         disease { id name }
       }
     }
@@ -244,6 +278,61 @@ def _fetch_target_diseases(targets: list[dict]) -> list[dict]:
     return records
 
 
+def _fetch_drug_indications(drugs: list[dict]) -> list[dict]:
+    """Resolve each drug to a ChEMBL ID via search, then keep only its APPROVAL-stage indications."""
+    records: list[dict] = []
+    for drug in drugs:
+        name = drug["ligand_name"]
+        if len(name) < OPEN_TARGETS_MIN_DRUG_NAME_LENGTH:
+            continue
+
+        time.sleep(_REQUEST_PAUSE)
+        try:
+            search_response = _post_json(
+                OPEN_TARGETS_API, {"query": _DRUG_SEARCH_QUERY, "variables": {"name": name}}
+            )
+        except (HTTPError, URLError, TimeoutError) as exc:
+            print(f"  ! Open Targets drug search failed for {name}: {exc}")
+            continue
+        hits = ((search_response.get("data") or {}).get("search") or {}).get("hits", [])
+        chembl_id = next((hit["id"] for hit in hits if hit.get("entity") == "drug"), None)
+        if not chembl_id:
+            continue
+
+        time.sleep(_REQUEST_PAUSE)
+        try:
+            indications_response = _post_json(
+                OPEN_TARGETS_API,
+                {
+                    "query": _DRUG_INDICATIONS_QUERY,
+                    "variables": {"chemblId": chembl_id, "size": OPEN_TARGETS_MAX_INDICATIONS},
+                },
+            )
+        except (HTTPError, URLError, TimeoutError) as exc:
+            print(f"  ! Open Targets indications query failed for {chembl_id} ({name}): {exc}")
+            continue
+        drug_data = (indications_response.get("data") or {}).get("drug") or {}
+        rows = (drug_data.get("indications") or {}).get("rows", [])
+        for row in rows:
+            if row.get("maxClinicalStage") != OPEN_TARGETS_APPROVAL_STAGE:
+                continue
+            disease = row.get("disease") or {}
+            disease_id = disease.get("id")
+            if not disease_id:
+                continue
+            records.append(
+                {
+                    "ligand_id": drug["ligand_id"],
+                    "ligand_name": name,
+                    "chembl_id": chembl_id,
+                    "disease_id": disease_id,
+                    "disease_name": disease.get("name"),
+                    "max_clinical_stage": row.get("maxClinicalStage"),
+                }
+            )
+    return records
+
+
 def main() -> None:
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     fetched_at = datetime.now(UTC).isoformat()
@@ -259,6 +348,13 @@ def main() -> None:
     diseases = _fetch_target_diseases(targets)
     OPEN_TARGETS_DISEASES_JSON.write_text(json.dumps(diseases, indent=2) + "\n", encoding="utf-8")
     print(f"Wrote {OPEN_TARGETS_DISEASES_JSON} ({len(diseases)} target-disease links)")
+
+    print(f"Querying Open Targets for approved indications of {len(drugs)} approved drugs...")
+    indications = _fetch_drug_indications(drugs)
+    OPEN_TARGETS_INDICATIONS_JSON.write_text(
+        json.dumps(indications, indent=2) + "\n", encoding="utf-8"
+    )
+    print(f"Wrote {OPEN_TARGETS_INDICATIONS_JSON} ({len(indications)} approved indications)")
 
     manifest_path = RAW_DIR / "manifest_drug_associations.json"
     manifest_path.write_text(
@@ -287,6 +383,21 @@ def main() -> None:
                     "association_count": len(diseases),
                     "filename": OPEN_TARGETS_DISEASES_JSON.name,
                     "sha256": _sha256(OPEN_TARGETS_DISEASES_JSON),
+                },
+                "open_targets_indications": {
+                    "homepage": "https://platform.opentargets.org/",
+                    "license_url": "https://platform-docs.opentargets.org/licence",
+                    "notes": (
+                        "CC0. Only indications at the 'APPROVAL' maximum clinical stage are "
+                        "kept; drug names are resolved to ChEMBL IDs via Open Targets' own "
+                        "search endpoint."
+                    ),
+                    "query": "search(drug name) -> drug(chemblId).indications, APPROVAL only",
+                    "min_drug_name_length": OPEN_TARGETS_MIN_DRUG_NAME_LENGTH,
+                    "drug_count": len(drugs),
+                    "indication_count": len(indications),
+                    "filename": OPEN_TARGETS_INDICATIONS_JSON.name,
+                    "sha256": _sha256(OPEN_TARGETS_INDICATIONS_JSON),
                 },
             },
             indent=2,

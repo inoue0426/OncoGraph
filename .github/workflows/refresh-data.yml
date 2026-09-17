@@ -40,6 +40,10 @@ jobs:
         env:
           ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
         run: oncograph import-source open_targets data/raw/open_targets_target_diseases.json --release "$RELEASE"
+      - name: Import Open Targets approved drug indications
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source open_targets_indications data/raw/open_targets_drug_indications.json --release "$RELEASE"
       - name: Build static search index
         env:
           ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db

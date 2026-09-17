@@ -70,6 +70,7 @@ def test_clinicaltrials_dedupes_trial_entities_by_nct_id(tmp_path):
     assert len(entities) == 1
     assert entities[0].name == "A Study of Asenapine"
     assert entities[0].identifiers == (ExternalIdentifier("clinicaltrials.gov", "NCT00000001"),)
+    assert entities[0].description == "Schizophrenia"
 
 
 def test_clinicaltrials_resolves_drug_by_gtopdb_id_and_records_evidence(tmp_path):
@@ -97,6 +98,7 @@ def test_clinicaltrials_resolves_drug_by_gtopdb_id_and_records_evidence(tmp_path
     assert evidence.source_url == "https://clinicaltrials.gov/study/NCT00000001"
     context = json.loads(evidence.context)
     assert context["overall_status"] == "COMPLETED"
+    assert context["phases"] == ["PHASE2"]
 
 
 def test_clinicaltrials_reimport_is_idempotent(tmp_path):

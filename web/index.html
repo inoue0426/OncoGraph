@@ -10,20 +10,17 @@
     <main>
       <h1>OncoGraph</h1>
       <p>Evidence-first oncology knowledge graph.</p>
-      <input id="search" type="search" placeholder="Search genes, drugs, or diseases" />
+      <input
+        id="search"
+        type="search"
+        placeholder="e.g. gefitinib, EGFR drug, ovarian cancer drug, breast cancer trial"
+      />
       <p id="status">Loading…</p>
       <section id="results"></section>
       <section id="detail" hidden></section>
       <footer>
-        Research use only. Verify source evidence before drawing conclusions.
-        <p>
-          Includes approved-drug/target data from the
-          <a href="https://www.guidetopharmacology.org/">IUPHAR/BPS Guide to PHARMACOLOGY (GtoPdb)</a>,
-          database licensed under ODbL, content licensed under CC BY-SA 4.0; trial registry
-          metadata from <a href="https://clinicaltrials.gov/">ClinicalTrials.gov</a>; and
-          target-disease association scores from the
-          <a href="https://platform.opentargets.org/">Open Targets Platform</a> (CC0).
-        </p>
+        <p>Research use only. Verify source evidence before drawing conclusions.</p>
+        <p id="attribution"></p>
       </footer>
     </main>
     <script src="app.js" defer></script>
