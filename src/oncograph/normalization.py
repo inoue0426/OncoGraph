@@ -2,7 +2,6 @@ from dataclasses import dataclass
 
 from .sources.base import ExternalIdentifier
 
-
 NAMESPACE_ALIASES = {
     "drugbank": "drugbank",
     "pmid": "pubmed",
