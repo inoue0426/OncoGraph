@@ -1,6 +1,7 @@
 """Source adapter framework for OncoGraph."""
 
 from . import clinicaltrials as _clinicaltrials  # noqa: F401
+from . import europe_pmc as _europe_pmc  # noqa: F401
 from . import gene_ontology as _gene_ontology  # noqa: F401
 from . import gtopdb as _gtopdb  # noqa: F401
 from . import hgnc as _hgnc  # noqa: F401

@@ -10,7 +10,7 @@ Importers should be deterministic and idempotent. Validation occurs before datab
 
 ## Identifier namespaces
 
-Prefer stable external identifiers over names. Initial namespaces include DrugBank, PubMed/PMID, ClinicalTrials.gov/NCT, HGNC, NCBI Gene, MeSH, DOID, and ChEBI. Name-only matching should be treated as unresolved rather than silently merged.
+Prefer stable external identifiers over names. Initial namespaces include DrugBank, PubMed/PMID, DOI, PMCID, ClinicalTrials.gov/NCT, HGNC, NCBI Gene, MeSH, DOID, ChEBI, MONDO, and EFO. Name-only matching should be treated as unresolved rather than silently merged. A Publication's canonical identifier prefers PMID, then DOI, then PMCID -- see `docs/PUBLICATIONS.md`.
 
 ## Licensing
 
@@ -34,3 +34,7 @@ Potential sources documented in the catalog include PubMed, ClinicalTrials.gov, 
   gene ID) via the GraphQL API, released under CC0. Scores are a computed evidence aggregate, not a
   clinical indication; only associations at or above the configured score threshold are kept, and
   the threshold/top-k and query scope are recorded alongside each import for reproducibility.
+- Europe PMC: bibliographic metadata only (title, journal, year, authors, publication type, DOI,
+  PMCID) for a small, curated set of cited PMIDs, fetched via the Europe PMC REST API. No abstract
+  or full text is ever fetched or stored. See `docs/PUBLICATIONS.md` for the curated citations
+  file this depends on and why literature-evidence linking is human-curated, not mined.

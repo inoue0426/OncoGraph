@@ -22,7 +22,7 @@ class SourceType(StrEnum):
     CURATED_DATABASE = "curated_database"
     REGISTRY = "registry"
     COMPUTED = "computed"
-    PUBLICATION = "publication"  # reserved for a future PubMed/Publication source
+    PUBLICATION = "publication"
     UNKNOWN = "unknown"
 
 
@@ -69,6 +69,13 @@ class EdgeRecord:
     # 0.0-1.0 strength when the source natively provides one (e.g. a computed
     # association score); leave unset rather than inventing a number.
     confidence: float | None = None
+    # Identifier of a supporting Publication entity (type "paper"), e.g.
+    # ExternalIdentifier("pmid", "12345678"). Resolved to Evidence.publication_id.
+    publication: ExternalIdentifier | None = None
+    # Per-edge override of how this specific evidence was produced (e.g.
+    # "curated", "rule_derived", "llm_extracted"); falls back to the batch's
+    # extraction_method (see import_edges) when unset.
+    extraction_method: str | None = None
 
 
 class SourceAdapter(ABC):

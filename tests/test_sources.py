@@ -18,6 +18,24 @@ def test_identifier_normalization():
     assert result.value == "NCT01234567"
 
 
+def test_pmid_identifier_normalizes_under_pubmed_namespace():
+    result = normalize_identifier(ExternalIdentifier("pmid", "42691523"))
+    assert result.namespace == "pubmed"
+    assert result.value == "42691523"
+
+
+def test_doi_identifier_is_lowercased():
+    result = normalize_identifier(ExternalIdentifier("DOI", "10.1016/J.RESINV.2026.101508"))
+    assert result.namespace == "doi"
+    assert result.value == "10.1016/j.resinv.2026.101508"
+
+
+def test_pmcid_identifier_is_uppercased():
+    result = normalize_identifier(ExternalIdentifier("pmcid", "pmc13574751"))
+    assert result.namespace == "pmcid"
+    assert result.value == "PMC13574751"
+
+
 def test_edge_validation():
     edge = EdgeRecord(
         subject=ExternalIdentifier("drugbank", "DB0001"),
@@ -193,6 +211,8 @@ def test_edge_record_and_source_descriptor_defaults_are_backward_compatible():
     )
     assert edge.evidence_type is None
     assert edge.confidence is None
+    assert edge.publication is None
+    assert edge.extraction_method is None
 
     with _memory_session() as session:
         import_entities(
@@ -214,3 +234,6 @@ def test_edge_record_and_source_descriptor_defaults_are_backward_compatible():
     assert evidence.source_type is None
     assert evidence.license is None
     assert evidence.confidence is None
+    assert evidence.publication_id is None
+    # extraction_method falls back to import_edges' batch default when unset.
+    assert evidence.extraction_method == "adapter_import"

@@ -16,6 +16,8 @@ NAMESPACE_ALIASES = {
     "chebi": "chebi",
     "mondo": "mondo",
     "efo": "efo",
+    "doi": "doi",
+    "pmcid": "pmcid",
 }
 
 
@@ -32,5 +34,9 @@ def normalize_identifier(identifier: ExternalIdentifier) -> NormalizedIdentifier
     if not namespace or not value:
         raise ValueError("Identifier namespace and value are required")
     if namespace == "clinicaltrials.gov":
+        value = value.upper()
+    elif namespace == "doi":
+        value = value.lower()
+    elif namespace == "pmcid":
         value = value.upper()
     return NormalizedIdentifier(namespace=namespace, value=value)

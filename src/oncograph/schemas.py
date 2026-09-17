@@ -10,6 +10,7 @@ class EntityCreate(SQLModel):
     name: str
     canonical_id: str | None = None
     description: str | None = None
+    entity_metadata: str | None = None
 
 
 class RelationCreate(SQLModel):
@@ -26,6 +27,7 @@ class EvidenceCreate(SQLModel):
     source_type: str | None = None
     evidence_type: str | None = None
     license: str | None = None
+    publication_id: UUID | None = None
     summary: str | None = None
     context: str | None = None
     extraction_method: str = "manual"

@@ -42,6 +42,8 @@ def validate_edge(record: EdgeRecord) -> None:
         raise ValueError("Self edges require explicit downstream handling")
     if record.confidence is not None and not 0.0 <= record.confidence <= 1.0:
         raise ValueError("Edge confidence must be between 0.0 and 1.0")
+    if record.publication is not None:
+        normalize_identifier(record.publication)
     try:
         json.dumps(record.context)
     except TypeError as exc:
@@ -112,6 +114,7 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
             existing.type = entity_type
             existing.name = record.name
             existing.description = record.description
+            existing.entity_metadata = _serialize_json(record.metadata)
             existing.updated_at = utcnow()
             session.add(existing)
             report.entities_updated += 1
@@ -122,6 +125,7 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
                     name=record.name,
                     canonical_id=canonical_id,
                     description=record.description,
+                    entity_metadata=_serialize_json(record.metadata),
                 )
             )
             report.entities_created += 1
@@ -129,8 +133,8 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
     return report
 
 
-def _serialize_context(context: dict) -> str | None:
-    return json.dumps(context, sort_keys=True) if context else None
+def _serialize_json(data: dict) -> str | None:
+    return json.dumps(data, sort_keys=True) if data else None
 
 
 def _ensure_evidence(
@@ -142,11 +146,14 @@ def _ensure_evidence(
     *,
     source_type: str | None = None,
     license: str | None = None,
+    publication_id=None,
 ) -> bool:
     """Attach a provenance-bearing Evidence row to a relation, once per source record.
 
     Keyed on (relation, source, source_id) so repeated imports of the same
-    upstream record do not accumulate duplicate evidence.
+    upstream record do not accumulate duplicate evidence. A relation can
+    accumulate several such rows, each citing a different publication, which
+    is how one relation ends up supported by multiple publications.
     """
     existing = session.exec(
         select(Evidence).where(
@@ -166,8 +173,9 @@ def _ensure_evidence(
             source_type=source_type,
             evidence_type=record.evidence_type,
             license=license,
-            context=_serialize_context(record.context),
-            extraction_method=extraction_method,
+            publication_id=publication_id,
+            context=_serialize_json(record.context),
+            extraction_method=record.extraction_method or extraction_method,
             confidence=record.confidence,
         )
     )
@@ -205,6 +213,10 @@ def import_edges(
             report.errors.append(f"edge[{i}]: unresolved endpoint")
             continue
 
+        publication_id = _lookup_entity_id(session, record.publication) if record.publication else None
+        if record.publication is not None and publication_id is None:
+            report.errors.append(f"edge[{i}]: unresolved publication reference")
+
         exists = session.exec(
             select(Relation).where(
                 Relation.subject_id == subject_id,
@@ -229,6 +241,7 @@ def import_edges(
             extraction_method,
             source_type=source_type,
             license=license,
+            publication_id=publication_id,
         ):
             report.evidence_created += 1
     session.commit()

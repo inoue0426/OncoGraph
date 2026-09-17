@@ -28,8 +28,9 @@ The adapter contract lives in `oncograph.sources`. Adapters emit normalized enti
 
 The source catalog documents intended integration points for PubMed, ClinicalTrials.gov, CTD, and DrugBank. **No restricted upstream data, credentials, or copied source text is included in this repository.** DrugBank is explicitly marked restricted; CTD is conservative/unknown until its current terms are verified for the intended use.
 
-See `docs/SOURCES.md` for the provenance and source policy, and `docs/EVIDENCE.md` for the
-Evidence field contract new adapters should populate.
+See `docs/SOURCES.md` for the provenance and source policy, `docs/EVIDENCE.md` for the Evidence
+field contract new adapters should populate, and `docs/PUBLICATIONS.md` for how Publications and
+literature evidence fit in (not yet part of the public MVP's scheduled refresh).
 
 ## Public explorer and hosting
 

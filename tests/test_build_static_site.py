@@ -16,10 +16,23 @@ def _seeded_db(path: Path) -> None:
     with Session(engine) as session:
         drug = Entity(type="drug", name="asenapine", canonical_id="gtopdb:22")
         gene = Entity(
-            type="gene", name="HTR2A", canonical_id="hgnc:HGNC:5293", description="5-HT2A receptor"
+            type="gene",
+            name="HTR2A",
+            canonical_id="hgnc:HGNC:5293",
+            description="5-HT2A receptor",
+            # Non-paper entities keep entity_metadata in the DB but it's not
+            # exported to the static index -- see read_entities' docstring.
+            entity_metadata=json.dumps({"release": "2024-01"}),
+        )
+        paper = Entity(
+            type="paper",
+            name="Example publication",
+            canonical_id="pubmed:12345",
+            entity_metadata=json.dumps({"journal": "Example Journal", "year": "2024"}),
         )
         session.add(drug)
         session.add(gene)
+        session.add(paper)
         session.flush()
         relation = Relation(subject_id=drug.id, predicate="targets", object_id=gene.id)
         session.add(relation)
@@ -34,6 +47,18 @@ def _seeded_db(path: Path) -> None:
                 evidence_type="target_interaction",
                 license="ODbL (database) / CC BY-SA 4.0 (content)",
                 context=json.dumps({"release": "2026.3"}),
+            )
+        )
+        session.add(
+            Evidence(
+                relation_id=relation.id,
+                source="europe_pmc",
+                source_id="12345",
+                source_type="publication",
+                evidence_type="target_interaction",
+                extraction_method="curated",
+                publication_id=paper.id,
+                context=json.dumps({"release": "2026-09-17"}),
             )
         )
         session.commit()
@@ -54,22 +79,36 @@ def test_read_entities_and_relations_round_trip(tmp_path):
     entities = build_static_site.read_entities(db_path)
     relations = build_static_site.read_relations(db_path)
 
-    assert {e["canonical_id"] for e in entities} == {"gtopdb:22", "hgnc:HGNC:5293"}
+    assert {e["canonical_id"] for e in entities} == {
+        "gtopdb:22",
+        "hgnc:HGNC:5293",
+        "pubmed:12345",
+    }
 
     drug_id = next(e["id"] for e in entities if e["canonical_id"] == "gtopdb:22")
     gene = next(e for e in entities if e["canonical_id"] == "hgnc:HGNC:5293")
+    paper = next(e for e in entities if e["canonical_id"] == "pubmed:12345")
     assert gene["description"] == "5-HT2A receptor"
+    # entity_metadata is only exported for "paper" entities, even though the
+    # gene row also has one in the DB.
+    assert gene["metadata"] is None
+    assert paper["metadata"] == {"journal": "Example Journal", "year": "2024"}
 
     assert len(relations) == 1
     assert relations[0]["subject_id"] == drug_id
     assert relations[0]["predicate"] == "targets"
     assert relations[0]["object_id"] == gene["id"]
-    assert len(relations[0]["evidence"]) == 1
-    evidence = relations[0]["evidence"][0]
-    assert evidence["source"] == "gtopdb"
-    assert evidence["source_id"] == "22:6"
-    assert evidence["context"] == {"release": "2026.3"}
-    assert evidence["source_type"] == "curated_database"
-    assert evidence["evidence_type"] == "target_interaction"
-    assert evidence["license"] == "ODbL (database) / CC BY-SA 4.0 (content)"
-    assert evidence["confidence"] is None
+    assert len(relations[0]["evidence"]) == 2
+
+    gtopdb_evidence = next(e for e in relations[0]["evidence"] if e["source"] == "gtopdb")
+    assert gtopdb_evidence["source_id"] == "22:6"
+    assert gtopdb_evidence["context"] == {"release": "2026.3"}
+    assert gtopdb_evidence["source_type"] == "curated_database"
+    assert gtopdb_evidence["evidence_type"] == "target_interaction"
+    assert gtopdb_evidence["license"] == "ODbL (database) / CC BY-SA 4.0 (content)"
+    assert gtopdb_evidence["confidence"] is None
+    assert gtopdb_evidence["publication_id"] is None
+
+    pmc_evidence = next(e for e in relations[0]["evidence"] if e["source"] == "europe_pmc")
+    assert pmc_evidence["publication_id"] == paper["id"]
+    assert pmc_evidence.get("extraction_method") is None  # not exported; internal-only field

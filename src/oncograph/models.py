@@ -42,11 +42,23 @@ class VerificationStatus(StrEnum):
 
 
 class Entity(SQLModel, table=True):
+    """A node in the graph, identified where possible by a stable external ID.
+
+    ``entity_metadata`` is a JSON object (serialized to text) for type-specific
+    properties that don't need their own column -- e.g. a Publication's
+    journal/year/authors/publication type. Prefer this over adding columns
+    for one entity type; promote to a real column only once it needs to be
+    indexed/queried directly (mirrors ``Evidence.context``). Named
+    ``entity_metadata`` rather than ``metadata`` -- SQLAlchemy's declarative
+    base reserves that attribute name.
+    """
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     type: EntityType = Field(index=True)
     name: str = Field(index=True)
     canonical_id: str | None = Field(default=None, index=True)
     description: str | None = None
+    entity_metadata: str | None = None
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
 
@@ -76,6 +88,11 @@ class Evidence(SQLModel, table=True):
     source_type: str | None = Field(default=None, index=True)
     evidence_type: str | None = Field(default=None, index=True)
     license: str | None = None
+    # The Publication (Entity where type == "paper") this evidence cites, if
+    # any. A relation can have several Evidence rows, each citing a different
+    # publication, so this is how "multiple publications per relation" works
+    # -- no separate junction table needed.
+    publication_id: UUID | None = Field(default=None, foreign_key="entity.id", index=True)
     summary: str | None = None
     context: str | None = None
     extraction_method: str = "manual"

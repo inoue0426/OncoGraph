@@ -1,0 +1,22 @@
+[
+  {
+    "pmid": "42691523",
+    "subject_namespace": "gtopdb",
+    "subject_id": "4941",
+    "predicate": "targets",
+    "object_namespace": "hgnc",
+    "object_id": "HGNC:3236",
+    "evidence_type": "target_interaction",
+    "extraction_method": "curated"
+  },
+  {
+    "pmid": "42734867",
+    "subject_namespace": "gtopdb",
+    "subject_id": "4941",
+    "predicate": "targets",
+    "object_namespace": "hgnc",
+    "object_id": "HGNC:3236",
+    "evidence_type": "target_interaction",
+    "extraction_method": "curated"
+  }
+]

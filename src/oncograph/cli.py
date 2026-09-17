@@ -33,6 +33,14 @@ def import_source(
         "--hgnc-mapping",
         help="GtoPdb target-to-HGNC mapping CSV (required for the gtopdb source)",
     ),
+    publication_metadata: str = typer.Option(
+        None,
+        "--publication-metadata",
+        help=(
+            "Fetched publication metadata JSON (required for the europe_pmc source; "
+            "'path' is its curated citations file)"
+        ),
+    ),
 ) -> None:
     """Import a locally permitted source file into the database.
 
@@ -44,6 +52,10 @@ def import_source(
         if not hgnc_mapping:
             raise typer.BadParameter("--hgnc-mapping is required for the gtopdb source")
         adapter = adapter_cls(path, hgnc_mapping, release=release)
+    elif source == "europe_pmc":
+        if not publication_metadata:
+            raise typer.BadParameter("--publication-metadata is required for the europe_pmc source")
+        adapter = adapter_cls(path, publication_metadata, release=release)
     else:
         adapter = adapter_cls(path, release=release)
     create_db_and_tables()
