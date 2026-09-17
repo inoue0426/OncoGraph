@@ -31,9 +31,12 @@ The source catalog documents intended integration points for PubMed, ClinicalTri
 See `docs/SOURCES.md` for the provenance and source policy, `docs/EVIDENCE.md` for the Evidence
 field contract new adapters should populate, `docs/PUBLICATIONS.md` for how Publications and
 literature evidence fit in, `docs/BIOLOGICAL_SOURCES.md` for the pathway/clinical-evidence source
-investigation (Reactome, CIViC, DGIdb, OncoKB, and others), and `docs/DRUG_RESPONSE.md` for the
-drug-response/experimental-model schema -- none of these are yet part of the public MVP's
-scheduled refresh. See `docs/QUERY_API.md` for the evidence-aware graph traversal API
+investigation (Reactome, CIViC, DGIdb, OncoKB, and others), `docs/DRUG_RESPONSE.md` for the
+drug-response/experimental-model schema, and `docs/MECHANISTIC_SOURCES.md` for the mechanism-of-action/
+functional-evidence source investigation (DrugMechDB, ChEMBL, TRRUST, GTEx, SIGNOR, DrugCentral, DepMap,
+BindingDB). DrugMechDB, ChEMBL, TRRUST, and GTEx are wired into the scheduled refresh; the drug-response
+schema and the remaining biological/mechanistic sources documented above are not yet part of it. See
+`docs/QUERY_API.md` for the evidence-aware graph traversal API
 (`/query/traverse` and representative query helpers), `docs/BENCHMARKING.md` for the
 benchmark-item schema and metrics infrastructure, `docs/BENCHMARK_RUN_v2.md` for the first real
 (non-fabricated) evaluation of `GraphRetriever` against an evidence-blind ablation on a frozen
@@ -48,16 +51,20 @@ The MVP in `web/` is deployed with GitHub Pages and searches a generated public 
 Selecting a drug shows its known targets, clinical trials, and diseases associated with those
 targets. Data refresh and deployment are two separate workflows: a scheduled/manual
 `refresh-data.yml` fetches open data (HGNC, GtoPdb approved drugs and primary targets, Gene
-Ontology, ClinicalTrials.gov trial metadata, Open Targets target-disease associations), imports it
-into a throwaway SQLite database, and publishes the rebuilt index as a build artifact (raw files
+Ontology, ClinicalTrials.gov trial metadata, Open Targets target-disease associations, DrugMechDB
+mechanism paths, ChEMBL mechanism of action, TRRUST TF-target regulation, GTEx tissue expression),
+imports it into a throwaway SQLite database, and publishes the rebuilt index as a build artifact (raw files
 and the database never reach git); a lightweight `pages.yml`, triggered on every push to `main`,
 just grabs the latest such artifact and deploys `web/`, without refetching anything. See
 `docs/HOSTING.md`.
 
 Includes approved-drug/primary-target data from the IUPHAR/BPS Guide to PHARMACOLOGY (GtoPdb):
 database licensed under ODbL, content licensed under CC BY-SA 4.0; trial registry metadata from
-ClinicalTrials.gov; and target-disease association scores from the Open Targets Platform (CC0).
-See `docs/SOURCES.md`.
+ClinicalTrials.gov; target-disease association scores from the Open Targets Platform (CC0); curated
+drug-mechanism paths from DrugMechDB (CC0); mechanism-of-action data from ChEMBL (CC BY-SA 3.0);
+transcription-factor-target regulation from TRRUST (CC BY-SA 4.0); and normal-tissue gene-expression
+summaries from the GTEx Portal (open access, aggregate median expression only). See `docs/SOURCES.md`
+and `docs/MECHANISTIC_SOURCES.md`.
 
 ## Data model
 

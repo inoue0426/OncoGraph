@@ -141,6 +141,37 @@ def test_real_benchmark_directory_gold_path_count_matches_checked_in_items():
     assert expected > 0
 
 
+# --- count_mechanistic_paths (Issue #10: DrugMechDB) ---------------------------
+
+
+def test_count_mechanistic_paths_counts_only_the_endpoint_predicate():
+    relations = [
+        {"predicate": "implicated_in_mechanism_for", "evidence": []},
+        {"predicate": "implicated_in_mechanism_for", "evidence": []},
+        {"predicate": "decreases_activity_of", "evidence": []},  # DrugMechDB's direct-target edge, not a path record
+        {"predicate": "targets", "evidence": []},
+    ]
+    assert build_static_site.count_mechanistic_paths(relations) == 2
+
+
+def test_count_mechanistic_paths_zero_when_absent():
+    assert build_static_site.count_mechanistic_paths([{"predicate": "targets", "evidence": []}]) == 0
+
+
+def test_compute_stats_paths_combines_mechanistic_and_benchmark_gold(tmp_path):
+    _write_benchmark_file(
+        tmp_path,
+        "core.json",
+        [{"id": "v1-001", "version": "v1", "gold_evidence_path": [{"subject_canonical_id": "a"}]}],
+    )
+    relations = [
+        {"predicate": "implicated_in_mechanism_for", "evidence": []},
+        {"predicate": "implicated_in_mechanism_for", "evidence": []},
+    ]
+    stats = build_static_site.compute_stats([], relations, benchmarks_root=tmp_path)
+    assert stats["paths"] == {"mechanistic": 2, "benchmark_gold": 1, "total": 3}
+
+
 # --- compute_stats: full payload, omission of unavailable categories -----------
 
 

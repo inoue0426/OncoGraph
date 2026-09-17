@@ -38,6 +38,8 @@ class EntityType(StrEnum):
     FUSION = "fusion"
     COPY_NUMBER_ALTERATION = "copy_number_alteration"
     EXPRESSION_SIGNATURE = "expression_signature"
+    TISSUE = "tissue"
+    COMBINATION_TREATMENT = "combination_treatment"
 
 
 class VerificationStatus(StrEnum):

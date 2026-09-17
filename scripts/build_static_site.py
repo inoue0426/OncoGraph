@@ -196,6 +196,18 @@ def read_benchmark_gold_paths(root: Path = BENCHMARKS_ROOT) -> dict[str, int] | 
     return {"benchmark_gold": len(seen), "total": len(seen)}
 
 
+def count_mechanistic_paths(relations: list[dict]) -> int:
+    """Count real, stored mechanistic path records (DrugMechDB, Issue #10).
+
+    Each ``implicated_in_mechanism_for`` relation carries its *entire*
+    drug -> ... -> disease mechanism chain in its evidence context (see
+    ``sources/drugmechdb.py``) -- this is a genuine curated path record,
+    not a traversal computed at query time, so it belongs in the same
+    ``paths`` accounting as the benchmark's gold-evidence paths.
+    """
+    return sum(1 for relation in relations if relation.get("predicate") == "implicated_in_mechanism_for")
+
+
 def _graph_version(relations: list[dict]) -> str | None:
     """The latest per-adapter ``--release`` label recorded on any evidence row.
 
@@ -229,8 +241,16 @@ def compute_stats(entities: list[dict], relations: list[dict], benchmarks_root: 
     if graph_version:
         stats["graph_version"] = graph_version
     stats.update(compute_relation_stats(relations))
-    paths = read_benchmark_gold_paths(benchmarks_root)
+
+    paths: dict[str, int] = {}
+    gold_paths = read_benchmark_gold_paths(benchmarks_root)
+    if gold_paths:
+        paths["benchmark_gold"] = gold_paths["benchmark_gold"]
+    mechanistic_paths = count_mechanistic_paths(relations)
+    if mechanistic_paths:
+        paths["mechanistic"] = mechanistic_paths
     if paths:
+        paths["total"] = sum(paths.values())
         stats["paths"] = paths
     return stats
 

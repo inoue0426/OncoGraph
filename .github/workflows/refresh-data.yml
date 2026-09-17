@@ -19,6 +19,23 @@ jobs:
       - run: pip install -e .
       - run: python scripts/fetch_open_gene_sources.py
       - run: python scripts/fetch_open_drug_associations.py
+      - run: python scripts/fetch_drugmechdb.py
+      - run: python scripts/fetch_trrust.py
+      - run: python scripts/fetch_gtex_expression.py
+      - name: Extract real drug names from the GtoPdb interactions file for ChEMBL lookup
+        run: |
+          python -c "
+          import csv
+          with open('data/raw/gtopdb_approved_drug_primary_target_interactions.csv', newline='') as f:
+              lines = f.readlines()
+          if lines and lines[0].lstrip().startswith('\"#'):
+              lines = lines[1:]
+          names = sorted({row['Ligand'].strip() for row in csv.DictReader(lines) if row.get('Ligand', '').strip()})
+          with open('/tmp/chembl_drug_names.txt', 'w') as out:
+              out.write('\n'.join(names))
+          print(f'{len(names)} drug names for ChEMBL lookup')
+          "
+      - run: python scripts/fetch_chembl_mechanisms.py --drug-names-file /tmp/chembl_drug_names.txt
       - run: echo "RELEASE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Import HGNC
         env:
@@ -44,6 +61,22 @@ jobs:
         env:
           ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
         run: oncograph import-source open_targets_indications data/raw/open_targets_drug_indications.json --release "$RELEASE"
+      - name: Import DrugMechDB mechanism paths
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source drugmechdb data/raw/drugmechdb_indication_paths.json --release "$RELEASE"
+      - name: Import TRRUST TF-target regulation
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source trrust data/raw/trrust_rawdata.human.tsv --hgnc-complete-set data/raw/hgnc_complete_set.txt --release "$RELEASE"
+      - name: Import GTEx median tissue expression
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source gtex data/raw/gtex_median_expression.json --release "$RELEASE"
+      - name: Import ChEMBL mechanism of action
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source chembl data/raw/chembl_mechanisms.json --release "$RELEASE"
       - name: Build static search index
         env:
           ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db

@@ -35,6 +35,10 @@ NAMESPACE_ALIASES = {
     "cvcl": "cellosaurus",
     "depmap": "depmap",
     "cosmic": "cosmic",
+    "uberon": "uberon",
+    "signor": "signor",
+    "drugcentral": "drugcentral",
+    "bindingdb": "bindingdb",
 }
 
 
@@ -54,6 +58,6 @@ def normalize_identifier(identifier: ExternalIdentifier) -> NormalizedIdentifier
         value = value.upper()
     elif namespace == "doi":
         value = value.lower()
-    elif namespace in ("pmcid", "chembl", "reactome", "go"):
+    elif namespace in ("pmcid", "chembl", "reactome", "go", "uberon"):
         value = value.upper()
     return NormalizedIdentifier(namespace=namespace, value=value)

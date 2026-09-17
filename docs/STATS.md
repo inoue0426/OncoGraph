@@ -62,19 +62,29 @@ time. `oncograph.query.traverse()`'s BFS `paths` field (documented in
 `docs/QUERY_API.md`) is exactly the latter: ephemeral, query-dependent,
 and never persisted -- it is not counted here.
 
-Today the only such record is a **benchmark gold-evidence path**: one
-`BenchmarkItem.gold_evidence_path` entry in the versioned benchmark suite
-(`data/benchmarks/**/*.json`, see `docs/BENCHMARKING.md`) -- a curated,
-checked-in evidence chain used for grading a retrieval strategy.
-`paths.benchmark_gold` is the count of such entries across every version
-directory (`v1`'s 9 hand-written items, 7 with a non-empty path; `v2`'s 90
-programmatically-generated items, all with one -- see
-`docs/BENCHMARK_RUN_v2.md`), so this number grows as more benchmark files
-are added; it is never hard-coded, only re-derived on each build.
-`read_benchmark_gold_paths()` deduplicates by `(version, item id)` in case
-a curated item is ever repeated across files, and skips any non-item JSON
-artifact under `data/benchmarks/` (e.g. `run_benchmark.py`'s results logs,
-a single JSON object rather than a list of items).
+Two such record kinds exist:
+
+- **`paths.benchmark_gold`**: one `BenchmarkItem.gold_evidence_path` entry
+  in the versioned benchmark suite (`data/benchmarks/**/*.json`, see
+  `docs/BENCHMARKING.md`) -- a curated, checked-in evidence chain used for
+  grading a retrieval strategy. Counted across every version directory
+  (`v1`'s 9 hand-written items, 7 with a non-empty path; `v2`'s
+  programmatically-generated items, all with one -- see
+  `docs/BENCHMARK_RUN_v2.md`), so this number grows as more benchmark
+  files are added. `read_benchmark_gold_paths()` deduplicates by
+  `(version, item id)` in case a curated item is ever repeated across
+  files, and skips any non-item JSON artifact under `data/benchmarks/`
+  (e.g. `run_benchmark.py`'s results logs, a single JSON object rather
+  than a list of items).
+- **`paths.mechanistic`** (Issue #10): one `implicated_in_mechanism_for`
+  relation from the DrugMechDB adapter (`sources/drugmechdb.py`) -- each
+  such relation carries its *entire* curated drug -> mechanism -> disease
+  chain in its evidence `context`, not just a single edge, so it is a real
+  stored path record, counted directly from the deployed relations export
+  (`count_mechanistic_paths()`), not a traversal.
+
+Neither is ever hard-coded; both are re-derived on each build, and
+`paths.total` is their sum whenever more than one kind is present.
 
 If no benchmark file exists (or none of its items have a path), the
 `paths` key is omitted from `stats.json` entirely -- the homepage then also

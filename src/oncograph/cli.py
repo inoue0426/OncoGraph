@@ -41,6 +41,11 @@ def import_source(
             "'path' is its curated citations file)"
         ),
     ),
+    hgnc_complete_set: str = typer.Option(
+        None,
+        "--hgnc-complete-set",
+        help="HGNC complete-set TSV, for resolving bare gene symbols (required for the trrust source)",
+    ),
 ) -> None:
     """Import a locally permitted source file into the database.
 
@@ -56,6 +61,10 @@ def import_source(
         if not publication_metadata:
             raise typer.BadParameter("--publication-metadata is required for the europe_pmc source")
         adapter = adapter_cls(path, publication_metadata, release=release)
+    elif source == "trrust":
+        if not hgnc_complete_set:
+            raise typer.BadParameter("--hgnc-complete-set is required for the trrust source")
+        adapter = adapter_cls(path, hgnc_complete_set, release=release)
     else:
         adapter = adapter_cls(path, release=release)
     create_db_and_tables()
