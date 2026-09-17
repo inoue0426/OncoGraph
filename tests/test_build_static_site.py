@@ -30,6 +30,9 @@ def _seeded_db(path: Path) -> None:
                 source="gtopdb",
                 source_id="22:6",
                 source_url="https://www.guidetopharmacology.org/GRAC/LigandDisplayForward?ligandId=22",
+                source_type="curated_database",
+                evidence_type="target_interaction",
+                license="ODbL (database) / CC BY-SA 4.0 (content)",
                 context=json.dumps({"release": "2026.3"}),
             )
         )
@@ -62,6 +65,11 @@ def test_read_entities_and_relations_round_trip(tmp_path):
     assert relations[0]["predicate"] == "targets"
     assert relations[0]["object_id"] == gene["id"]
     assert len(relations[0]["evidence"]) == 1
-    assert relations[0]["evidence"][0]["source"] == "gtopdb"
-    assert relations[0]["evidence"][0]["source_id"] == "22:6"
-    assert relations[0]["evidence"][0]["context"] == {"release": "2026.3"}
+    evidence = relations[0]["evidence"][0]
+    assert evidence["source"] == "gtopdb"
+    assert evidence["source_id"] == "22:6"
+    assert evidence["context"] == {"release": "2026.3"}
+    assert evidence["source_type"] == "curated_database"
+    assert evidence["evidence_type"] == "target_interaction"
+    assert evidence["license"] == "ODbL (database) / CC BY-SA 4.0 (content)"
+    assert evidence["confidence"] is None

@@ -60,11 +60,22 @@ class Relation(SQLModel, table=True):
 
 
 class Evidence(SQLModel, table=True):
+    """A provenance-bearing claim attached to one Relation.
+
+    ``context`` is a JSON object (serialized to text), deliberately used
+    instead of adding a new column per future dimension (cancer type, tissue,
+    cell state, dose, timepoint, responder context, ...). Promote a context
+    key to a real column only once it needs to be indexed/queried directly.
+    """
+
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     relation_id: UUID = Field(foreign_key="relation.id", index=True)
     source: str = Field(index=True)
     source_id: str | None = Field(default=None, index=True)
     source_url: str | None = None
+    source_type: str | None = Field(default=None, index=True)
+    evidence_type: str | None = Field(default=None, index=True)
+    license: str | None = None
     summary: str | None = None
     context: str | None = None
     extraction_method: str = "manual"

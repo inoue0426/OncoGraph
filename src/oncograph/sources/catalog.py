@@ -4,7 +4,7 @@ Descriptors document provenance and redistribution expectations. They do not
 fetch, bundle, or redistribute upstream datasets.
 """
 
-from .base import RedistributionPolicy, SourceDescriptor
+from .base import RedistributionPolicy, SourceDescriptor, SourceType
 
 PUBMED = SourceDescriptor(
     key="pubmed",
@@ -12,6 +12,7 @@ PUBMED = SourceDescriptor(
     homepage="https://pubmed.ncbi.nlm.nih.gov/",
     redistribution=RedistributionPolicy.METADATA_ONLY,
     notes="Adapter implementations should preserve PMID/PMCID/DOI provenance.",
+    source_type=SourceType.PUBLICATION,
 )
 
 CLINICAL_TRIALS = SourceDescriptor(
@@ -20,6 +21,7 @@ CLINICAL_TRIALS = SourceDescriptor(
     homepage="https://clinicaltrials.gov/",
     redistribution=RedistributionPolicy.METADATA_ONLY,
     notes="Preserve NCT identifiers and source retrieval timestamps.",
+    source_type=SourceType.REGISTRY,
 )
 
 CTD = SourceDescriptor(

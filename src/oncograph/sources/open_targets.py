@@ -17,6 +17,7 @@ from .base import (
     RedistributionPolicy,
     SourceAdapter,
     SourceDescriptor,
+    SourceType,
 )
 from .registry import registry
 
@@ -42,6 +43,8 @@ class OpenTargetsAdapter(SourceAdapter):
             "a computed evidence aggregate, not a clinical indication; the score, "
             "scoring method, and query scope are retained for reproducibility."
         ),
+        source_type=SourceType.COMPUTED,
+        license="CC0",
     )
 
     def __init__(self, json_path: str | Path, release: str | None = None):
@@ -85,4 +88,6 @@ class OpenTargetsAdapter(SourceAdapter):
                     "score": row.get("score"),
                     "method": "open_targets_target_disease_association_score",
                 },
+                evidence_type="target_disease_association",
+                confidence=row.get("score"),
             )

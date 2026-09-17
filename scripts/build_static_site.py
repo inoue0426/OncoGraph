@@ -50,7 +50,8 @@ def read_relations(database: Path) -> list[dict]:
         rows = connection.execute(
             """
             SELECT r.id AS relation_id, r.subject_id, r.predicate, r.object_id,
-                   e.source, e.source_id, e.source_url, e.context
+                   e.source, e.source_id, e.source_url, e.source_type, e.evidence_type,
+                   e.confidence, e.license, e.context
             FROM relation r
             LEFT JOIN evidence e ON e.relation_id = r.id
             ORDER BY r.id
@@ -77,6 +78,10 @@ def read_relations(database: Path) -> list[dict]:
                     "source": row["source"],
                     "source_id": row["source_id"],
                     "source_url": row["source_url"],
+                    "source_type": row["source_type"],
+                    "evidence_type": row["evidence_type"],
+                    "confidence": row["confidence"],
+                    "license": row["license"],
                     "context": context,
                 }
             )

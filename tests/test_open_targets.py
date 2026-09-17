@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from oncograph.importing import import_adapter, import_entities
@@ -88,6 +89,11 @@ def test_open_targets_resolves_target_by_hgnc_id_and_records_score(tmp_path):
     assert evidence.source == "open_targets"
     context = json.loads(evidence.context)
     assert context["score"] == 0.8256952504441574
+
+    assert evidence.evidence_type == "target_disease_association"
+    assert evidence.source_type == "computed"
+    assert evidence.license == "CC0"
+    assert evidence.confidence == pytest.approx(0.8256952504441574)
 
 
 def test_open_targets_reimport_is_idempotent(tmp_path):

@@ -100,6 +100,10 @@ def test_clinicaltrials_resolves_drug_by_gtopdb_id_and_records_evidence(tmp_path
     assert context["overall_status"] == "COMPLETED"
     assert context["phases"] == ["PHASE2"]
 
+    assert evidence.evidence_type == "clinical_trial_enrollment"
+    assert evidence.source_type == "registry"
+    assert evidence.confidence is None
+
 
 def test_clinicaltrials_reimport_is_idempotent(tmp_path):
     path = _write_fixture(tmp_path)

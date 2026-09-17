@@ -10,6 +10,7 @@ from .base import (
     RedistributionPolicy,
     SourceAdapter,
     SourceDescriptor,
+    SourceType,
 )
 from .registry import registry
 
@@ -23,6 +24,8 @@ class HGNCAdapter(SourceAdapter):
         license_url="https://www.genenames.org/about/license/",
         redistribution=RedistributionPolicy.OPEN,
         notes="HGNC data are released under CC0; attribution is recommended.",
+        source_type=SourceType.CURATED_DATABASE,
+        license="CC0",
     )
 
     def __init__(self, tsv_path: str | Path, release: str | None = None):

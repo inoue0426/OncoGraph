@@ -14,6 +14,7 @@ from .base import (
     RedistributionPolicy,
     SourceAdapter,
     SourceDescriptor,
+    SourceType,
 )
 from .registry import registry
 
@@ -27,6 +28,8 @@ class GeneOntologyAdapter(SourceAdapter):
         license_url="https://geneontology.org/docs/go-citation-policy/",
         redistribution=RedistributionPolicy.OPEN,
         notes="GO data products are CC BY 4.0; retain release and attribution.",
+        source_type=SourceType.CURATED_DATABASE,
+        license="CC BY 4.0",
     )
 
     def __init__(self, obo_path: str | Path, release: str | None = None):
@@ -88,6 +91,7 @@ class GeneOntologyAdapter(SourceAdapter):
                     object=ExternalIdentifier("go", str(parent)),
                     source_record_id=str(term["id"]),
                     context={"release": self.release},
+                    evidence_type="ontology_relation",
                 )
             for predicate, target in term.get("relationships", []):
                 yield EdgeRecord(
@@ -96,4 +100,5 @@ class GeneOntologyAdapter(SourceAdapter):
                     object=ExternalIdentifier("go", str(target)),
                     source_record_id=str(term["id"]),
                     context={"release": self.release},
+                    evidence_type="ontology_relation",
                 )

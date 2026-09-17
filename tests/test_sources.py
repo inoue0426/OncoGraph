@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from oncograph.importing import import_adapter, import_edges, import_entities, validate_edge
@@ -25,6 +26,39 @@ def test_edge_validation():
         source_record_id="example",
     )
     validate_edge(edge)
+
+
+def test_edge_validation_accepts_confidence_and_evidence_type():
+    edge = EdgeRecord(
+        subject=ExternalIdentifier("drugbank", "DB0001"),
+        predicate="associated_with",
+        object=ExternalIdentifier("mondo", "0000001"),
+        evidence_type="target_disease_association",
+        confidence=0.75,
+    )
+    validate_edge(edge)
+
+
+def test_edge_validation_rejects_out_of_range_confidence():
+    edge = EdgeRecord(
+        subject=ExternalIdentifier("drugbank", "DB0001"),
+        predicate="associated_with",
+        object=ExternalIdentifier("mondo", "0000001"),
+        confidence=1.5,
+    )
+    with pytest.raises(ValueError, match="confidence"):
+        validate_edge(edge)
+
+
+def test_edge_validation_rejects_non_json_serializable_context():
+    edge = EdgeRecord(
+        subject=ExternalIdentifier("drugbank", "DB0001"),
+        predicate="associated_with",
+        object=ExternalIdentifier("mondo", "0000001"),
+        context={"bad": object()},
+    )
+    with pytest.raises(ValueError, match="context"):
+        validate_edge(edge)
 
 
 def test_adapters_are_registered():
@@ -143,3 +177,40 @@ def test_repeated_go_edge_import_preserves_provenance_idempotently(tmp_path):
     assert evidence.source_id == "GO:0000002"
     assert evidence.extraction_method == "adapter_import"
     assert json.loads(evidence.context) == {"release": "2024-01-01"}
+    assert evidence.evidence_type == "ontology_relation"
+    assert evidence.source_type == "curated_database"
+    assert evidence.license == "CC BY 4.0"
+    assert evidence.confidence is None
+
+
+def test_edge_record_and_source_descriptor_defaults_are_backward_compatible():
+    """An adapter that predates evidence_type/confidence/source_type/license still imports fine."""
+    edge = EdgeRecord(
+        subject=ExternalIdentifier("hgnc", "HGNC:1"),
+        predicate="targets",
+        object=ExternalIdentifier("hgnc", "HGNC:2"),
+        source_record_id="legacy-edge",
+    )
+    assert edge.evidence_type is None
+    assert edge.confidence is None
+
+    with _memory_session() as session:
+        import_entities(
+            session,
+            [
+                EntityRecord(
+                    entity_type="gene", name="A", identifiers=(ExternalIdentifier("hgnc", "HGNC:1"),)
+                ),
+                EntityRecord(
+                    entity_type="gene", name="B", identifiers=(ExternalIdentifier("hgnc", "HGNC:2"),)
+                ),
+            ],
+        )
+        report = import_edges(session, [edge], source_key="legacy_source")
+        evidence = session.exec(select(Evidence)).one()
+
+    assert report.edges_created == 1
+    assert evidence.evidence_type is None
+    assert evidence.source_type is None
+    assert evidence.license is None
+    assert evidence.confidence is None

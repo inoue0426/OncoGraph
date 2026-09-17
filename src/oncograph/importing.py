@@ -40,6 +40,12 @@ def validate_edge(record: EdgeRecord) -> None:
         raise ValueError("Edge predicate is required")
     if record.subject == record.object:
         raise ValueError("Self edges require explicit downstream handling")
+    if record.confidence is not None and not 0.0 <= record.confidence <= 1.0:
+        raise ValueError("Edge confidence must be between 0.0 and 1.0")
+    try:
+        json.dumps(record.context)
+    except TypeError as exc:
+        raise ValueError(f"Edge context must be JSON-serializable: {exc}") from exc
 
 
 def validate_adapter(adapter: SourceAdapter) -> ValidationReport:
@@ -133,6 +139,9 @@ def _ensure_evidence(
     record: EdgeRecord,
     source_key: str,
     extraction_method: str,
+    *,
+    source_type: str | None = None,
+    license: str | None = None,
 ) -> bool:
     """Attach a provenance-bearing Evidence row to a relation, once per source record.
 
@@ -154,8 +163,12 @@ def _ensure_evidence(
             source=source_key,
             source_id=record.source_record_id,
             source_url=record.source_url,
+            source_type=source_type,
+            evidence_type=record.evidence_type,
+            license=license,
             context=_serialize_context(record.context),
             extraction_method=extraction_method,
+            confidence=record.confidence,
         )
     )
     return True
@@ -167,6 +180,8 @@ def import_edges(
     *,
     source_key: str,
     extraction_method: str = ADAPTER_EXTRACTION_METHOD,
+    source_type: str | None = None,
+    license: str | None = None,
 ) -> ImportReport:
     """Persist edge candidates as Relations, resolving endpoints by canonical_id.
 
@@ -206,7 +221,15 @@ def import_edges(
         else:
             relation_id = exists.id
 
-        if _ensure_evidence(session, relation_id, record, source_key, extraction_method):
+        if _ensure_evidence(
+            session,
+            relation_id,
+            record,
+            source_key,
+            extraction_method,
+            source_type=source_type,
+            license=license,
+        ):
             report.evidence_created += 1
     session.commit()
     return report
@@ -215,7 +238,13 @@ def import_edges(
 def import_adapter(session: Session, adapter: SourceAdapter) -> ImportReport:
     """Import one adapter's entities, then edges, into the shared graph tables."""
     report = import_entities(session, adapter.iter_entities())
-    edge_report = import_edges(session, adapter.iter_edges(), source_key=adapter.descriptor.key)
+    edge_report = import_edges(
+        session,
+        adapter.iter_edges(),
+        source_key=adapter.descriptor.key,
+        source_type=adapter.descriptor.source_type,
+        license=adapter.descriptor.license,
+    )
     report.edges_created = edge_report.edges_created
     report.edges_skipped = edge_report.edges_skipped
     report.evidence_created = edge_report.evidence_created

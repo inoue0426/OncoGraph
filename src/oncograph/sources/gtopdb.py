@@ -19,6 +19,7 @@ from .base import (
     RedistributionPolicy,
     SourceAdapter,
     SourceDescriptor,
+    SourceType,
 )
 from .registry import registry
 
@@ -52,6 +53,8 @@ class GtoPdbAdapter(SourceAdapter):
             "under CC BY-SA 4.0 (http://creativecommons.org/licenses/by-sa/4.0/). "
             "Preserve attribution to IUPHAR/BPS Guide to PHARMACOLOGY."
         ),
+        source_type=SourceType.CURATED_DATABASE,
+        license="ODbL (database) / CC BY-SA 4.0 (content)",
     )
 
     def __init__(
@@ -121,4 +124,5 @@ class GtoPdbAdapter(SourceAdapter):
                     "release": self.release,
                     "target_name": _strip_tags(row.get("Target", "")),
                 },
+                evidence_type="target_interaction",
             )

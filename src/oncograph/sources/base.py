@@ -11,6 +11,21 @@ class RedistributionPolicy(StrEnum):
     UNKNOWN = "unknown"
 
 
+class SourceType(StrEnum):
+    """Coarse classification of how a source's evidence was produced.
+
+    Deliberately small and open to new members (e.g. PUBLICATION lands with
+    PubMed ingestion later) rather than exhaustive; it exists so evidence can
+    be filtered/grouped by provenance kind without parsing ``source``.
+    """
+
+    CURATED_DATABASE = "curated_database"
+    REGISTRY = "registry"
+    COMPUTED = "computed"
+    PUBLICATION = "publication"  # reserved for a future PubMed/Publication source
+    UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True)
 class SourceDescriptor:
     key: str
@@ -20,6 +35,8 @@ class SourceDescriptor:
     citation: str | None = None
     redistribution: RedistributionPolicy = RedistributionPolicy.UNKNOWN
     notes: str | None = None
+    source_type: SourceType = SourceType.UNKNOWN
+    license: str | None = None
 
 
 @dataclass(frozen=True)
@@ -46,6 +63,12 @@ class EdgeRecord:
     source_url: str | None = None
     context: dict = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
+    # Free-form claim kind (e.g. "target_interaction", "approved_indication");
+    # new adapters may introduce new values without a schema change.
+    evidence_type: str | None = None
+    # 0.0-1.0 strength when the source natively provides one (e.g. a computed
+    # association score); leave unset rather than inventing a number.
+    confidence: float | None = None
 
 
 class SourceAdapter(ABC):

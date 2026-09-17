@@ -4,7 +4,7 @@ OncoGraph keeps ingestion **code** separate from upstream **data**. The public r
 
 ## Adapter contract
 
-Each source adapter emits normalized `EntityRecord` and `EdgeRecord` candidates. Every edge should retain enough provenance to recover the upstream record: source key, source record identifier, URL when permitted, context, and retrieval metadata.
+Each source adapter emits normalized `EntityRecord` and `EdgeRecord` candidates. Every edge should retain enough provenance to recover the upstream record: source key, source record identifier, URL when permitted, context, and retrieval metadata. See `docs/EVIDENCE.md` for the full Evidence field contract and how to populate it from a new adapter.
 
 Importers should be deterministic and idempotent. Validation occurs before database writes. Source-specific raw fields belong in metadata rather than silently changing the shared ontology.
 

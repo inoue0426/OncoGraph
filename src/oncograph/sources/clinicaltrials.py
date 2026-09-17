@@ -84,4 +84,5 @@ class ClinicalTrialsAdapter(SourceAdapter):
                     "phases": row.get("phases"),
                     "matched_intervention": row.get("matched_intervention"),
                 },
+                evidence_type="clinical_trial_enrollment",
             )

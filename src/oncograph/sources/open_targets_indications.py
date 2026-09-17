@@ -20,6 +20,7 @@ from .base import (
     RedistributionPolicy,
     SourceAdapter,
     SourceDescriptor,
+    SourceType,
 )
 from .registry import registry
 
@@ -45,6 +46,8 @@ class OpenTargetsIndicationsAdapter(SourceAdapter):
             "'APPROVAL' maximum clinical stage are imported; earlier-phase indications are "
             "left to the ClinicalTrials.gov source instead of being mixed into this tier."
         ),
+        source_type=SourceType.CURATED_DATABASE,
+        license="CC0",
     )
 
     def __init__(self, json_path: str | Path, release: str | None = None):
@@ -88,4 +91,5 @@ class OpenTargetsIndicationsAdapter(SourceAdapter):
                     "max_clinical_stage": row.get("max_clinical_stage"),
                     "chembl_id": row.get("chembl_id"),
                 },
+                evidence_type="approved_indication",
             )

@@ -23,6 +23,9 @@ class EvidenceCreate(SQLModel):
     source: str
     source_id: str | None = None
     source_url: str | None = None
+    source_type: str | None = None
+    evidence_type: str | None = None
+    license: str | None = None
     summary: str | None = None
     context: str | None = None
     extraction_method: str = "manual"

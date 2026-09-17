@@ -92,6 +92,11 @@ def test_open_targets_indications_resolves_drug_and_records_stage(tmp_path):
     context = json.loads(evidence.context)
     assert context["max_clinical_stage"] == "APPROVAL"
 
+    assert evidence.evidence_type == "approved_indication"
+    assert evidence.source_type == "curated_database"
+    assert evidence.license == "CC0"
+    assert evidence.confidence is None
+
 
 def test_open_targets_indications_reimport_is_idempotent(tmp_path):
     path = _write_fixture(tmp_path)

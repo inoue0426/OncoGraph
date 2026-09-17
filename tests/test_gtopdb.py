@@ -106,6 +106,11 @@ def test_gtopdb_resolves_target_by_hgnc_id_and_records_evidence(tmp_path):
     assert context["release"] == "2026.3"
     assert context["target_name"] == "5-HT2A receptor"
 
+    assert evidence.evidence_type == "target_interaction"
+    assert evidence.source_type == "curated_database"
+    assert evidence.license == "ODbL (database) / CC BY-SA 4.0 (content)"
+    assert evidence.confidence is None
+
 
 def test_gtopdb_reimport_is_idempotent(tmp_path):
     interactions_path, mapping_path = _write_fixtures(tmp_path)
