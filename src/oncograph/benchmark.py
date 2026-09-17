@@ -13,10 +13,16 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
+from sqlmodel import Session
+
 from .query import (
     GraphRetriever,
+    RetrievalQuery,
     RetrievalResult,
     Retriever,
+    TraversalFilters,
+    resolve_entity,
+    traverse,
 )
 
 
@@ -253,11 +259,44 @@ class VectorRAGRetriever(Retriever):
 
 
 class VanillaGraphRetriever(Retriever):
-    """Scaffold only. Would traverse the graph like GraphRetriever but without
-    evidence-aware filtering, to isolate what evidence-awareness contributes."""
+    """Real ablation, not a scaffold: identical BFS reachability to
+    ``GraphRetriever`` (same entities/relations found, via the same
+    ``traverse()``), but blind to evidence -- every relation's evidence and
+    publication references are stripped before scoring.
 
-    def retrieve(self, query):
-        raise NotImplementedError("VanillaGraphRetriever is a scaffold; not implemented.")
+    This isolates exactly what evidence-awareness contributes: on a graph
+    with no contradictory/low-confidence evidence (true of the currently
+    deployed snapshot -- see docs/BIOLOGICAL_SOURCES.md), this retriever's
+    ``answer_correctness`` matches ``GraphRetriever``'s, while its
+    ``citation_correctness``/``evidence_completeness``/``provenance_coverage``
+    are structurally zero, because it never carries provenance forward.
+    """
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def retrieve(self, query: RetrievalQuery) -> RetrievalResult:
+        root = resolve_entity(self.session, query.root_ref, query.root_type)
+        if root is None:
+            return RetrievalResult(query=query, root=None)
+        result = traverse(
+            self.session,
+            root.id,
+            TraversalFilters(max_hops=query.max_hops, predicates=query.predicates),
+        )
+        if result is None:
+            return RetrievalResult(query=query, root=None)
+        blind_relations = [
+            {**relation, "evidence": [], "has_contradictory_evidence": False, "publication_ids": []}
+            for relation in result["relations"]
+        ]
+        return RetrievalResult(
+            query=query,
+            root=result["root"],
+            entities=result["entities"],
+            relations=blind_relations,
+            paths=result["paths"],
+        )
 
 
 __all__ = [

@@ -79,11 +79,14 @@ nothing here runs an actual retrieval system against real questions and reports 
 ## Comparing retrieval strategies
 
 `oncograph.query.Retriever` (a `Protocol`) plus `RetrievalQuery`/`RetrievalResult` (from Issue #7)
-are the shared interface. `oncograph.query.GraphRetriever` is the only one implemented --
-`graph_retrieval_to_prediction()` converts its output into a scoreable `Prediction`.
-`LLMOnlyRetriever`, `VectorRAGRetriever`, and `VanillaGraphRetriever` in `oncograph.benchmark`
-declare the same interface but raise `NotImplementedError` -- they're scaffolding for whoever
-builds those baselines later, not a promise that they work.
+are the shared interface. `oncograph.query.GraphRetriever` is the evidence-aware system under
+test. `oncograph.benchmark.VanillaGraphRetriever` is a real ablation (not a scaffold): identical
+BFS reachability via the same `traverse()`, but with every relation's evidence and publication
+references stripped before scoring -- it isolates exactly what evidence-awareness contributes
+(citation/evidence-completeness/provenance metrics), holding the reachable answer set fixed.
+`LLMOnlyRetriever` and `VectorRAGRetriever` in `oncograph.benchmark` declare the same interface but
+raise `NotImplementedError` -- there is no LLM or embedding infrastructure in this repository to
+back them, so they remain scaffolding rather than a fabricated result.
 
 ```python
 from oncograph.benchmark import graph_retrieval_to_prediction, load_benchmark_items, score_prediction

@@ -32,6 +32,44 @@ from oncograph.benchmark import (
 from oncograph.models import ClaimState, Entity, Evidence, Relation
 from oncograph.query import GraphRetriever, RetrievalQuery
 
+# --- VanillaGraphRetriever: a real ablation, not a scaffold --------------------
+
+
+def test_vanilla_graph_retriever_matches_reachability_but_strips_evidence():
+    """Same entities reachable as GraphRetriever, but zero evidence carried
+    forward -- the exact ablation the benchmark is meant to isolate."""
+    with _memory_session() as session:
+        drug = Entity(type="drug", name="TestDrug", canonical_id="gtopdb:1")
+        gene = Entity(type="gene", name="TestGene", canonical_id="hgnc:HGNC:1")
+        session.add_all([drug, gene])
+        session.flush()
+        relation = Relation(subject_id=drug.id, predicate="targets", object_id=gene.id)
+        session.add(relation)
+        session.flush()
+        session.add(Evidence(relation_id=relation.id, source="gtopdb", claim_state=ClaimState.SUPPORTS))
+        session.commit()
+
+        aware = GraphRetriever(session).retrieve(RetrievalQuery(root_ref="TestDrug", max_hops=1))
+        blind = VanillaGraphRetriever(session).retrieve(RetrievalQuery(root_ref="TestDrug", max_hops=1))
+
+    assert {e["id"] for e in blind.entities} == {e["id"] for e in aware.entities}
+    assert len(blind.relations) == len(aware.relations) == 1
+    assert aware.relations[0]["evidence"]
+    assert blind.relations[0]["evidence"] == []
+    assert blind.relations[0]["publication_ids"] == []
+
+    aware_prediction = graph_retrieval_to_prediction(aware)
+    blind_prediction = graph_retrieval_to_prediction(blind)
+    assert aware_prediction.answer_canonical_ids == blind_prediction.answer_canonical_ids
+    assert aware_prediction.evidence_refs and not blind_prediction.evidence_refs
+
+
+def test_vanilla_graph_retriever_returns_empty_result_for_unresolvable_root():
+    with _memory_session() as session:
+        result = VanillaGraphRetriever(session).retrieve(RetrievalQuery(root_ref="does-not-exist"))
+    assert result.root is None
+    assert result.entities == []
+
 BENCHMARK_FILE = Path(__file__).resolve().parent.parent / "data" / "benchmarks" / "v1" / "oncology_core.json"
 
 
@@ -190,9 +228,12 @@ def test_graph_retriever_prediction_scores_correctly_against_its_own_data():
 
 
 # --- Retrieval-baseline scaffolding: explicitly not implemented -----------------
+#
+# VanillaGraphRetriever is excluded here -- it's a real ablation now (see
+# test_vanilla_graph_retriever_* above), not a scaffold.
 
 
-@pytest.mark.parametrize("retriever_cls", [LLMOnlyRetriever, VectorRAGRetriever, VanillaGraphRetriever])
+@pytest.mark.parametrize("retriever_cls", [LLMOnlyRetriever, VectorRAGRetriever])
 def test_baseline_scaffolds_raise_not_implemented(retriever_cls):
     with pytest.raises(NotImplementedError):
         retriever_cls().retrieve(None)
