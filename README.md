@@ -35,9 +35,10 @@ investigation (Reactome, CIViC, DGIdb, OncoKB, and others), and `docs/DRUG_RESPO
 drug-response/experimental-model schema -- none of these are yet part of the public MVP's
 scheduled refresh. See `docs/QUERY_API.md` for the evidence-aware graph traversal API
 (`/query/traverse` and representative query helpers), `docs/BENCHMARKING.md` for the
-benchmark-item schema and metrics infrastructure (no results have been run or published), and
-`docs/STATS.md` for the homepage coverage-statistics artifact (`web/data/stats.json`) and its
-path-count semantics.
+benchmark-item schema and metrics infrastructure, `docs/BENCHMARK_RUN_v2.md` for the first real
+(non-fabricated) evaluation of `GraphRetriever` against an evidence-blind ablation on a frozen
+snapshot, and `docs/STATS.md` for the homepage coverage-statistics artifact (`web/data/stats.json`)
+and its path-count semantics.
 
 ## Public explorer and hosting
 

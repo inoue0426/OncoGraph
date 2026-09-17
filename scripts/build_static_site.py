@@ -176,14 +176,20 @@ def read_benchmark_gold_paths(root: Path = BENCHMARKS_ROOT) -> dict[str, int] | 
     caller can omit the "paths" stat entirely instead of showing a
     misleading count. Deduplicates by (version, item id) in case the same
     curated item ever appears in more than one benchmark file.
+
+    A benchmark *version* directory can also hold non-item artifacts (e.g.
+    ``run_benchmark.py``'s results logs, a single JSON object rather than a
+    list of items) -- those are skipped rather than treated as items.
     """
     if not root.is_dir():
         return None
     seen: set[tuple[str, str]] = set()
     for file in sorted(root.glob("**/*.json")):
         items = json.loads(file.read_text(encoding="utf-8"))
+        if not isinstance(items, list):
+            continue  # not a benchmark-item file, e.g. a results log
         for item in items:
-            if item.get("gold_evidence_path"):
+            if isinstance(item, dict) and item.get("gold_evidence_path"):
                 seen.add((item.get("version") or file.parent.name, item["id"]))
     if not seen:
         return None

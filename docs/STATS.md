@@ -64,12 +64,17 @@ and never persisted -- it is not counted here.
 
 Today the only such record is a **benchmark gold-evidence path**: one
 `BenchmarkItem.gold_evidence_path` entry in the versioned benchmark suite
-(`data/benchmarks/*/*.json`, see `docs/BENCHMARKING.md`) -- a curated,
-checked-in evidence chain used for grading a retrieval strategy. Of the 9
-items in `data/benchmarks/v1/oncology_core.json`, 7 have a non-empty
-`gold_evidence_path` (2 are `illustrative_synthetic` with no path), so
-`paths.benchmark_gold` is 7. `read_benchmark_gold_paths()` deduplicates by
-`(version, item id)` in case a curated item is ever repeated across files.
+(`data/benchmarks/**/*.json`, see `docs/BENCHMARKING.md`) -- a curated,
+checked-in evidence chain used for grading a retrieval strategy.
+`paths.benchmark_gold` is the count of such entries across every version
+directory (`v1`'s 9 hand-written items, 7 with a non-empty path; `v2`'s 90
+programmatically-generated items, all with one -- see
+`docs/BENCHMARK_RUN_v2.md`), so this number grows as more benchmark files
+are added; it is never hard-coded, only re-derived on each build.
+`read_benchmark_gold_paths()` deduplicates by `(version, item id)` in case
+a curated item is ever repeated across files, and skips any non-item JSON
+artifact under `data/benchmarks/` (e.g. `run_benchmark.py`'s results logs,
+a single JSON object rather than a list of items).
 
 If no benchmark file exists (or none of its items have a path), the
 `paths` key is omitted from `stats.json` entirely -- the homepage then also

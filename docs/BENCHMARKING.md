@@ -1,10 +1,12 @@
 # Research benchmarking & evaluation (Issue #9)
 
-**This is infrastructure, not a result.** Nothing in `oncograph.benchmark` or
-`data/benchmarks/` claims that evidence-aware OncoGraph retrieval outperforms any
-baseline -- no baseline has been run. What exists is a schema, real (not stubbed)
-scoring functions, and a common interface, so that comparison can happen later
-without redesigning anything.
+This module started as infrastructure only (a schema, real scoring functions, and a
+common retrieval-comparison interface -- no run, no reported number). A real first
+run now exists: see `docs/BENCHMARK_RUN_v2.md` for `GraphRetriever` vs. an
+evidence-blind `VanillaGraphRetriever` ablation on a frozen snapshot, with honest
+results including where the metrics come out low. `LLMOnlyRetriever` and
+`VectorRAGRetriever` remain unimplemented scaffolds -- there is no LLM or embedding
+infrastructure in this repository to back a real run of either.
 
 ## Benchmark item schema
 
@@ -100,5 +102,8 @@ for item in items:
     print(score_prediction(item, prediction))
 ```
 
-Running this against the real, currently-imported graph and reporting the resulting numbers as a
-finding is future work, not something this issue does.
+`docs/BENCHMARK_RUN_v2.md` runs the equivalent of this loop -- via
+`scripts/generate_benchmark_items.py` and `scripts/run_benchmark.py`, against a
+larger, programmatically-generated item set rather than the 9 hand-written `v1`
+items -- and reports the resulting numbers, including a real observed limitation
+(`citation_correctness` degrading with root-entity degree).

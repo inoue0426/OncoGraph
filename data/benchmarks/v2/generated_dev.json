@@ -1,0 +1,458 @@
+[
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:3023"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:3023",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:98"
+      }
+    ],
+    "id": "v2-dev-0000",
+    "question": "What gene does sertindole target?",
+    "task_type": "single_hop_factual_retrieval",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:4586"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:4586",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:4233"
+      }
+    ],
+    "id": "v2-dev-0001",
+    "question": "What gene does ketamine target?",
+    "task_type": "single_hop_factual_retrieval",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:8156"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:8156",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:1673"
+      }
+    ],
+    "id": "v2-dev-0002",
+    "question": "What gene does codeine target?",
+    "task_type": "single_hop_factual_retrieval",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "clinicaltrials.gov:NCT04009499"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "clinicaltrials.gov:NCT04009499",
+        "predicate": "studied_in",
+        "source": "clinicaltrials_gov",
+        "subject_canonical_id": "gtopdb:9411"
+      }
+    ],
+    "id": "v2-dev-0003",
+    "question": "Which registered trial evaluates bimekizumab?",
+    "task_type": "trial_lookup",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "clinicaltrials.gov:NCT00437177"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "clinicaltrials.gov:NCT00437177",
+        "predicate": "studied_in",
+        "source": "clinicaltrials_gov",
+        "subject_canonical_id": "gtopdb:33"
+      }
+    ],
+    "id": "v2-dev-0004",
+    "question": "Which registered trial evaluates apomorphine?",
+    "task_type": "trial_lookup",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "clinicaltrials.gov:NCT03861390"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "clinicaltrials.gov:NCT03861390",
+        "predicate": "studied_in",
+        "source": "clinicaltrials_gov",
+        "subject_canonical_id": "gtopdb:7096"
+      }
+    ],
+    "id": "v2-dev-0005",
+    "question": "Which registered trial evaluates prednisone?",
+    "task_type": "trial_lookup",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "go:GO:0006383"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "go:GO:0006383",
+        "predicate": "part_of",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:0006386"
+      }
+    ],
+    "id": "v2-dev-0006",
+    "question": "What GO term is 'termination of RNA polymerase III transcription' part of?",
+    "task_type": "pathway_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "go:GO:0000045"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "go:GO:0000045",
+        "predicate": "part_of",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:0034497"
+      }
+    ],
+    "id": "v2-dev-0007",
+    "question": "What GO term is 'protein localization to phagophore assembly site' part of?",
+    "task_type": "pathway_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "go:GO:0035290"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "go:GO:0035290",
+        "predicate": "part_of",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:0035292"
+      }
+    ],
+    "id": "v2-dev-0008",
+    "question": "What GO term is 'specification of segmental identity, trunk' part of?",
+    "task_type": "pathway_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:1247",
+      "mondo:0018922"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:1247",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:9807"
+      },
+      {
+        "object_canonical_id": "mondo:0018922",
+        "predicate": "indicated_for",
+        "source": "open_targets_indications",
+        "subject_canonical_id": "gtopdb:9807"
+      }
+    ],
+    "id": "v2-dev-0009",
+    "question": "What disease is sutimlimab approved for, and via which target?",
+    "task_type": "drug_target_disease_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:7174",
+      "mondo:0011438"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:7174",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:6464"
+      },
+      {
+        "object_canonical_id": "mondo:0011438",
+        "predicate": "indicated_for",
+        "source": "open_targets_indications",
+        "subject_canonical_id": "gtopdb:6464"
+      }
+    ],
+    "id": "v2-dev-0010",
+    "question": "What disease is doxycycline approved for, and via which target?",
+    "task_type": "drug_target_disease_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:3468",
+      "efo:1000096"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:3468",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:7349"
+      },
+      {
+        "object_canonical_id": "efo:1000096",
+        "predicate": "indicated_for",
+        "source": "open_targets_indications",
+        "subject_canonical_id": "gtopdb:7349"
+      }
+    ],
+    "id": "v2-dev-0011",
+    "question": "What disease is ospemifene approved for, and via which target?",
+    "task_type": "drug_target_disease_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "go:GO:0007219",
+      "go:GO:0007166"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "go:GO:0007219",
+        "predicate": "is_a",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:0060853"
+      },
+      {
+        "object_canonical_id": "go:GO:0007166",
+        "predicate": "is_a",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:0007219"
+      }
+    ],
+    "id": "v2-dev-0012",
+    "question": "Through which successive parent GO terms does 'Notch signaling pathway involved in arterial endothelial cell fate commitment' chain (is_a x2)?",
+    "task_type": "multi_hop_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "go:GO:1902305",
+      "go:GO:0002028"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "go:GO:1902305",
+        "predicate": "is_a",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:1902306"
+      },
+      {
+        "object_canonical_id": "go:GO:0002028",
+        "predicate": "is_a",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:1902305"
+      }
+    ],
+    "id": "v2-dev-0013",
+    "question": "Through which successive parent GO terms does 'negative regulation of sodium ion transmembrane transport' chain (is_a x2)?",
+    "task_type": "multi_hop_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "go:GO:0015926",
+      "go:GO:0004553"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "go:GO:0015926",
+        "predicate": "is_a",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:0047917"
+      },
+      {
+        "object_canonical_id": "go:GO:0004553",
+        "predicate": "is_a",
+        "source": "gene_ontology",
+        "subject_canonical_id": "go:GO:0015926"
+      }
+    ],
+    "id": "v2-dev-0014",
+    "question": "Through which successive parent GO terms does 'GDP-glucosidase activity' chain (is_a x2)?",
+    "task_type": "multi_hop_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:1952"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:1952",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:297"
+      }
+    ],
+    "id": "v2-dev-0015",
+    "question": "What gene does bethanechol target, and what is the source of that claim?",
+    "task_type": "provenance_aware_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:6148"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:6148",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:6593"
+      }
+    ],
+    "id": "v2-dev-0016",
+    "question": "What gene does efalizumab target, and what is the source of that claim?",
+    "task_type": "provenance_aware_reasoning",
+    "version": "v2-dev"
+  },
+  {
+    "context": {
+      "generated_by": "generate_benchmark_items.py",
+      "generator_seed": 20260917,
+      "grounding": "verified_live_data",
+      "source_snapshot_graph_version": "2026-09-17T22:32:28Z"
+    },
+    "gold_answer_canonical_ids": [
+      "hgnc:HGNC:3179"
+    ],
+    "gold_evidence_path": [
+      {
+        "object_canonical_id": "hgnc:HGNC:3179",
+        "predicate": "targets",
+        "source": "gtopdb",
+        "subject_canonical_id": "gtopdb:3951"
+      }
+    ],
+    "id": "v2-dev-0017",
+    "question": "What gene does ambrisentan target, and what is the source of that claim?",
+    "task_type": "provenance_aware_reasoning",
+    "version": "v2-dev"
+  }
+]

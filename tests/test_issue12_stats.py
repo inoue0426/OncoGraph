@@ -120,13 +120,25 @@ def test_benchmark_gold_paths_returns_none_when_no_item_has_a_path(tmp_path):
     assert build_static_site.read_benchmark_gold_paths(tmp_path) is None
 
 
-def test_real_oncology_core_benchmark_file_has_exactly_seven_gold_paths():
-    """Guards against silently fabricating/inflating this count: the real,
-    checked-in benchmark file (Issue #9) has 9 items, 7 with a non-empty
-    gold_evidence_path (2 are illustrative_synthetic with no path)."""
+def test_real_benchmark_directory_gold_path_count_matches_checked_in_items():
+    """Guards against silently fabricating/inflating this count: it must equal
+    exactly the number of items with a non-empty gold_evidence_path across
+    every checked-in benchmark file (v1's 9-item file has 7; v2 adds 18 dev +
+    72 held-out generated items, all with a real, non-empty path) -- and must
+    skip non-item artifacts under data/benchmarks/ (e.g. run_benchmark.py's
+    results_v2.json, a single JSON object, not a list of items)."""
+    import build_static_site as bss
+
     real_benchmarks_root = Path(__file__).resolve().parent.parent / "data" / "benchmarks"
-    paths = build_static_site.read_benchmark_gold_paths(real_benchmarks_root)
-    assert paths == {"benchmark_gold": 7, "total": 7}
+    expected = 0
+    for file in real_benchmarks_root.glob("**/*.json"):
+        items = json.loads(file.read_text(encoding="utf-8"))
+        if isinstance(items, list):
+            expected += sum(1 for item in items if isinstance(item, dict) and item.get("gold_evidence_path"))
+
+    paths = bss.read_benchmark_gold_paths(real_benchmarks_root)
+    assert paths == {"benchmark_gold": expected, "total": expected}
+    assert expected > 0
 
 
 # --- compute_stats: full payload, omission of unavailable categories -----------
