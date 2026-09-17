@@ -1,6 +1,9 @@
 from uuid import UUID
+
 from sqlmodel import SQLModel
+
 from .models import EntityType, VerificationStatus
+
 
 class EntityCreate(SQLModel):
     type: EntityType
@@ -8,16 +11,12 @@ class EntityCreate(SQLModel):
     canonical_id: str | None = None
     description: str | None = None
 
-class IdentifierCreate(SQLModel):
-    entity_id: UUID
-    namespace: str
-    value: str
-    source: str | None = None
 
 class RelationCreate(SQLModel):
     subject_id: UUID
     predicate: str
     object_id: UUID
+
 
 class EvidenceCreate(SQLModel):
     relation_id: UUID
