@@ -6,11 +6,9 @@ OncoGraph connects biomedical entities to the evidence supporting each relations
 
 > Research software. OncoGraph is not intended for diagnosis, treatment selection, or other clinical decision-making.
 
-## v0.1 scope
+## v0.2 scope
 
-Entities: `Drug`, `Target`, `Disease`, `Paper`, `Trial`.
-
-Relations are generic directed edges such as `targets`, `studied_in`, `supports`, and `associated_with`. Every edge can have one or more evidence records.
+Core entities remain `Drug`, `Target`, `Disease`, `Paper`, and `Trial`, with generic directed relations and edge-level evidence. v0.2 adds a source-adapter layer so public ingestion code can be developed independently from upstream data and licensing constraints.
 
 ## Quick start
 
@@ -24,15 +22,13 @@ uvicorn oncograph.main:app --reload
 
 Open `http://127.0.0.1:8000/docs` for the API documentation.
 
-Useful endpoints:
+## Source adapters
 
-- `GET /health`
-- `GET /entities`
-- `GET /entities/{id}`
-- `GET /graph/{id}?depth=2`
-- `GET /evidence?relation_id=...`
+The adapter contract lives in `oncograph.sources`. Adapters emit normalized entity and edge candidates without directly mutating the database. `oncograph.importing` validates records before persistence, and `oncograph.normalization` canonicalizes external identifier namespaces.
 
-SQLite is the zero-config default. Set `ONCOGRAPH_DATABASE_URL` to a PostgreSQL SQLAlchemy URL for a server deployment.
+The source catalog documents intended integration points for PubMed, ClinicalTrials.gov, CTD, and DrugBank. **No restricted upstream data, credentials, or copied source text is included in this repository.** DrugBank is explicitly marked restricted; CTD is conservative/unknown until its current terms are verified for the intended use.
+
+See `docs/SOURCES.md` for the provenance and source policy.
 
 ## Data model
 
@@ -42,16 +38,16 @@ Entity ──< Relation >── Entity
               └──< Evidence
 ```
 
-`Evidence` records source identifiers/URLs, a short evidence summary, context, extraction method, confidence, verification status, and retrieval time. Source text should not be copied into the repository unless its license permits redistribution.
+Every imported edge should preserve source identity, upstream record ID, URL when permitted, context, extraction method, and retrieval time. Prefer stable external identifiers to name matching.
 
 ## Roadmap
 
-1. Stable ontology and identifier normalization.
-2. PubMed and ClinicalTrials.gov ingestion adapters.
-3. Evidence extraction with human-verifiable provenance.
-4. Conflict and missing-evidence detection.
-5. Interactive graph UI and agent-facing query API.
-6. Reproducible snapshots and source-specific licensing metadata.
+1. Implement source-specific adapters against user-provided/permitted inputs.
+2. Add persistent external-identifier and source-snapshot tables.
+3. Add deterministic entity resolution and conflict tracking.
+4. Add evidence extraction with human-verifiable provenance.
+5. Add interactive graph UI and agent-facing query API.
+6. Add reproducible snapshots and source-specific licensing metadata.
 
 ## Development
 
@@ -62,4 +58,4 @@ ruff check .
 
 ## License
 
-MIT. Individual upstream datasets and sources retain their own licenses and terms; ingestion code must preserve source attribution and licensing metadata.
+MIT. Individual upstream datasets and sources retain their own licenses and terms. Ingestion code must preserve source attribution and licensing metadata.
