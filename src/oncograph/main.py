@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlmodel import Session, select
 
+from . import query as graph_query
 from .db import create_db_and_tables, get_session
 from .models import Entity, EntityType, Evidence, Relation
 from .schemas import EntityCreate, EvidenceCreate, RelationCreate
@@ -123,3 +124,60 @@ def graph(entity_id: UUID, session: SessionDep, depth: Annotated[int, Query(ge=1
         else []
     )
     return {"root": root, "entities": entities, "relations": list(relations.values()), "evidence": evidence}
+
+
+def _parse_csv(value: str | None) -> frozenset[str] | None:
+    if not value:
+        return None
+    return frozenset(part.strip() for part in value.split(",") if part.strip())
+
+
+@app.get("/query/traverse")
+def query_traverse(
+    session: SessionDep,
+    ref: str,
+    entity_type: EntityType | None = None,
+    max_hops: Annotated[int, Query(ge=1, le=5)] = 1,
+    predicates: str | None = Query(None, description="Comma-separated predicate names"),
+    sources: str | None = Query(None, description="Comma-separated source keys"),
+    min_confidence: Annotated[float | None, Query(ge=0.0, le=1.0)] = None,
+    require_publication: bool = False,
+):
+    """Evidence-aware N-hop traversal from an entity referenced by UUID, canonical_id, or name."""
+    root = graph_query.resolve_entity(session, ref, entity_type)
+    if root is None:
+        raise HTTPException(404, "Entity not found")
+    result = graph_query.traverse(
+        session,
+        root.id,
+        graph_query.TraversalFilters(
+            max_hops=max_hops,
+            predicates=_parse_csv(predicates),
+            sources=_parse_csv(sources),
+            min_confidence=min_confidence,
+            require_publication=require_publication,
+        ),
+    )
+    return result
+
+
+_QUERY_HELPERS = {
+    "disease-to-genes-to-drugs": graph_query.disease_to_genes_to_drugs,
+    "drug-to-target-to-pathway-to-disease": graph_query.drug_to_target_to_pathway_to_disease,
+    "gene-to-pathway-to-disease": graph_query.gene_to_pathway_to_disease,
+    "biomarker-to-response-to-drug": graph_query.biomarker_to_response_to_drug,
+    "trial-to-disease-to-intervention": graph_query.trial_to_disease_to_intervention,
+    "drug-to-publication-supported-disease-path": graph_query.drug_to_publication_supported_disease_path,
+}
+
+
+@app.get("/query/{helper_name}")
+def query_helper(helper_name: str, session: SessionDep, ref: str):
+    """Representative oncology query helpers -- see docs/QUERY_API.md for the full list."""
+    helper = _QUERY_HELPERS.get(helper_name)
+    if helper is None:
+        raise HTTPException(404, f"Unknown query helper {helper_name!r}")
+    result = helper(session, ref)
+    if result is None:
+        raise HTTPException(404, "Starting entity not found")
+    return result

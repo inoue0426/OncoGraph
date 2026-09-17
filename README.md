@@ -33,7 +33,8 @@ field contract new adapters should populate, `docs/PUBLICATIONS.md` for how Publ
 literature evidence fit in, `docs/BIOLOGICAL_SOURCES.md` for the pathway/clinical-evidence source
 investigation (Reactome, CIViC, DGIdb, OncoKB, and others), and `docs/DRUG_RESPONSE.md` for the
 drug-response/experimental-model schema -- none of these are yet part of the public MVP's
-scheduled refresh.
+scheduled refresh. See `docs/QUERY_API.md` for the evidence-aware graph traversal API
+(`/query/traverse` and representative query helpers).
 
 ## Public explorer and hosting
 
