@@ -12,9 +12,27 @@ def utcnow() -> datetime:
 class EntityType(StrEnum):
     DRUG = "drug"
     TARGET = "target"
+    GENE = "gene"
+    PROTEIN = "protein"
     DISEASE = "disease"
     PAPER = "paper"
     TRIAL = "trial"
+    PATHWAY = "pathway"
+    GO_TERM = "go_term"
+    CELL_TYPE = "cell_type"
+    CELL_STATE = "cell_state"
+    LIGAND = "ligand"
+    RECEPTOR = "receptor"
+    PERTURBATION = "perturbation"
+    MODEL_SYSTEM = "model_system"
+    CELL_LINE = "cell_line"
+    PDX = "pdx"
+    ORGANOID = "organoid"
+    COHORT = "cohort"
+    ASSAY = "assay"
+    PHENOTYPE = "phenotype"
+    RESPONSE = "response"
+    RESISTANCE_MECHANISM = "resistance_mechanism"
 
 
 class VerificationStatus(StrEnum):
