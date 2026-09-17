@@ -1,9 +1,11 @@
 """Source adapter framework for OncoGraph."""
 
+from . import aact as _aact  # noqa: F401
 from . import bindingdb as _bindingdb  # noqa: F401
 from . import chembl as _chembl  # noqa: F401
 from . import civic as _civic  # noqa: F401
 from . import clinicaltrials as _clinicaltrials  # noqa: F401
+from . import combination_data as _combination_data  # noqa: F401
 from . import depmap as _depmap  # noqa: F401
 from . import dgidb as _dgidb  # noqa: F401
 from . import drug_response as _drug_response  # noqa: F401

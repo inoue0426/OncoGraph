@@ -34,9 +34,13 @@ literature evidence fit in, `docs/BIOLOGICAL_SOURCES.md` for the pathway/clinica
 investigation (Reactome, CIViC, DGIdb, OncoKB, and others), `docs/DRUG_RESPONSE.md` for the
 drug-response/experimental-model schema, and `docs/MECHANISTIC_SOURCES.md` for the mechanism-of-action/
 functional-evidence source investigation (DrugMechDB, ChEMBL, TRRUST, GTEx, SIGNOR, DrugCentral, DepMap,
-BindingDB). DrugMechDB, ChEMBL, TRRUST, and GTEx are wired into the scheduled refresh; the drug-response
-schema and the remaining biological/mechanistic sources documented above are not yet part of it. See
-`docs/QUERY_API.md` for the evidence-aware graph traversal API
+BindingDB), and `docs/TREATMENT_RESPONSE_CONTEXT.md` for context-conditioned treatment response,
+trial termination-reason classification, and real ClinicalTrials.gov-derived combination
+treatments (AACT and DrugComb/NCI ALMANAC/DREAM/AstraZeneca-Sanger remain scaffold-only). DrugMechDB,
+ChEMBL, TRRUST, and GTEx are wired into the scheduled refresh, as is the trial termination-reason/
+combination-treatment logic (part of the existing ClinicalTrials.gov adapter); the drug-response
+schema and the remaining biological/mechanistic/treatment-context sources documented above are not
+yet part of it. See `docs/QUERY_API.md` for the evidence-aware graph traversal API
 (`/query/traverse` and representative query helpers), `docs/BENCHMARKING.md` for the
 benchmark-item schema and metrics infrastructure, `docs/BENCHMARK_RUN_v2.md` for the first real
 (non-fabricated) evaluation of `GraphRetriever` against an evidence-blind ablation on a frozen

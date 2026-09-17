@@ -78,7 +78,7 @@ Verified in the same real smoke import used for Issue #5's crosswalk notes:
 - DrugMechDB: all 4,846 real paths from the official file -- 2,772 entities, 5,810 edges.
 - TRRUST: all rows from the official human TSV -- 2,851 entities (HGNC-resolved), 9,342 edges.
 - GTEx: 50 curated oncology genes x their real tissue median expression -- 103 entities, 2,650 edges.
-- ChEMBL: a seeded-random sample of 300 of the 908 real drugs currently in the deployed graph (not all 908, to keep interactive fetch time reasonable -- `scripts/fetch_chembl_mechanisms.py` can be pointed at the full list later) -- 194 had a resolvable mechanism record; 240 entities, 248 edges.
+- ChEMBL: all 908 real drugs currently in the deployed graph (`scripts/fetch_chembl_mechanisms.py --from-search-index`) -- 576/908 had a resolvable mechanism record (13 no ChEMBL match, 313 matched but ChEMBL has no curated mechanism for them); 899 entities, 759 edges.
 
 All four real adapters above (DrugMechDB, ChEMBL, TRRUST, GTEx) are wired
 into `refresh-data.yml` as of this pass, so the next scheduled/manual

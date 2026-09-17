@@ -226,7 +226,7 @@ def _resolved_targets() -> list[dict]:
     return list(targets.values())
 
 
-_TRIAL_FIELDS = "NCTId,BriefTitle,OverallStatus,Phase,Condition,InterventionName"
+_TRIAL_FIELDS = "NCTId,BriefTitle,OverallStatus,Phase,Condition,InterventionName,WhyStopped"
 
 
 def _trial_worker(drug: dict) -> list[dict]:
@@ -269,6 +269,7 @@ def _trial_worker(drug: dict) -> list[dict]:
                 "nct_id": nct_id,
                 "brief_title": identification.get("briefTitle"),
                 "overall_status": protocol.get("statusModule", {}).get("overallStatus"),
+                "why_stopped": protocol.get("statusModule", {}).get("whyStopped"),
                 "phases": protocol.get("designModule", {}).get("phases", []),
                 "conditions": protocol.get("conditionsModule", {}).get("conditions", []),
                 "matched_intervention": matched,
