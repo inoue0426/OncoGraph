@@ -86,9 +86,9 @@ query DrugSearch($name: String!) {
 """
 
 _DRUG_INDICATIONS_QUERY = """
-query DrugIndications($chemblId: String!, $size: Int!) {
+query DrugIndications($chemblId: String!) {
   drug(chemblId: $chemblId) {
-    indications(page: {index: 0, size: $size}) {
+    indications {
       rows {
         maxClinicalStage
         disease { id name }
@@ -346,7 +346,7 @@ def _drug_indication_worker(drug: dict) -> list[dict]:
             OPEN_TARGETS_API,
             {
                 "query": _DRUG_INDICATIONS_QUERY,
-                "variables": {"chemblId": chembl_id, "size": OPEN_TARGETS_MAX_INDICATIONS},
+                "variables": {"chemblId": chembl_id},
             },
         )
     except (HTTPError, URLError, TimeoutError) as exc:
@@ -355,7 +355,7 @@ def _drug_indication_worker(drug: dict) -> list[dict]:
 
     records: list[dict] = []
     drug_data = (indications_response.get("data") or {}).get("drug") or {}
-    rows = (drug_data.get("indications") or {}).get("rows", [])
+    rows = (drug_data.get("indications") or {}).get("rows", [])[:OPEN_TARGETS_MAX_INDICATIONS]
     for row in rows:
         if row.get("maxClinicalStage") != OPEN_TARGETS_APPROVAL_STAGE:
             continue
