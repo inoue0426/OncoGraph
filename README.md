@@ -33,7 +33,8 @@ See `docs/SOURCES.md` for the provenance and source policy.
 ## Public explorer and hosting
 
 The MVP in `web/` is deployed with GitHub Pages and searches a generated public entity index.
-Scheduled refreshes keep raw upstream files out of git. See `docs/HOSTING.md`.
+A single scheduled/manual/push workflow fetches open data, imports it into a throwaway SQLite
+database, and rebuilds the index; raw files and the database never reach git. See `docs/HOSTING.md`.
 
 ## Data model
 

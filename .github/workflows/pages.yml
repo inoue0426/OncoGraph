@@ -1,12 +1,17 @@
 name: Pages
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * 1"
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,7 +20,24 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - run: python scripts/build_static_site.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python scripts/fetch_open_gene_sources.py
+      - run: echo "RELEASE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      - name: Import HGNC
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source hgnc data/raw/hgnc_complete_set.txt --release "$RELEASE"
+      - name: Import Gene Ontology
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source gene_ontology data/raw/go-basic.obo --release "$RELEASE"
+      - name: Build static search index
+        env:
+          ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db
+        run: python scripts/build_static_site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

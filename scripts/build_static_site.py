@@ -24,7 +24,7 @@ def read_entities(database: Path) -> list[dict]:
     connection.row_factory = sqlite3.Row
     try:
         rows = connection.execute(
-            "SELECT id, type, name, canonical_id, description FROM entity ORDER BY name"
+            "SELECT id, type, name, canonical_id FROM entity ORDER BY name"
         ).fetchall()
     finally:
         connection.close()
