@@ -6,11 +6,12 @@ Sources:
 
 Run: python scripts/fetch_open_gene_sources.py
 """
-from datetime import datetime, timezone
-from pathlib import Path
-from urllib.request import Request, urlopen
+
 import hashlib
 import json
+from datetime import UTC, datetime
+from pathlib import Path
+from urllib.request import Request, urlopen
 
 SOURCES = {
     "gene_ontology": {
@@ -41,7 +42,7 @@ def download(url: str, destination: Path) -> str:
 def main() -> None:
     root = Path("data/raw")
     root.mkdir(parents=True, exist_ok=True)
-    fetched_at = datetime.now(timezone.utc).isoformat()
+    fetched_at = datetime.now(UTC).isoformat()
     manifest = {"fetched_at": fetched_at, "sources": {}}
     for key, source in SOURCES.items():
         destination = root / source["filename"]
