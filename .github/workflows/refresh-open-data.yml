@@ -1,37 +1,20 @@
 name: Refresh open data
-
 on:
   schedule:
     - cron: "17 7 * * 1"
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
   refresh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Fetch redistributable upstream sources
-        run: >-
-          python scripts/fetch_open_gene_sources.py
-          --raw-dir data/raw/open_gene_sources
-          --manifest data/manifests/open_gene_sources.json
-      - name: Retain provenance manifest
+      - run: python scripts/fetch_open_gene_sources.py
+      - name: Retain source manifest
         uses: actions/upload-artifact@v4
         with:
-          name: open-gene-source-manifest-${{ github.run_id }}
-          path: data/manifests/open_gene_sources.json
+          name: source-manifest
+          path: data/raw/manifest.json
           if-no-files-found: error
-          retention-days: 90
-      - name: Retain short-lived open-source snapshot
-        uses: actions/upload-artifact@v4
-        with:
-          name: open-gene-source-snapshot-${{ github.run_id }}
-          path: data/raw/open_gene_sources
-          if-no-files-found: error
-          retention-days: 14
+          retention-days: 30

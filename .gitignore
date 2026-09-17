@@ -9,4 +9,3 @@ __pycache__/
 *.sqlite3
 .DS_Store
 data/raw/
-data/public/

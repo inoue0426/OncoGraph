@@ -1,2 +1,52 @@
-/* Compatibility path retained for links from the first static prototype. */
-@import url("styles.css");
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #0d1117;
+  color: #e6edf3;
+}
+
+main {
+  max-width: 800px;
+  margin: auto;
+  padding: 64px 20px;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: clamp(2.5rem, 8vw, 5rem);
+}
+
+input {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 24px 0 8px;
+  padding: 14px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  color: inherit;
+  background: #161b22;
+  font: inherit;
+}
+
+article {
+  margin: 10px 0;
+  padding: 14px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #161b22;
+}
+
+article div,
+#status,
+footer {
+  color: #8b949e;
+}
+
+footer {
+  margin-top: 48px;
+  font-size: 0.85rem;
+}
