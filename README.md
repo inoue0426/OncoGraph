@@ -34,7 +34,8 @@ literature evidence fit in, `docs/BIOLOGICAL_SOURCES.md` for the pathway/clinica
 investigation (Reactome, CIViC, DGIdb, OncoKB, and others), and `docs/DRUG_RESPONSE.md` for the
 drug-response/experimental-model schema -- none of these are yet part of the public MVP's
 scheduled refresh. See `docs/QUERY_API.md` for the evidence-aware graph traversal API
-(`/query/traverse` and representative query helpers).
+(`/query/traverse` and representative query helpers), and `docs/BENCHMARKING.md` for the
+benchmark-item schema and metrics infrastructure (no results have been run or published).
 
 ## Public explorer and hosting
 

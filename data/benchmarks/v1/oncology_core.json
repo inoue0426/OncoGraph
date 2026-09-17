@@ -1,0 +1,127 @@
+[
+  {
+    "id": "v1-001",
+    "version": "v1",
+    "task_type": "single_hop_factual_retrieval",
+    "question": "What gene does gefitinib target?",
+    "gold_answer_canonical_ids": ["hgnc:HGNC:3236"],
+    "gold_evidence_path": [
+      {"subject_canonical_id": "gtopdb:4941", "predicate": "targets", "object_canonical_id": "hgnc:HGNC:3236", "source": "gtopdb"}
+    ],
+    "context": {
+      "grounding": "verified_live_data",
+      "note": "gefitinib=gtopdb:4941, EGFR=hgnc:HGNC:3236 confirmed against the live public index during this repository's own development."
+    }
+  },
+  {
+    "id": "v1-002",
+    "version": "v1",
+    "task_type": "drug_target_disease_reasoning",
+    "question": "What disease is gefitinib approved for, and via which target?",
+    "gold_answer_canonical_ids": ["hgnc:HGNC:3236", "mondo:0005233"],
+    "gold_evidence_path": [
+      {"subject_canonical_id": "gtopdb:4941", "predicate": "targets", "object_canonical_id": "hgnc:HGNC:3236", "source": "gtopdb"},
+      {"subject_canonical_id": "gtopdb:4941", "predicate": "indicated_for", "object_canonical_id": "mondo:0005233", "source": "open_targets_indications"}
+    ],
+    "context": {
+      "grounding": "verified_live_data",
+      "note": "Open Targets Platform lists gefitinib (CHEMBL939) as APPROVAL-stage for MONDO_0005233 (non-small cell lung carcinoma), verified live during this repository's own development."
+    }
+  },
+  {
+    "id": "v1-003",
+    "version": "v1",
+    "task_type": "pathway_reasoning",
+    "question": "What Reactome pathway is EGFR part of?",
+    "gold_answer_canonical_ids": ["reactome:R-HSA-177929"],
+    "gold_evidence_path": [
+      {"subject_canonical_id": "ncbigene:1956", "predicate": "part_of_pathway", "object_canonical_id": "reactome:R-HSA-177929", "source": "reactome"}
+    ],
+    "context": {
+      "grounding": "verified_live_data",
+      "note": "Confirmed against Reactome's official NCBI2Reactome.txt during this repository's own development (EGFR = NCBI Gene 1956)."
+    }
+  },
+  {
+    "id": "v1-004",
+    "version": "v1",
+    "task_type": "multi_hop_reasoning",
+    "question": "Through which target and pathway could gefitinib plausibly act on EGFR signaling?",
+    "gold_answer_canonical_ids": ["hgnc:HGNC:3236", "reactome:R-HSA-177929"],
+    "gold_evidence_path": [
+      {"subject_canonical_id": "gtopdb:4941", "predicate": "targets", "object_canonical_id": "hgnc:HGNC:3236", "source": "gtopdb"},
+      {"subject_canonical_id": "ncbigene:1956", "predicate": "part_of_pathway", "object_canonical_id": "reactome:R-HSA-177929", "source": "reactome"}
+    ],
+    "context": {
+      "grounding": "verified_live_data",
+      "note": "Two-hop combination of v1-001 and v1-003. Note the known cross-adapter identifier gap (docs/BIOLOGICAL_SOURCES.md): the gene is addressed as hgnc:HGNC:3236 by GtoPdb and ncbigene:1956 by Reactome, so a naive single-ID traversal will not chain these hops end to end today."
+    }
+  },
+  {
+    "id": "v1-005",
+    "version": "v1",
+    "task_type": "trial_lookup",
+    "question": "Which registered trial evaluates durvalumab, bevacizumab, and olaparib together in advanced ovarian cancer?",
+    "gold_answer_canonical_ids": ["clinicaltrials.gov:NCT03737643"],
+    "gold_evidence_path": [
+      {"subject_canonical_id": "gtopdb:7519", "predicate": "studied_in", "object_canonical_id": "clinicaltrials.gov:NCT03737643", "source": "clinicaltrials_gov"}
+    ],
+    "context": {
+      "grounding": "verified_live_data",
+      "note": "olaparib=gtopdb:7519, NCT03737643 ('Durvalumab Treatment in Combination With Chemotherapy and Bevacizumab, Followed by Maintenance Durvalumab, Bevacizumab and Olaparib...') both confirmed live via the ClinicalTrials.gov API during this repository's own development. Registration is not evidence of efficacy or approval."
+    }
+  },
+  {
+    "id": "v1-006",
+    "version": "v1",
+    "task_type": "publication_evidence_attribution",
+    "question": "Which publications support gefitinib targeting EGFR?",
+    "gold_answer_canonical_ids": ["pubmed:42691523", "pubmed:42734867"],
+    "gold_evidence_path": [
+      {"subject_canonical_id": "gtopdb:4941", "predicate": "targets", "object_canonical_id": "hgnc:HGNC:3236", "source": "europe_pmc"}
+    ],
+    "context": {
+      "grounding": "verified_live_data",
+      "note": "PMIDs 42691523 and 42734867, real Europe PMC records fetched during this repository's own development (see data/curated/publication_citations.json)."
+    }
+  },
+  {
+    "id": "v1-007",
+    "version": "v1",
+    "task_type": "contradiction_detection",
+    "question": "Does the graph contain conflicting evidence about EGFR's association with a disease?",
+    "gold_answer_canonical_ids": [],
+    "gold_evidence_path": [],
+    "context": {
+      "grounding": "illustrative_synthetic",
+      "has_known_contradiction": true,
+      "note": "Illustrative only: no such contradiction has been observed in currently imported data. Use to test that a retriever's contradiction_awareness score correctly penalizes silence on a known conflict, with a synthetic fixture -- see tests/test_issue9_benchmark.py."
+    }
+  },
+  {
+    "id": "v1-008",
+    "version": "v1",
+    "task_type": "context_specific_drug_response",
+    "question": "What is gefitinib's IC50 in the A549 (EGFR wild-type) cell line?",
+    "gold_answer_canonical_ids": [],
+    "gold_evidence_path": [],
+    "context": {
+      "grounding": "illustrative_synthetic",
+      "note": "Illustrative only: no drug-response dataset is currently imported (see docs/DRUG_RESPONSE.md -- Issue #6 is schema/adapter scaffold, no real data). This item exists to exercise the schema once a real source is wired in."
+    }
+  },
+  {
+    "id": "v1-009",
+    "version": "v1",
+    "task_type": "provenance_aware_reasoning",
+    "question": "What gene does gefitinib target, and what is the source and license of that claim?",
+    "gold_answer_canonical_ids": ["hgnc:HGNC:3236"],
+    "gold_evidence_path": [
+      {"subject_canonical_id": "gtopdb:4941", "predicate": "targets", "object_canonical_id": "hgnc:HGNC:3236", "source": "gtopdb"}
+    ],
+    "context": {
+      "grounding": "verified_live_data",
+      "note": "Same underlying fact as v1-001; scored instead on provenance_coverage to check that source/license metadata is actually carried through, not just the answer."
+    }
+  }
+]
