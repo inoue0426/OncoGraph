@@ -50,7 +50,7 @@ jobs:
         run: python scripts/build_static_site.py
       - name: Verify generated index is non-empty
         run: |
-          for f in web/data/search-index.json web/data/relations.json; do
+          for f in web/data/search-index.json web/data/relations.json web/data/stats.json; do
             if [ ! -s "$f" ] || [ "$(cat "$f")" = "[]" ]; then
               echo "::error::$f is empty; refusing to publish an empty data artifact."
               exit 1
@@ -59,7 +59,7 @@ jobs:
       - name: Stage artifact contents
         run: |
           mkdir -p _artifact
-          cp web/data/search-index.json web/data/relations.json _artifact/
+          cp web/data/search-index.json web/data/relations.json web/data/stats.json _artifact/
           cp data/raw/manifest.json data/raw/manifest_drug_associations.json _artifact/
       - uses: actions/upload-artifact@v4
         with:

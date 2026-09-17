@@ -44,7 +44,7 @@ jobs:
 
       - name: Verify and install the downloaded index
         run: |
-          for f in search-index.json relations.json; do
+          for f in search-index.json relations.json stats.json; do
             if [ ! -s "_data-refresh/$f" ] || [ "$(cat "_data-refresh/$f")" = "[]" ]; then
               echo "::error::_data-refresh/$f is missing or empty; refusing to deploy an empty index."
               exit 1
@@ -53,6 +53,7 @@ jobs:
           mkdir -p web/data
           cp _data-refresh/search-index.json web/data/search-index.json
           cp _data-refresh/relations.json web/data/relations.json
+          cp _data-refresh/stats.json web/data/stats.json
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

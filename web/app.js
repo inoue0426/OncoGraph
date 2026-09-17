@@ -7,6 +7,7 @@ const detail = document.querySelector("#detail");
 const attribution = document.querySelector("#attribution");
 const examples = document.querySelector("#examples");
 const evidencePanel = document.querySelector("#evidence-panel");
+const statsSection = document.querySelector("#stats");
 
 const TRIAL_DISCLAIMER = "Trial registration does not imply efficacy or approval.";
 
@@ -17,6 +18,7 @@ let entityById = new Map();
 let outByPredicate = new Map(); // subjectId -> Map(predicate -> [{objectId, evidence}])
 let inByPredicate = new Map(); // objectId -> Map(predicate -> [{subjectId, evidence}])
 let entitiesByType = new Map(); // type -> [entity, ...]
+let allRelations = []; // raw relation rows, kept only for the client-side stats fallback
 
 const TYPE_LABELS = {
   drug: "Drug",
@@ -970,13 +972,185 @@ function renderAttribution() {
   attribution.innerHTML = lines.join(" ");
 }
 
+// --- Coverage statistics (Issue #12) -------------------------------------------
+//
+// Every number here comes from data/stats.json (built by
+// scripts/build_static_site.py from the same SQLite export used for
+// search-index.json/relations.json) or, if that fails to load, from a
+// client-side recomputation over the entities/relations already fetched for
+// search -- never a value typed into this file.
+
+// Plural, human-readable card label for an entity-type key. Reuses
+// TYPE_LABELS' singular forms for known types; falls back to a generic
+// "Snake Case -> Title Case" pluralization for any other type the schema
+// produces, so a new EntityType member gets a readable label for free
+// instead of being hidden or invented ahead of time.
+function statsEntityLabel(type) {
+  const known = TYPE_LABELS[type];
+  if (known) return `${known}s`;
+  return `${type
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ")}s`;
+}
+
+// Priority order for the "at minimum show" categories from Issue #12; any
+// other entity type present in the data is appended after these, largest
+// count first, so the layout never silently drops a populated category.
+const STATS_PRIORITY_TYPES = ["drug", "gene", "disease", "trial", "paper", "pathway", "go_term"];
+
+function formatCompact(value) {
+  if (typeof value !== "number") return "—";
+  if (value < 1000) return String(value);
+  if (value < 1_000_000) return `${(value / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+  return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+}
+
+function renderStatCard({ value, label, title, onClick }) {
+  const card = document.createElement(onClick ? "button" : "div");
+  card.className = onClick ? "stat-card clickable" : "stat-card";
+  if (onClick) {
+    card.type = "button";
+    card.addEventListener("click", onClick);
+  }
+  const fullTitle = typeof value === "number" ? `${value.toLocaleString()} -- ${title || label}` : title;
+  if (fullTitle) card.title = fullTitle;
+
+  const valueEl = document.createElement("span");
+  valueEl.className = "stat-value";
+  valueEl.textContent = formatCompact(value);
+
+  const labelEl = document.createElement("span");
+  labelEl.className = "stat-label";
+  labelEl.textContent = label;
+
+  card.append(valueEl, labelEl);
+  return card;
+}
+
+// Direct, non-search listing of every entity of one type -- used by clicking
+// an entity-type stat card. Deliberately bypasses parseIntent()'s "<anchor>
+// <facet word>" grammar, which has no "list every X" form on its own.
+function renderTypeListing(type) {
+  const list = entitiesByType.get(type) || [];
+  search.value = "";
+  detail.hidden = true;
+  detail.replaceChildren();
+  evidencePanel.hidden = true;
+  evidencePanel.replaceChildren();
+  results.replaceChildren(...list.slice(0, 50).map(renderSearchResultCard));
+  const label = statsEntityLabel(type);
+  status.textContent = list.length > 50 ? `${list.length} ${label} (showing first 50)` : `${list.length} ${label}`;
+  results.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Fallback only: recomputes the same counts build_static_site.py's
+// compute_stats() does, but from the entities/relations already fetched for
+// search, when data/stats.json itself could not be loaded. No benchmark
+// path count or graph_version -- those aren't available client-side.
+function computeClientSideStats() {
+  const entityCounts = {};
+  for (const entity of entities) entityCounts[entity.type] = (entityCounts[entity.type] || 0) + 1;
+  entityCounts.total = entities.length;
+
+  let evidenceRecords = 0;
+  const sources = new Set();
+  for (const relation of allRelations) {
+    for (const evidence of relation.evidence || []) {
+      evidenceRecords += 1;
+      if (evidence.source) sources.add(evidence.source);
+    }
+  }
+
+  return {
+    entities: entityCounts,
+    relations: allRelations.length,
+    evidence_records: evidenceRecords,
+    sources: sources.size,
+  };
+}
+
+function renderStats(statsData) {
+  if (!statsSection) return;
+  if (!statsData) {
+    statsSection.hidden = true;
+    statsSection.replaceChildren();
+    return;
+  }
+
+  const entityCounts = statsData.entities || {};
+  const orderedTypes = [
+    ...STATS_PRIORITY_TYPES.filter((type) => entityCounts[type]),
+    ...Object.keys(entityCounts)
+      .filter((type) => type !== "total" && !STATS_PRIORITY_TYPES.includes(type))
+      .sort((a, b) => entityCounts[b] - entityCounts[a]),
+  ];
+
+  const cards = orderedTypes.map((type) =>
+    renderStatCard({
+      value: entityCounts[type],
+      label: statsEntityLabel(type),
+      title: `All ${statsEntityLabel(type).toLowerCase()} currently in the deployed graph`,
+      onClick: entitiesByType.has(type) ? () => renderTypeListing(type) : undefined,
+    }),
+  );
+
+  cards.push(
+    renderStatCard({ value: entityCounts.total, label: "Total entities", title: "Canonical entities of every type" }),
+  );
+  cards.push(
+    renderStatCard({
+      value: statsData.relations,
+      label: "Relations",
+      title: "Directed edges between entities (relation table rows)",
+    }),
+  );
+  cards.push(
+    renderStatCard({
+      value: statsData.evidence_records,
+      label: "Evidence records",
+      title: "Provenance-bearing evidence rows attached to relations -- a relation can have more than one",
+    }),
+  );
+  cards.push(
+    renderStatCard({
+      value: statsData.sources,
+      label: "Data sources",
+      title: "Distinct upstream sources contributing evidence to this deployed snapshot",
+    }),
+  );
+
+  if (statsData.paths?.total) {
+    const pathBreakdown = Object.entries(statsData.paths)
+      .filter(([key]) => key !== "total")
+      .map(([key, count]) => `${key.replace(/_/g, " ")}: ${count}`)
+      .join(", ");
+    cards.push(
+      renderStatCard({
+        value: statsData.paths.total,
+        label: "Paths",
+        title:
+          "Explicit stored/curated path records (e.g. benchmark gold-evidence chains) -- " +
+          "NOT the count of all possible graph traversal paths." +
+          (pathBreakdown ? ` Breakdown: ${pathBreakdown}.` : ""),
+      }),
+    );
+  }
+
+  statsSection.replaceChildren(...cards);
+  statsSection.hidden = false;
+}
+
 Promise.all([
   fetch("data/search-index.json").then((response) => response.json()),
   fetch("data/relations.json")
     .then((response) => response.json())
     .catch(() => []),
+  fetch("data/stats.json")
+    .then((response) => (response.ok ? response.json() : null))
+    .catch(() => null),
 ])
-  .then(([entityRows, relationRows]) => {
+  .then(([entityRows, relationRows, statsData]) => {
     // The DB's entity.type column stores the enum member name (e.g. "DRUG"),
     // not its lowercase value; normalize once so lookups/comparisons match
     // the lowercase keys used throughout this file.
@@ -990,11 +1164,13 @@ Promise.all([
       if (!entitiesByType.has(entity.type)) entitiesByType.set(entity.type, []);
       entitiesByType.get(entity.type).push(entity);
     }
+    allRelations = relationRows;
     const indexed = indexRelations(relationRows);
     outByPredicate = indexed.out;
     inByPredicate = indexed.inc;
     renderAttribution();
     renderExamples();
+    renderStats(statsData || computeClientSideStats());
     render();
   })
   .catch(() => {
