@@ -18,6 +18,7 @@ Run after scripts/fetch_open_gene_sources.py:
 """
 
 import csv
+import hashlib
 import json
 import time
 from datetime import UTC, datetime
@@ -59,6 +60,12 @@ query TargetDiseases($ensemblId: String!, $size: Int!) {
   }
 }
 """
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    digest.update(path.read_bytes())
+    return digest.hexdigest()
 
 
 def _read_rows(path: Path) -> list[dict]:
@@ -259,17 +266,27 @@ def main() -> None:
             {
                 "fetched_at": fetched_at,
                 "clinicaltrials_gov": {
+                    "homepage": "https://clinicaltrials.gov/",
+                    "license_url": None,
+                    "notes": "Public registry metadata only; preserve NCT identifiers.",
                     "query": "query.intr=<drug name>, name-match filtered",
                     "min_drug_name_length": CTGOV_MIN_NAME_LENGTH,
                     "drug_count": len(drugs),
                     "trial_link_count": len(trials),
+                    "filename": CLINICALTRIALS_TRIALS_JSON.name,
+                    "sha256": _sha256(CLINICALTRIALS_TRIALS_JSON),
                 },
                 "open_targets": {
+                    "homepage": "https://platform.opentargets.org/",
+                    "license_url": "https://platform-docs.opentargets.org/licence",
+                    "notes": "CC0. Association scores are a computed evidence aggregate, not a clinical indication.",
                     "query": "target(ensemblId).associatedDiseases",
                     "top_k": OPEN_TARGETS_TOP_K,
                     "min_score": OPEN_TARGETS_MIN_SCORE,
                     "target_count": len(targets),
                     "association_count": len(diseases),
+                    "filename": OPEN_TARGETS_DISEASES_JSON.name,
+                    "sha256": _sha256(OPEN_TARGETS_DISEASES_JSON),
                 },
             },
             indent=2,

@@ -1,12 +1,13 @@
 name: Pages
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: "17 7 * * 1"
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -18,37 +19,41 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - name: Find latest successful data refresh run
+        id: find_run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow refresh-data.yml \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo "::error::No successful 'Refresh data' workflow run found. Run that workflow (manually, or wait for its weekly schedule) before this one can deploy."
+            exit 1
+          fi
+          echo "Using data from refresh-data run $run_id"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Download search index artifact
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.12"
-      - run: pip install -e .
-      - run: python scripts/fetch_open_gene_sources.py
-      - run: python scripts/fetch_open_drug_associations.py
-      - run: echo "RELEASE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
-      - name: Import HGNC
-        env:
-          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
-        run: oncograph import-source hgnc data/raw/hgnc_complete_set.txt --release "$RELEASE"
-      - name: Import GtoPdb approved drugs
-        env:
-          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
-        run: oncograph import-source gtopdb data/raw/gtopdb_approved_drug_primary_target_interactions.csv --hgnc-mapping data/raw/gtopdb_hgnc_mapping.csv --release "$RELEASE"
-      - name: Import Gene Ontology
-        env:
-          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
-        run: oncograph import-source gene_ontology data/raw/go-basic.obo --release "$RELEASE"
-      - name: Import ClinicalTrials.gov trials
-        env:
-          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
-        run: oncograph import-source clinicaltrials_gov data/raw/clinicaltrials_trials.json --release "$RELEASE"
-      - name: Import Open Targets target-disease associations
-        env:
-          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
-        run: oncograph import-source open_targets data/raw/open_targets_target_diseases.json --release "$RELEASE"
-      - name: Build static search index
-        env:
-          ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db
-        run: python scripts/build_static_site.py
+          name: search-index
+          path: _data-refresh
+          run-id: ${{ steps.find_run.outputs.run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Verify and install the downloaded index
+        run: |
+          for f in search-index.json relations.json; do
+            if [ ! -s "_data-refresh/$f" ] || [ "$(cat "_data-refresh/$f")" = "[]" ]; then
+              echo "::error::_data-refresh/$f is missing or empty; refusing to deploy an empty index."
+              exit 1
+            fi
+          done
+          mkdir -p web/data
+          cp _data-refresh/search-index.json web/data/search-index.json
+          cp _data-refresh/relations.json web/data/relations.json
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

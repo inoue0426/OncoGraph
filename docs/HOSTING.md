@@ -7,23 +7,45 @@ snapshot: an entity index (`id`, `type`, `name`, `canonical_id`) and a relation 
 database is present, both are written empty. Kept intentionally minimal for the MVP; no full
 descriptions or per-entity metadata are exported.
 
-One workflow (`.github/workflows/pages.yml`), triggered by manual dispatch and a weekly schedule
-only (no push trigger, so an ordinary code push does not refetch or reimport data), does the whole
-pipeline:
+Data refresh and Pages deployment are two separate workflows, so an ordinary code push never
+refetches or reimports data, and deploying a UI-only change stays fast.
 
-1. Fetch the open HGNC, GtoPdb, and Gene Ontology sources with `scripts/fetch_open_gene_sources.py`.
-2. Fetch drug-associated clinical trials (ClinicalTrials.gov API) and target-disease associations
+## `refresh-data.yml` — heavy data pipeline
+
+Triggered only by manual dispatch or a weekly schedule (never by push). It:
+
+1. Fetches the open HGNC, GtoPdb, and Gene Ontology sources with `scripts/fetch_open_gene_sources.py`.
+2. Fetches drug-associated clinical trials (ClinicalTrials.gov API) and target-disease associations
    (Open Targets Platform API) with `scripts/fetch_open_drug_associations.py`, scoped to the
    approved drugs/targets the first step already fetched.
-3. Import everything in dependency order with `oncograph import-source`: HGNC first so genes exist
+3. Imports everything in dependency order with `oncograph import-source`: HGNC first so genes exist
    before GtoPdb resolves drug targets to them, then GtoPdb (adds drug entities and drug→target
    edges), then Gene Ontology, then ClinicalTrials.gov (drug→trial edges, keyed to GtoPdb drug IDs)
    and Open Targets (target→disease edges, keyed to HGNC gene IDs).
-4. Build both static indexes from that database and deploy `web/` to Pages.
+4. Builds both static indexes (`scripts/build_static_site.py`) and, after checking neither is empty,
+   uploads `search-index.json`, `relations.json`, and the fetch manifests (source URL, license,
+   release, retrieval time, SHA-256 per file) as a single `search-index` build artifact, retained
+   for 30 days.
 
 The raw files and the SQLite database exist only on the runner's filesystem for that job and are
-never committed. The currently published Pages site is left untouched until the next scheduled or
-manual run. Restricted data and credentials must never be committed or published.
+never committed, and nothing here touches `web/` in git. Restricted data and credentials must never
+be committed or published.
+
+## `pages.yml` — lightweight deploy
+
+Triggered by every push to `main` and by manual dispatch. It does **not** fetch, import, or parse
+any upstream source. It finds the most recent successful `refresh-data.yml` run, downloads that
+run's `search-index` artifact, verifies `search-index.json` and `relations.json` are present and
+non-empty, copies them into `web/data/`, then deploys `web/` to Pages as-is. If no successful
+`refresh-data.yml` run exists yet, the job fails loudly instead of deploying an empty index — run
+"Refresh data" once (manual dispatch) before the first Pages deploy on a new repo/fork.
+
+Because it reuses the last known-good data, a pure UI/code change (editing `web/app.js`, adapters,
+etc.) redeploys in about a minute instead of waiting on a full refetch. To pick up new upstream
+data, run the "Refresh data" workflow manually (or wait for its Monday schedule) and then either
+push to `main` or dispatch "Pages" again.
+
+The currently published Pages site is left untouched until a `pages.yml` run completes successfully.
 
 The frontend (`web/app.js`) joins the two indexes client-side: selecting a drug shows its direct
 targets and clinical trials, plus diseases associated with those targets (a two-hop, drug→target→

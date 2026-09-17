@@ -34,10 +34,13 @@ See `docs/SOURCES.md` for the provenance and source policy.
 
 The MVP in `web/` is deployed with GitHub Pages and searches a generated public entity index.
 Selecting a drug shows its known targets, clinical trials, and diseases associated with those
-targets. A single scheduled/manual workflow fetches open data (HGNC, GtoPdb approved drugs and
-primary targets, Gene Ontology, ClinicalTrials.gov trial metadata, Open Targets target-disease
-associations), imports it into a throwaway SQLite database, and rebuilds the index; raw files and
-the database never reach git. See `docs/HOSTING.md`.
+targets. Data refresh and deployment are two separate workflows: a scheduled/manual
+`refresh-data.yml` fetches open data (HGNC, GtoPdb approved drugs and primary targets, Gene
+Ontology, ClinicalTrials.gov trial metadata, Open Targets target-disease associations), imports it
+into a throwaway SQLite database, and publishes the rebuilt index as a build artifact (raw files
+and the database never reach git); a lightweight `pages.yml`, triggered on every push to `main`,
+just grabs the latest such artifact and deploys `web/`, without refetching anything. See
+`docs/HOSTING.md`.
 
 Includes approved-drug/primary-target data from the IUPHAR/BPS Guide to PHARMACOLOGY (GtoPdb):
 database licensed under ODbL, content licensed under CC BY-SA 4.0; trial registry metadata from

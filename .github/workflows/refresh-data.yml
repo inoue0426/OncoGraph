@@ -1,0 +1,64 @@
+name: Refresh data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 7 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python scripts/fetch_open_gene_sources.py
+      - run: python scripts/fetch_open_drug_associations.py
+      - run: echo "RELEASE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+      - name: Import HGNC
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source hgnc data/raw/hgnc_complete_set.txt --release "$RELEASE"
+      - name: Import GtoPdb approved drugs
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source gtopdb data/raw/gtopdb_approved_drug_primary_target_interactions.csv --hgnc-mapping data/raw/gtopdb_hgnc_mapping.csv --release "$RELEASE"
+      - name: Import Gene Ontology
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source gene_ontology data/raw/go-basic.obo --release "$RELEASE"
+      - name: Import ClinicalTrials.gov trials
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source clinicaltrials_gov data/raw/clinicaltrials_trials.json --release "$RELEASE"
+      - name: Import Open Targets target-disease associations
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source open_targets data/raw/open_targets_target_diseases.json --release "$RELEASE"
+      - name: Build static search index
+        env:
+          ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db
+        run: python scripts/build_static_site.py
+      - name: Verify generated index is non-empty
+        run: |
+          for f in web/data/search-index.json web/data/relations.json; do
+            if [ ! -s "$f" ] || [ "$(cat "$f")" = "[]" ]; then
+              echo "::error::$f is empty; refusing to publish an empty data artifact."
+              exit 1
+            fi
+          done
+      - name: Stage artifact contents
+        run: |
+          mkdir -p _artifact
+          cp web/data/search-index.json web/data/relations.json _artifact/
+          cp data/raw/manifest.json data/raw/manifest_drug_associations.json _artifact/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: search-index
+          path: _artifact
+          retention-days: 30
