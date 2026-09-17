@@ -3,8 +3,9 @@
 GO data products are CC BY 4.0. This adapter is intentionally file-based so
 imports can be pinned to an explicit release for reproducibility.
 """
+
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from .base import (
     EdgeRecord,
