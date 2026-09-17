@@ -32,6 +32,8 @@ See `docs/SOURCES.md` for the provenance and source policy.
 
 ## Public explorer and hosting
 
+**Live site:** https://inoue0426.github.io/OncoGraph/
+
 The MVP in `web/` is deployed with GitHub Pages and searches a generated public entity index.
 Selecting a drug shows its known targets, clinical trials, and diseases associated with those
 targets. Data refresh and deployment are two separate workflows: a scheduled/manual
