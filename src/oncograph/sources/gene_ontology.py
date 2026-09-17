@@ -15,8 +15,10 @@ from .base import (
     SourceAdapter,
     SourceDescriptor,
 )
+from .registry import registry
 
 
+@registry.register
 class GeneOntologyAdapter(SourceAdapter):
     descriptor = SourceDescriptor(
         key="gene_ontology",
@@ -67,7 +69,7 @@ class GeneOntologyAdapter(SourceAdapter):
                 continue
             go_id = str(term["id"])
             yield EntityRecord(
-                entity_type="ontology_term",
+                entity_type="go_term",
                 name=str(term.get("name", go_id)),
                 identifiers=(ExternalIdentifier("go", go_id),),
                 description=str(term.get("def")) if term.get("def") else None,

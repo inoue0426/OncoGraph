@@ -11,8 +11,10 @@ from .base import (
     SourceAdapter,
     SourceDescriptor,
 )
+from .registry import registry
 
 
+@registry.register
 class HGNCAdapter(SourceAdapter):
     descriptor = SourceDescriptor(
         key="hgnc",
