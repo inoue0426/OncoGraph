@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-17T12:30:08.066637+00:00",
+  "source": {
+    "label": "curated public graph snapshot",
+    "status": "not_found",
+    "sha256": null
+  },
+  "counts": {
+    "entities": 0
+  },
+  "entities": []
+}

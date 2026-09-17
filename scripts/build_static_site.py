@@ -1,31 +1,19 @@
-"""Build a browser-searchable public entity index."""
+"""Backward-compatible entry point for building the public entity index."""
 
-import json
 import os
-import sqlite3
 from pathlib import Path
 
+from oncograph.public_index import build_index, write_index
+
 DB_PATH = Path(os.getenv("ONCOGRAPH_SQLITE_PATH", "oncograph.db"))
-OUTPUT_PATH = Path("web/data/search-index.json")
+OUTPUT_PATH = Path("web/data/entities.json")
 
 
 def main() -> None:
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if not DB_PATH.exists():
-        OUTPUT_PATH.write_text("[]\n", encoding="utf-8")
-        return
-    connection = sqlite3.connect(DB_PATH)
-    connection.row_factory = sqlite3.Row
-    try:
-        rows = connection.execute(
-            "SELECT id, type, name, canonical_id FROM entity ORDER BY name"
-        ).fetchall()
-    finally:
-        connection.close()
-    OUTPUT_PATH.write_text(
-        json.dumps([dict(row) for row in rows], separators=(",", ":")) + "\n",
-        encoding="utf-8",
-    )
+    """Build the new public index using the legacy environment variable."""
+    payload = build_index(DB_PATH, "curated public graph snapshot")
+    write_index(payload, OUTPUT_PATH)
+    print(f"Wrote {payload['counts']['entities']} entities to {OUTPUT_PATH}")
 
 
 if __name__ == "__main__":

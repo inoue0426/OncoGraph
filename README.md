@@ -30,6 +30,17 @@ The source catalog documents intended integration points for PubMed, ClinicalTri
 
 See `docs/SOURCES.md` for the provenance and source policy.
 
+## Public explorer and hosting
+
+The dependency-free static explorer in `web/` is deployed through GitHub Pages. Its browser index
+is generated from a reviewed public SQLite snapshot; a clean checkout deliberately builds an empty
+index rather than exposing a local database. Open HGNC and Gene Ontology inputs can be refreshed by
+a scheduled/manual workflow, with raw files kept out of git and checksum/license manifests retained
+as workflow artifacts.
+
+See `docs/HOSTING.md` for deployment instructions, the publication boundary, and the planned path
+to object storage, PostgreSQL, a graph projection, and a versioned API.
+
 ## Data model
 
 ```text
@@ -46,7 +57,7 @@ Every imported edge should preserve source identity, upstream record ID, URL whe
 2. Add persistent external-identifier and source-snapshot tables.
 3. Add deterministic entity resolution and conflict tracking.
 4. Add evidence extraction with human-verifiable provenance.
-5. Add interactive graph UI and agent-facing query API.
+5. Evolve the static explorer into an interactive graph UI backed by an agent-facing query API.
 6. Add reproducible snapshots and source-specific licensing metadata.
 
 ## Development
