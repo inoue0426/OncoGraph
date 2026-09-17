@@ -1,9 +1,16 @@
 """HGNC complete-set TSV adapter (HGNC data are CC0)."""
-import csv
-from pathlib import Path
-from typing import Iterable
 
-from .base import EntityRecord, ExternalIdentifier, RedistributionPolicy, SourceAdapter, SourceDescriptor
+import csv
+from collections.abc import Iterable
+from pathlib import Path
+
+from .base import (
+    EntityRecord,
+    ExternalIdentifier,
+    RedistributionPolicy,
+    SourceAdapter,
+    SourceDescriptor,
+)
 
 
 class HGNCAdapter(SourceAdapter):
