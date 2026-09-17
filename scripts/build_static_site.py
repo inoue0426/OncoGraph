@@ -37,12 +37,28 @@ def read_entities(database: Path) -> list[dict]:
     entities = []
     for row in rows:
         entity = {key: row[key] for key in ("id", "type", "name", "canonical_id", "description")}
-        raw_metadata = row["entity_metadata"]
-        entity["metadata"] = (
-            json.loads(raw_metadata) if raw_metadata and row["type"] == "PAPER" else None
-        )
+        entity["metadata"] = _exported_metadata(row["type"], row["entity_metadata"])
         entities.append(entity)
     return entities
+
+
+def _exported_metadata(entity_type: str, raw_metadata: str | None) -> dict | None:
+    """Type-specific allowlist so the export stays small for large entity types.
+
+    Publications export their whole metadata blob (small population). Genes
+    export only "aliases" (issue #8 wants alias search/display) -- not the
+    rest of HGNC's per-gene metadata, which would meaningfully grow the
+    export across ~45k gene entities for no UI benefit yet.
+    """
+    if not raw_metadata:
+        return None
+    metadata = json.loads(raw_metadata)
+    if entity_type == "PAPER":
+        return metadata
+    if entity_type == "GENE":
+        aliases = metadata.get("aliases")
+        return {"aliases": aliases} if aliases else None
+    return None
 
 
 def read_relations(database: Path) -> list[dict]:
@@ -64,7 +80,8 @@ def read_relations(database: Path) -> list[dict]:
             """
             SELECT r.id AS relation_id, r.subject_id, r.predicate, r.object_id,
                    e.source, e.source_id, e.source_url, e.source_type, e.evidence_type,
-                   e.confidence, e.license, e.publication_id, e.context
+                   e.confidence, e.license, e.publication_id, e.context,
+                   e.claim_state, e.verification_status, e.retrieved_at
             FROM relation r
             LEFT JOIN evidence e ON e.relation_id = r.id
             ORDER BY r.id
@@ -97,6 +114,9 @@ def read_relations(database: Path) -> list[dict]:
                     "license": row["license"],
                     "publication_id": row["publication_id"],
                     "context": context,
+                    "claim_state": row["claim_state"],
+                    "verification_status": row["verification_status"],
+                    "retrieved_at": row["retrieved_at"],
                 }
             )
     return list(relations.values())

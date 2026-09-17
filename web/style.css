@@ -168,12 +168,17 @@ footer {
   color: #3fb950;
 }
 
-.tier-clinical_trial .tier-label {
+.tier-registry .tier-label {
   color: #d29922;
 }
 
-.tier-target_association .tier-label,
-.tier-gene_target .tier-label {
+.tier-curated_database .tier-label,
+.tier-publication .tier-label {
+  color: #58a6ff;
+}
+
+.tier-computed .tier-label,
+.tier-unknown .tier-label {
   color: #8b949e;
 }
 
@@ -214,4 +219,154 @@ footer {
 
 #attribution a {
   color: #58a6ff;
+}
+
+.badge.conflict {
+  color: #f85149;
+  border-color: #4c1a1a;
+}
+
+.badge.context {
+  color: #d29922;
+  border-color: #4d3a12;
+}
+
+.evidence-link {
+  background: none;
+  border: 1px solid #30363d;
+  border-radius: 999px;
+  color: #58a6ff;
+  font-size: 0.75rem;
+  padding: 2px 10px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.evidence-link:hover {
+  border-color: #58a6ff;
+}
+
+.evidence-panel {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid #58a6ff;
+  border-radius: 8px;
+  background: #10151c;
+}
+
+.evidence-panel-heading {
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.evidence-detail {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) 1fr;
+  gap: 4px 12px;
+  margin: 0 0 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #30363d;
+  font-size: 0.85rem;
+}
+
+.evidence-detail dt {
+  color: #8b949e;
+}
+
+.evidence-detail dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.evidence-detail a {
+  grid-column: 1 / -1;
+  color: #58a6ff;
+}
+
+.examples-label {
+  margin: 20px 0 4px;
+  font-size: 0.85rem;
+  color: #8b949e;
+}
+
+#examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.example-query {
+  background: none;
+  border: 1px solid #30363d;
+  border-radius: 999px;
+  color: #58a6ff;
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.example-query:hover {
+  border-color: #58a6ff;
+}
+
+.graph-container {
+  margin: 20px 0 28px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.graph-controls {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.graph-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #8b949e;
+}
+
+.graph-control select {
+  background: #161b22;
+  color: inherit;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+}
+
+.graph-svg-wrapper {
+  overflow-x: auto;
+}
+
+.graph-svg {
+  width: 100%;
+  height: auto;
+  max-height: 420px;
+}
+
+.graph-edge {
+  stroke: #30363d;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.graph-edge:hover {
+  stroke: #58a6ff;
+}
+
+.graph-edge-conflict {
+  stroke: #f85149;
+  stroke-dasharray: 4 3;
+}
+
+.graph-label {
+  fill: #e6edf3;
+  font-size: 10px;
 }

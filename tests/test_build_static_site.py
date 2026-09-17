@@ -20,9 +20,9 @@ def _seeded_db(path: Path) -> None:
             name="HTR2A",
             canonical_id="hgnc:HGNC:5293",
             description="5-HT2A receptor",
-            # Non-paper entities keep entity_metadata in the DB but it's not
-            # exported to the static index -- see read_entities' docstring.
-            entity_metadata=json.dumps({"release": "2024-01"}),
+            # Only "aliases" is exported for genes -- the rest of this blob
+            # (release, in this case) is dropped; see _exported_metadata.
+            entity_metadata=json.dumps({"release": "2024-01", "aliases": ["5-HT2A"]}),
         )
         paper = Entity(
             type="paper",
@@ -89,9 +89,8 @@ def test_read_entities_and_relations_round_trip(tmp_path):
     gene = next(e for e in entities if e["canonical_id"] == "hgnc:HGNC:5293")
     paper = next(e for e in entities if e["canonical_id"] == "pubmed:12345")
     assert gene["description"] == "5-HT2A receptor"
-    # entity_metadata is only exported for "paper" entities, even though the
-    # gene row also has one in the DB.
-    assert gene["metadata"] is None
+    # Genes export only "aliases", dropping the rest of their metadata blob.
+    assert gene["metadata"] == {"aliases": ["5-HT2A"]}
     assert paper["metadata"] == {"journal": "Example Journal", "year": "2024"}
 
     assert len(relations) == 1
@@ -108,6 +107,9 @@ def test_read_entities_and_relations_round_trip(tmp_path):
     assert gtopdb_evidence["license"] == "ODbL (database) / CC BY-SA 4.0 (content)"
     assert gtopdb_evidence["confidence"] is None
     assert gtopdb_evidence["publication_id"] is None
+    assert gtopdb_evidence["claim_state"] == "SUPPORTS"  # stored as the enum member name
+    assert gtopdb_evidence["verification_status"] == "UNVERIFIED"
+    assert gtopdb_evidence["retrieved_at"] is not None
 
     pmc_evidence = next(e for e in relations[0]["evidence"] if e["source"] == "europe_pmc")
     assert pmc_evidence["publication_id"] == paper["id"]
