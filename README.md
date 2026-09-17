@@ -33,8 +33,12 @@ See `docs/SOURCES.md` for the provenance and source policy.
 ## Public explorer and hosting
 
 The MVP in `web/` is deployed with GitHub Pages and searches a generated public entity index.
-A single scheduled/manual/push workflow fetches open data, imports it into a throwaway SQLite
-database, and rebuilds the index; raw files and the database never reach git. See `docs/HOSTING.md`.
+A single scheduled/manual workflow fetches open data (HGNC, GtoPdb approved drugs and primary
+targets, Gene Ontology), imports it into a throwaway SQLite database, and rebuilds the index; raw
+files and the database never reach git. See `docs/HOSTING.md`.
+
+Includes approved-drug/primary-target data from the IUPHAR/BPS Guide to PHARMACOLOGY (GtoPdb):
+database licensed under ODbL, content licensed under CC BY-SA 4.0. See `docs/SOURCES.md`.
 
 ## Data model
 

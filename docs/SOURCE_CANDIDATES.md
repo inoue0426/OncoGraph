@@ -16,3 +16,10 @@ Potential expression sources should be reviewed individually for current access 
 ## Chemical/drug sources
 
 The source-adapter framework can represent chemical/drug identifiers and provenance, but source-specific acquisition must follow the upstream terms. Restricted datasets should remain external/user-provided and must not be committed to the public repository.
+
+`GtoPdbAdapter` (`oncograph.sources.gtopdb`) is implemented and uses only the official
+"approved drugs with primary targets" interaction file and the official target-to-HGNC mapping
+file, both open (ODbL / CC BY-SA 4.0). It imports approved drugs as `Drug` entities and resolves
+each drug's primary target to an existing `Gene` entity strictly by HGNC ID; targets absent from
+the official mapping are skipped rather than matched by name. It does not fetch the full
+ligand/interaction dump or the Postgres export.

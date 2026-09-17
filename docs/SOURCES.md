@@ -17,3 +17,13 @@ Prefer stable external identifiers over names. Initial namespaces include DrugBa
 `SourceDescriptor.redistribution` is deliberately conservative. `restricted` means data must never be committed to this repository. `metadata_only` means an adapter should store identifiers/provenance rather than copied source content. `unknown` blocks assumptions: verify current upstream terms before enabling distribution or automated ingestion.
 
 Potential sources documented in the catalog include PubMed, ClinicalTrials.gov, CTD, and DrugBank. The catalog is documentation, not authorization to fetch or redistribute a source.
+
+## Attribution
+
+- HGNC complete gene set: CC0.
+- Gene Ontology: CC BY 4.0.
+- GtoPdb (IUPHAR/BPS Guide to PHARMACOLOGY) approved drugs and primary targets: database licensed
+  under the Open Database License (ODbL, https://opendatacommons.org/licenses/odbl/); content
+  licensed under CC BY-SA 4.0 (http://creativecommons.org/licenses/by-sa/4.0/). Only the official
+  "approved drugs with primary targets" file and the official target-to-HGNC mapping file are used;
+  the full ligand/interaction dump and the Postgres export are not fetched.

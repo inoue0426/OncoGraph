@@ -28,6 +28,11 @@ def import_source(
     source: str = typer.Argument(..., help="Registered source key, e.g. hgnc or gene_ontology"),
     path: str = typer.Argument(..., help="Path to a locally permitted source file"),
     release: str = typer.Option(None, help="Upstream release/version label to record"),
+    hgnc_mapping: str = typer.Option(
+        None,
+        "--hgnc-mapping",
+        help="GtoPdb target-to-HGNC mapping CSV (required for the gtopdb source)",
+    ),
 ) -> None:
     """Import a locally permitted source file into the database.
 
@@ -35,7 +40,12 @@ def import_source(
     this command does not fetch or redistribute upstream data.
     """
     adapter_cls = registry.get(source)
-    adapter = adapter_cls(path, release=release)
+    if source == "gtopdb":
+        if not hgnc_mapping:
+            raise typer.BadParameter("--hgnc-mapping is required for the gtopdb source")
+        adapter = adapter_cls(path, hgnc_mapping, release=release)
+    else:
+        adapter = adapter_cls(path, release=release)
     create_db_and_tables()
     with Session(engine) as session:
         report = import_adapter(session, adapter)

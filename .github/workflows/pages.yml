@@ -1,8 +1,6 @@
 name: Pages
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: "17 7 * * 1"
@@ -30,6 +28,10 @@ jobs:
         env:
           ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
         run: oncograph import-source hgnc data/raw/hgnc_complete_set.txt --release "$RELEASE"
+      - name: Import GtoPdb approved drugs
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source gtopdb data/raw/gtopdb_approved_drug_primary_target_interactions.csv --hgnc-mapping data/raw/gtopdb_hgnc_mapping.csv --release "$RELEASE"
       - name: Import Gene Ontology
         env:
           ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
