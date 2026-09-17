@@ -27,3 +27,10 @@ Potential sources documented in the catalog include PubMed, ClinicalTrials.gov, 
   licensed under CC BY-SA 4.0 (http://creativecommons.org/licenses/by-sa/4.0/). Only the official
   "approved drugs with primary targets" file and the official target-to-HGNC mapping file are used;
   the full ligand/interaction dump and the Postgres export are not fetched.
+- ClinicalTrials.gov: public registry metadata (NCT ID, brief title, status, phase, conditions),
+  fetched per approved drug via the API v2 and name-matched against the drug's interventions. Only
+  registry metadata is stored, not full protocol text; see the `metadata_only` classification below.
+- Open Targets Platform: target-disease association scores, fetched per HGNC target (by Ensembl
+  gene ID) via the GraphQL API, released under CC0. Scores are a computed evidence aggregate, not a
+  clinical indication; only associations at or above the configured score threshold are kept, and
+  the threshold/top-k and query scope are recorded alongside each import for reproducibility.

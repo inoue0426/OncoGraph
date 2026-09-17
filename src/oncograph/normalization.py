@@ -14,6 +14,8 @@ NAMESPACE_ALIASES = {
     "mesh": "mesh",
     "doid": "doid",
     "chebi": "chebi",
+    "mondo": "mondo",
+    "efo": "efo",
 }
 
 

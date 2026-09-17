@@ -23,6 +23,7 @@ jobs:
           python-version: "3.12"
       - run: pip install -e .
       - run: python scripts/fetch_open_gene_sources.py
+      - run: python scripts/fetch_open_drug_associations.py
       - run: echo "RELEASE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Import HGNC
         env:
@@ -36,6 +37,14 @@ jobs:
         env:
           ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
         run: oncograph import-source gene_ontology data/raw/go-basic.obo --release "$RELEASE"
+      - name: Import ClinicalTrials.gov trials
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source clinicaltrials_gov data/raw/clinicaltrials_trials.json --release "$RELEASE"
+      - name: Import Open Targets target-disease associations
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source open_targets data/raw/open_targets_target_diseases.json --release "$RELEASE"
       - name: Build static search index
         env:
           ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db
