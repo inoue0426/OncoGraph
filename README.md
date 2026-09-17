@@ -30,9 +30,10 @@ The source catalog documents intended integration points for PubMed, ClinicalTri
 
 See `docs/SOURCES.md` for the provenance and source policy, `docs/EVIDENCE.md` for the Evidence
 field contract new adapters should populate, `docs/PUBLICATIONS.md` for how Publications and
-literature evidence fit in, and `docs/BIOLOGICAL_SOURCES.md` for the pathway/clinical-evidence
-source investigation (Reactome, CIViC, DGIdb, OncoKB, and others) -- none of these are yet part of
-the public MVP's scheduled refresh.
+literature evidence fit in, `docs/BIOLOGICAL_SOURCES.md` for the pathway/clinical-evidence source
+investigation (Reactome, CIViC, DGIdb, OncoKB, and others), and `docs/DRUG_RESPONSE.md` for the
+drug-response/experimental-model schema -- none of these are yet part of the public MVP's
+scheduled refresh.
 
 ## Public explorer and hosting
 

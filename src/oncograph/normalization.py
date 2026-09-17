@@ -31,6 +31,10 @@ NAMESPACE_ALIASES = {
     "ncit": "ncit",
     "rxcui": "rxcui",
     "rxnorm": "rxcui",
+    "cellosaurus": "cellosaurus",
+    "cvcl": "cellosaurus",
+    "depmap": "depmap",
+    "cosmic": "cosmic",
 }
 
 

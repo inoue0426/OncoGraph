@@ -3,6 +3,7 @@
 from . import civic as _civic  # noqa: F401
 from . import clinicaltrials as _clinicaltrials  # noqa: F401
 from . import dgidb as _dgidb  # noqa: F401
+from . import drug_response as _drug_response  # noqa: F401
 from . import europe_pmc as _europe_pmc  # noqa: F401
 from . import gene_ontology as _gene_ontology  # noqa: F401
 from . import gtopdb as _gtopdb  # noqa: F401
