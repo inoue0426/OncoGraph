@@ -17,6 +17,7 @@ that all lives on `Evidence`.
 | `publication_id`      | FK to the `Entity` (type `paper`) this evidence cites, if any. A relation with several citing publications just gets several `Evidence` rows, each with a different `publication_id` -- see `docs/PUBLICATIONS.md`. |
 | `context`             | A JSON object (stored as text) for everything else: release/version, method, score breakdowns, matched intervention name, and so on. |
 | `confidence`           | A 0.0-1.0 evidentiary strength, only when the source natively provides one (e.g. a computed association score). Leave it unset for categorical/curated facts -- don't invent a number. |
+| `claim_state`         | What this evidence says about the relation: `supports` (default), `contradicts`, `uncertain`, or `context_dependent` (`oncograph.models.ClaimState`). Orthogonal to `confidence`/`verification_status` -- a high-confidence, verified row can still `CONTRADICTS` another verified row for the same relation; both persist side by side (see "Conflicting and context-specific evidence" below). |
 | `license`             | Short human-readable license label (e.g. `"CC0"`, `"ODbL (database) / CC BY-SA 4.0 (content)"`). Set automatically from `adapter.descriptor.license`. |
 | `extraction_method`   | How this specific evidence was produced: `curated` (human-picked), `adapter_import` (the batch default for ordinary data-derived adapters), and eventually `rule_derived` / `llm_extracted`. Set per edge via `EdgeRecord.extraction_method`, falling back to the batch default passed to `import_edges` when unset -- this is the field that keeps curated, database-derived, rule-derived, and (future) LLM-extracted evidence distinguishable. |
 | `verification_status` | `unverified` / `verified` / `rejected`. |
@@ -47,3 +48,40 @@ Most of the above is handled for you:
 See `docs/SOURCES.md` for the source-policy side of writing an adapter (licensing, redistribution
 classification, identifier namespaces), and `docs/PUBLICATIONS.md` for how literature evidence
 (Publication entities, `publication_id`, the curated citations file) fits into this.
+
+## Conflicting and context-specific evidence
+
+Nothing here overwrites: `import_edges` keys idempotency on `(relation, source, source_id)`, not
+on the relation alone, so two `EdgeRecord`s for the same (subject, predicate, object) triple with
+different `source_record_id`s -- e.g. two different cohort studies, one finding an association and
+one not -- simply produce two `Evidence` rows on the same `Relation`. Give them different
+`claim_state`s (`"contradicts"` vs `"supports"`, or both `"context_dependent"`) and different
+`context` (e.g. `{"tissue": "lung"}` vs `{"tissue": "breast"}`) to make that queryable later rather
+than silently averaged or overwritten.
+
+Recommended `context` keys for biological specificity -- again, keys in the JSON blob, not new
+columns, promoted only if something needs to query on them directly: `cancer_type`,
+`cancer_subtype`, `tissue`, `cell_type`, `cell_state`, `model_system`, `mutation`/`biomarker`,
+`dose`, `timepoint`, `treatment_line`, `combination_therapy`, `responder_context`.
+
+## Entity resolution: identifier-first, name-as-alias
+
+`Entity.canonical_id` (built from the *first* `EntityRecord.identifiers` entry) is the only key
+`import_entities`/`import_edges` ever match on -- `Entity.name` is never used for lookup, so two
+records with the same name but different identifiers become two distinct entities, and two
+records with the same identifier but different names update (never merge-by-name) the same one.
+Adapters that have alternate names for an entity (e.g. HGNC's `alias_symbol`/`prev_symbol`) should
+put them under an `"aliases"` key in `EntityRecord.metadata` (a plain list of strings) -- that's
+the convention, not a schema column, so any adapter can add it.
+
+Two kinds of resolution problems are logged to `EntityResolutionIssue` (a durable table, not just
+the transient `ImportReport` returned from one import call) rather than silently dropped or
+guessed at:
+
+- **`unresolved`** -- an edge (or a publication reference) named an identifier with no matching
+  entity yet. The edge is skipped, not guessed at; import it again after the referenced entity
+  exists.
+- **`conflict`** -- an incoming record's canonical identifier already belongs to an entity of a
+  *different* type (e.g. one source calls `HGNC:1` a gene, another calls it a disease). The
+  existing entity's type is authoritative and kept untouched; the incoming record is rejected and
+  logged rather than silently overwriting it.

@@ -50,6 +50,12 @@ class HGNCAdapter(SourceAdapter):
                         value = value.strip()
                         if value:
                             identifiers.append(ExternalIdentifier(namespace, value))
+                aliases = [
+                    value.strip()
+                    for column in ("alias_symbol", "prev_symbol")
+                    for value in row.get(column, "").split("|")
+                    if value.strip()
+                ]
                 yield EntityRecord(
                     entity_type="gene",
                     name=symbol,
@@ -61,6 +67,9 @@ class HGNCAdapter(SourceAdapter):
                         "location": row.get("location"),
                         "alias_symbol": row.get("alias_symbol"),
                         "prev_symbol": row.get("prev_symbol"),
+                        # Names/former symbols are aliases, never identity --
+                        # entity resolution always keys on canonical_id above.
+                        "aliases": aliases or None,
                         "release": self.release,
                     },
                 )

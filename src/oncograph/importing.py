@@ -4,7 +4,16 @@ from dataclasses import dataclass, field
 
 from sqlmodel import Session, select
 
-from .models import Entity, EntityType, Evidence, Relation, utcnow
+from .models import (
+    ClaimState,
+    Entity,
+    EntityResolutionIssue,
+    EntityType,
+    Evidence,
+    Relation,
+    ResolutionIssueType,
+    utcnow,
+)
 from .normalization import normalize_identifier
 from .sources.base import EdgeRecord, EntityRecord, ExternalIdentifier, SourceAdapter
 
@@ -44,6 +53,11 @@ def validate_edge(record: EdgeRecord) -> None:
         raise ValueError("Edge confidence must be between 0.0 and 1.0")
     if record.publication is not None:
         normalize_identifier(record.publication)
+    if record.claim_state is not None:
+        try:
+            ClaimState(record.claim_state)
+        except ValueError as exc:
+            raise ValueError(f"Unknown claim_state {record.claim_state!r}") from exc
     try:
         json.dumps(record.context)
     except TypeError as exc:
@@ -71,6 +85,7 @@ def validate_adapter(adapter: SourceAdapter) -> ValidationReport:
 class ImportReport:
     entities_created: int = 0
     entities_updated: int = 0
+    entities_conflicted: int = 0
     edges_created: int = 0
     edges_skipped: int = 0
     evidence_created: int = 0
@@ -86,6 +101,35 @@ def _lookup_entity_id(session: Session, identifier: ExternalIdentifier):
     canonical_id = _canonical_id(identifier)
     entity = session.exec(select(Entity).where(Entity.canonical_id == canonical_id)).first()
     return entity.id if entity else None
+
+
+def _log_resolution_issue(
+    session: Session,
+    issue_type: ResolutionIssueType,
+    identifier: ExternalIdentifier,
+    *,
+    source: str | None = None,
+    detail: str | None = None,
+) -> None:
+    """Durably record an unresolved/conflicting identifier for later review.
+
+    Best-effort: normalization failures here are swallowed rather than
+    raised, since this is itself error-reporting plumbing.
+    """
+    try:
+        normalized = normalize_identifier(identifier)
+        namespace, value = normalized.namespace, normalized.value
+    except ValueError:
+        namespace, value = identifier.namespace, identifier.value
+    session.add(
+        EntityResolutionIssue(
+            issue_type=issue_type,
+            namespace=namespace,
+            value=value,
+            source=source,
+            detail=detail,
+        )
+    )
 
 
 def import_entities(session: Session, records: Iterable[EntityRecord]) -> ImportReport:
@@ -111,7 +155,25 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
             else None
         )
         if existing is not None:
-            existing.type = entity_type
+            if existing.type != entity_type:
+                # Identifier-first resolution means canonical_id is authoritative;
+                # a type disagreement is a mapping conflict, not a routine update.
+                # Keep the existing entity untouched and log it for review.
+                _log_resolution_issue(
+                    session,
+                    ResolutionIssueType.CONFLICT,
+                    record.identifiers[0],
+                    detail=(
+                        f"existing type {existing.type!r} vs incoming type "
+                        f"{entity_type!r} for {record.name!r}"
+                    ),
+                )
+                report.entities_conflicted += 1
+                report.errors.append(
+                    f"entity[{i}]: type conflict for {canonical_id} "
+                    f"(existing={existing.type}, incoming={entity_type})"
+                )
+                continue
             existing.name = record.name
             existing.description = record.description
             existing.entity_metadata = _serialize_json(record.metadata)
@@ -152,8 +214,10 @@ def _ensure_evidence(
 
     Keyed on (relation, source, source_id) so repeated imports of the same
     upstream record do not accumulate duplicate evidence. A relation can
-    accumulate several such rows, each citing a different publication, which
-    is how one relation ends up supported by multiple publications.
+    accumulate several such rows -- each citing a different publication, or
+    each recording a different context/claim_state -- which is how one
+    relation ends up supported by multiple publications, and how conflicting
+    or context-specific evidence coexists instead of overwriting.
     """
     existing = session.exec(
         select(Evidence).where(
@@ -177,6 +241,7 @@ def _ensure_evidence(
             context=_serialize_json(record.context),
             extraction_method=record.extraction_method or extraction_method,
             confidence=record.confidence,
+            claim_state=ClaimState(record.claim_state) if record.claim_state else ClaimState.SUPPORTS,
         )
     )
     return True
@@ -209,12 +274,23 @@ def import_edges(
         subject_id = _lookup_entity_id(session, record.subject)
         object_id = _lookup_entity_id(session, record.object)
         if subject_id is None or object_id is None:
+            if subject_id is None:
+                _log_resolution_issue(
+                    session, ResolutionIssueType.UNRESOLVED, record.subject, source=source_key
+                )
+            if object_id is None:
+                _log_resolution_issue(
+                    session, ResolutionIssueType.UNRESOLVED, record.object, source=source_key
+                )
             report.edges_skipped += 1
             report.errors.append(f"edge[{i}]: unresolved endpoint")
             continue
 
         publication_id = _lookup_entity_id(session, record.publication) if record.publication else None
         if record.publication is not None and publication_id is None:
+            _log_resolution_issue(
+                session, ResolutionIssueType.UNRESOLVED, record.publication, source=source_key
+            )
             report.errors.append(f"edge[{i}]: unresolved publication reference")
 
         exists = session.exec(

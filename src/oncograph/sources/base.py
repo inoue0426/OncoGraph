@@ -76,6 +76,10 @@ class EdgeRecord:
     # "curated", "rule_derived", "llm_extracted"); falls back to the batch's
     # extraction_method (see import_edges) when unset.
     extraction_method: str | None = None
+    # What this evidence says about the relation: "supports" (default),
+    # "contradicts", "uncertain", or "context_dependent" -- see
+    # oncograph.models.ClaimState. Independent of confidence/verification.
+    claim_state: str | None = None
 
 
 class SourceAdapter(ABC):

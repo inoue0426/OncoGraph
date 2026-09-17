@@ -41,6 +41,24 @@ class VerificationStatus(StrEnum):
     REJECTED = "rejected"
 
 
+class ClaimState(StrEnum):
+    """What a piece of evidence says about its relation, not how reliable it is.
+
+    Confidence/verification_status are orthogonal: a CONTRADICTS row can still
+    be high-confidence, and an UNVERIFIED row can still SUPPORT its relation.
+    """
+
+    SUPPORTS = "supports"
+    CONTRADICTS = "contradicts"
+    UNCERTAIN = "uncertain"
+    CONTEXT_DEPENDENT = "context_dependent"
+
+
+class ResolutionIssueType(StrEnum):
+    UNRESOLVED = "unresolved"
+    CONFLICT = "conflict"
+
+
 class Entity(SQLModel, table=True):
     """A node in the graph, identified where possible by a stable external ID.
 
@@ -97,5 +115,27 @@ class Evidence(SQLModel, table=True):
     context: str | None = None
     extraction_method: str = "manual"
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    claim_state: ClaimState = Field(default=ClaimState.SUPPORTS, index=True)
     verification_status: VerificationStatus = Field(default=VerificationStatus.UNVERIFIED)
     retrieved_at: datetime = Field(default_factory=utcnow)
+
+
+class EntityResolutionIssue(SQLModel, table=True):
+    """A durable log of identifier resolution problems, for validation/reporting.
+
+    Two kinds: UNRESOLVED (an edge referenced an identifier with no matching
+    entity -- the edge is skipped, never guessed at) and CONFLICT (the same
+    canonical identifier was claimed by incoming records with different
+    entity types, e.g. one adapter calling HGNC:1 a gene and another calling
+    it a disease -- the existing entity's type is kept, not silently
+    overwritten). This is in addition to, not instead of, the transient
+    ImportReport.errors surfaced during a single import run.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    issue_type: ResolutionIssueType = Field(index=True)
+    namespace: str = Field(index=True)
+    value: str = Field(index=True)
+    source: str | None = Field(default=None, index=True)
+    detail: str | None = None
+    detected_at: datetime = Field(default_factory=utcnow)

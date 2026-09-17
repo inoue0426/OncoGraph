@@ -18,6 +18,16 @@ NAMESPACE_ALIASES = {
     "efo": "efo",
     "doi": "doi",
     "pmcid": "pmcid",
+    "ensembl": "ensembl",
+    "ensg": "ensembl",
+    "uniprot": "uniprot",
+    "uniprotkb": "uniprot",
+    "chembl": "chembl",
+    "pubchem": "pubchem",
+    "pubchem_cid": "pubchem",
+    "cid": "pubchem",
+    "reactome": "reactome",
+    "go": "go",
 }
 
 
@@ -37,6 +47,6 @@ def normalize_identifier(identifier: ExternalIdentifier) -> NormalizedIdentifier
         value = value.upper()
     elif namespace == "doi":
         value = value.lower()
-    elif namespace == "pmcid":
+    elif namespace in ("pmcid", "chembl", "reactome", "go"):
         value = value.upper()
     return NormalizedIdentifier(namespace=namespace, value=value)
