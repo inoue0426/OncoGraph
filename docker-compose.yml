@@ -1,0 +1,25 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      ONCOGRAPH_DATABASE_URL: postgresql+psycopg://oncograph:oncograph@db:5432/oncograph
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: oncograph
+      POSTGRES_USER: oncograph
+      POSTGRES_PASSWORD: oncograph
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oncograph"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - oncograph_pg:/var/lib/postgresql/data
+volumes:
+  oncograph_pg:
