@@ -26,6 +26,7 @@ Run after scripts/fetch_open_gene_sources.py:
     python scripts/fetch_open_drug_associations.py
 """
 
+import concurrent.futures
 import csv
 import hashlib
 import json
@@ -60,6 +61,8 @@ _USER_AGENT = "OncoGraph/0.1 research database"
 _HTTP_TIMEOUT = 30
 _REQUEST_PAUSE = 0.1
 _RETRY_DELAYS = (1, 3, 6, None)
+_MAX_WORKERS = 8  # modest client-side concurrency; each item still retries/backs off on its own
+_PROGRESS_EVERY = 50
 
 _ASSOCIATED_DISEASES_QUERY = """
 query TargetDiseases($ensemblId: String!, $size: Int!) {
@@ -111,16 +114,28 @@ def _read_rows(path: Path) -> list[dict]:
     return list(csv.DictReader(lines))
 
 
+def _retry_wait(exc: Exception, fallback_delay: float) -> float:
+    """Honor a 429 response's Retry-After header when present, else use the normal backoff."""
+    if isinstance(exc, HTTPError) and exc.code == 429 and exc.headers:
+        retry_after = exc.headers.get("Retry-After")
+        if retry_after:
+            try:
+                return float(retry_after)
+            except ValueError:
+                pass
+    return fallback_delay
+
+
 def _get_json(url: str) -> dict:
     request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
     for delay in _RETRY_DELAYS:
         try:
             with urlopen(request, timeout=_HTTP_TIMEOUT) as response:
                 return json.load(response)
-        except (HTTPError, URLError, TimeoutError):
+        except (HTTPError, URLError, TimeoutError) as exc:
             if delay is None:
                 raise
-            time.sleep(delay)
+            time.sleep(_retry_wait(exc, delay))
     raise RuntimeError("unreachable")  # pragma: no cover
 
 
@@ -139,11 +154,30 @@ def _post_json(url: str, payload: dict) -> dict:
         try:
             with urlopen(request, timeout=_HTTP_TIMEOUT) as response:
                 return json.load(response)
-        except (HTTPError, URLError, TimeoutError):
+        except (HTTPError, URLError, TimeoutError) as exc:
             if delay is None:
                 raise
-            time.sleep(delay)
+            time.sleep(_retry_wait(exc, delay))
     raise RuntimeError("unreachable")  # pragma: no cover
+
+
+def _parallel_map(items: list, worker, label: str) -> list[dict]:
+    """Run worker(item) -> list[dict] across items with modest concurrency.
+
+    Logs periodic progress, since these fetches are otherwise a long silent
+    stretch in CI -- see the "Refresh data" workflow's Actions log.
+    """
+    records: list[dict] = []
+    total = len(items)
+    completed = 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=_MAX_WORKERS) as executor:
+        futures = [executor.submit(worker, item) for item in items]
+        for future in concurrent.futures.as_completed(futures):
+            records.extend(future.result())
+            completed += 1
+            if completed % _PROGRESS_EVERY == 0 or completed == total:
+                print(f"  {label}: {completed}/{total}", flush=True)
+    return records
 
 
 def _approved_drugs() -> list[dict]:
@@ -192,145 +226,158 @@ def _resolved_targets() -> list[dict]:
     return list(targets.values())
 
 
-def _fetch_trials(drugs: list[dict]) -> list[dict]:
-    """Fetch CT.gov trials per drug name, keeping only name-matched interventions."""
-    fields = "NCTId,BriefTitle,OverallStatus,Phase,Condition,InterventionName"
-    records: list[dict] = []
-    for drug in drugs:
-        name = drug["ligand_name"]
-        if len(name) < CTGOV_MIN_NAME_LENGTH:
-            continue
-        query = urlencode({"query.intr": name, "pageSize": CTGOV_PAGE_SIZE, "fields": fields})
-        time.sleep(_REQUEST_PAUSE)
-        try:
-            payload = _get_json(f"{CTGOV_API}?{query}")
-        except (HTTPError, URLError, TimeoutError) as exc:
-            print(f"  ! ClinicalTrials.gov query failed for {name}: {exc}")
-            continue
+_TRIAL_FIELDS = "NCTId,BriefTitle,OverallStatus,Phase,Condition,InterventionName"
 
-        lowered_name = name.lower()
-        for study in payload.get("studies", []):
-            protocol = study.get("protocolSection", {})
-            interventions = protocol.get("armsInterventionsModule", {}).get("interventions", [])
-            matched = next(
-                (
-                    intervention.get("name")
-                    for intervention in interventions
-                    if lowered_name in (intervention.get("name") or "").lower()
-                ),
-                None,
-            )
-            if matched is None:
-                continue
-            identification = protocol.get("identificationModule", {})
-            nct_id = identification.get("nctId")
-            if not nct_id:
-                continue
-            records.append(
-                {
-                    "ligand_id": drug["ligand_id"],
-                    "ligand_name": name,
-                    "nct_id": nct_id,
-                    "brief_title": identification.get("briefTitle"),
-                    "overall_status": protocol.get("statusModule", {}).get("overallStatus"),
-                    "phases": protocol.get("designModule", {}).get("phases", []),
-                    "conditions": protocol.get("conditionsModule", {}).get("conditions", []),
-                    "matched_intervention": matched,
-                }
-            )
+
+def _trial_worker(drug: dict) -> list[dict]:
+    """Fetch one drug's CT.gov trials, keeping only name-matched interventions."""
+    name = drug["ligand_name"]
+    if len(name) < CTGOV_MIN_NAME_LENGTH:
+        return []
+
+    query = urlencode({"query.intr": name, "pageSize": CTGOV_PAGE_SIZE, "fields": _TRIAL_FIELDS})
+    time.sleep(_REQUEST_PAUSE)
+    try:
+        payload = _get_json(f"{CTGOV_API}?{query}")
+    except (HTTPError, URLError, TimeoutError) as exc:
+        print(f"  ! ClinicalTrials.gov query failed for {name}: {exc}")
+        return []
+
+    records: list[dict] = []
+    lowered_name = name.lower()
+    for study in payload.get("studies", []):
+        protocol = study.get("protocolSection", {})
+        interventions = protocol.get("armsInterventionsModule", {}).get("interventions", [])
+        matched = next(
+            (
+                intervention.get("name")
+                for intervention in interventions
+                if lowered_name in (intervention.get("name") or "").lower()
+            ),
+            None,
+        )
+        if matched is None:
+            continue
+        identification = protocol.get("identificationModule", {})
+        nct_id = identification.get("nctId")
+        if not nct_id:
+            continue
+        records.append(
+            {
+                "ligand_id": drug["ligand_id"],
+                "ligand_name": name,
+                "nct_id": nct_id,
+                "brief_title": identification.get("briefTitle"),
+                "overall_status": protocol.get("statusModule", {}).get("overallStatus"),
+                "phases": protocol.get("designModule", {}).get("phases", []),
+                "conditions": protocol.get("conditionsModule", {}).get("conditions", []),
+                "matched_intervention": matched,
+            }
+        )
+    return records
+
+
+def _fetch_trials(drugs: list[dict]) -> list[dict]:
+    return _parallel_map(drugs, _trial_worker, "ClinicalTrials.gov")
+
+
+def _target_disease_worker(target: dict) -> list[dict]:
+    """Fetch one target's top-K, score-thresholded disease associations."""
+    time.sleep(_REQUEST_PAUSE)
+    payload = {
+        "query": _ASSOCIATED_DISEASES_QUERY,
+        "variables": {"ensemblId": target["ensembl_gene_id"], "size": OPEN_TARGETS_TOP_K},
+    }
+    try:
+        response = _post_json(OPEN_TARGETS_API, payload)
+    except (HTTPError, URLError, TimeoutError) as exc:
+        print(f"  ! Open Targets query failed for {target['ensembl_gene_id']}: {exc}")
+        return []
+
+    records: list[dict] = []
+    target_data = (response.get("data") or {}).get("target") or {}
+    rows = (target_data.get("associatedDiseases") or {}).get("rows", [])
+    for row in rows:
+        score = row.get("score")
+        if score is None or score < OPEN_TARGETS_MIN_SCORE:
+            continue
+        disease = row.get("disease") or {}
+        disease_id = disease.get("id")
+        if not disease_id:
+            continue
+        records.append(
+            {
+                "hgnc_id": target["hgnc_id"],
+                "ensembl_gene_id": target["ensembl_gene_id"],
+                "disease_id": disease_id,
+                "disease_name": disease.get("name"),
+                "score": score,
+            }
+        )
     return records
 
 
 def _fetch_target_diseases(targets: list[dict]) -> list[dict]:
-    """Fetch top-K, score-thresholded disease associations per HGNC target."""
-    records: list[dict] = []
-    for target in targets:
-        time.sleep(_REQUEST_PAUSE)
-        payload = {
-            "query": _ASSOCIATED_DISEASES_QUERY,
-            "variables": {"ensemblId": target["ensembl_gene_id"], "size": OPEN_TARGETS_TOP_K},
-        }
-        try:
-            response = _post_json(OPEN_TARGETS_API, payload)
-        except (HTTPError, URLError, TimeoutError) as exc:
-            print(f"  ! Open Targets query failed for {target['ensembl_gene_id']}: {exc}")
-            continue
+    return _parallel_map(targets, _target_disease_worker, "Open Targets target-disease")
 
-        target_data = (response.get("data") or {}).get("target") or {}
-        rows = (target_data.get("associatedDiseases") or {}).get("rows", [])
-        for row in rows:
-            score = row.get("score")
-            if score is None or score < OPEN_TARGETS_MIN_SCORE:
-                continue
-            disease = row.get("disease") or {}
-            disease_id = disease.get("id")
-            if not disease_id:
-                continue
-            records.append(
-                {
-                    "hgnc_id": target["hgnc_id"],
-                    "ensembl_gene_id": target["ensembl_gene_id"],
-                    "disease_id": disease_id,
-                    "disease_name": disease.get("name"),
-                    "score": score,
-                }
-            )
+
+def _drug_indication_worker(drug: dict) -> list[dict]:
+    """Resolve one drug to a ChEMBL ID via search, then keep only its APPROVAL-stage indications."""
+    name = drug["ligand_name"]
+    if len(name) < OPEN_TARGETS_MIN_DRUG_NAME_LENGTH:
+        return []
+
+    time.sleep(_REQUEST_PAUSE)
+    try:
+        search_response = _post_json(
+            OPEN_TARGETS_API, {"query": _DRUG_SEARCH_QUERY, "variables": {"name": name}}
+        )
+    except (HTTPError, URLError, TimeoutError) as exc:
+        print(f"  ! Open Targets drug search failed for {name}: {exc}")
+        return []
+    hits = ((search_response.get("data") or {}).get("search") or {}).get("hits", [])
+    chembl_id = next((hit["id"] for hit in hits if hit.get("entity") == "drug"), None)
+    if not chembl_id:
+        return []
+
+    time.sleep(_REQUEST_PAUSE)
+    try:
+        indications_response = _post_json(
+            OPEN_TARGETS_API,
+            {
+                "query": _DRUG_INDICATIONS_QUERY,
+                "variables": {"chemblId": chembl_id, "size": OPEN_TARGETS_MAX_INDICATIONS},
+            },
+        )
+    except (HTTPError, URLError, TimeoutError) as exc:
+        print(f"  ! Open Targets indications query failed for {chembl_id} ({name}): {exc}")
+        return []
+
+    records: list[dict] = []
+    drug_data = (indications_response.get("data") or {}).get("drug") or {}
+    rows = (drug_data.get("indications") or {}).get("rows", [])
+    for row in rows:
+        if row.get("maxClinicalStage") != OPEN_TARGETS_APPROVAL_STAGE:
+            continue
+        disease = row.get("disease") or {}
+        disease_id = disease.get("id")
+        if not disease_id:
+            continue
+        records.append(
+            {
+                "ligand_id": drug["ligand_id"],
+                "ligand_name": name,
+                "chembl_id": chembl_id,
+                "disease_id": disease_id,
+                "disease_name": disease.get("name"),
+                "max_clinical_stage": row.get("maxClinicalStage"),
+            }
+        )
     return records
 
 
 def _fetch_drug_indications(drugs: list[dict]) -> list[dict]:
-    """Resolve each drug to a ChEMBL ID via search, then keep only its APPROVAL-stage indications."""
-    records: list[dict] = []
-    for drug in drugs:
-        name = drug["ligand_name"]
-        if len(name) < OPEN_TARGETS_MIN_DRUG_NAME_LENGTH:
-            continue
-
-        time.sleep(_REQUEST_PAUSE)
-        try:
-            search_response = _post_json(
-                OPEN_TARGETS_API, {"query": _DRUG_SEARCH_QUERY, "variables": {"name": name}}
-            )
-        except (HTTPError, URLError, TimeoutError) as exc:
-            print(f"  ! Open Targets drug search failed for {name}: {exc}")
-            continue
-        hits = ((search_response.get("data") or {}).get("search") or {}).get("hits", [])
-        chembl_id = next((hit["id"] for hit in hits if hit.get("entity") == "drug"), None)
-        if not chembl_id:
-            continue
-
-        time.sleep(_REQUEST_PAUSE)
-        try:
-            indications_response = _post_json(
-                OPEN_TARGETS_API,
-                {
-                    "query": _DRUG_INDICATIONS_QUERY,
-                    "variables": {"chemblId": chembl_id, "size": OPEN_TARGETS_MAX_INDICATIONS},
-                },
-            )
-        except (HTTPError, URLError, TimeoutError) as exc:
-            print(f"  ! Open Targets indications query failed for {chembl_id} ({name}): {exc}")
-            continue
-        drug_data = (indications_response.get("data") or {}).get("drug") or {}
-        rows = (drug_data.get("indications") or {}).get("rows", [])
-        for row in rows:
-            if row.get("maxClinicalStage") != OPEN_TARGETS_APPROVAL_STAGE:
-                continue
-            disease = row.get("disease") or {}
-            disease_id = disease.get("id")
-            if not disease_id:
-                continue
-            records.append(
-                {
-                    "ligand_id": drug["ligand_id"],
-                    "ligand_name": name,
-                    "chembl_id": chembl_id,
-                    "disease_id": disease_id,
-                    "disease_name": disease.get("name"),
-                    "max_clinical_stage": row.get("maxClinicalStage"),
-                }
-            )
-    return records
+    return _parallel_map(drugs, _drug_indication_worker, "Open Targets drug indications")
 
 
 def main() -> None:
