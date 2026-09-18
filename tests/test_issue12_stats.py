@@ -1,10 +1,10 @@
 """Issue #12: Homepage Knowledge Graph Statistics.
 
-Covers scripts/build_static_site.py's stats generation: canonical entity
-counts by type, relation/evidence/source counts kept distinct from entity
-counts, explicit curated-path counting (never "all possible traversals"),
-and the stats.json artifact produced by the same build entrypoint used for
-search-index.json/relations.json.
+Covers oncograph.stats's stats generation (canonical entity counts by
+type, relation/evidence/source counts kept distinct from entity counts,
+explicit curated-path counting -- never "all possible traversals") and
+scripts/build_static_site.py's use of it to produce the stats.json
+artifact alongside search-index.json/relations.json.
 """
 
 import json
@@ -14,6 +14,13 @@ from pathlib import Path
 from sqlmodel import Session, SQLModel, create_engine
 
 from oncograph.models import Entity, Evidence, Relation
+from oncograph.stats import (
+    compute_entity_counts,
+    compute_relation_stats,
+    compute_stats,
+    count_mechanistic_paths,
+    read_benchmark_gold_paths,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 import build_static_site
@@ -27,7 +34,7 @@ def test_entity_counts_group_by_type_and_report_total():
         {"type": "DRUG", "name": "b"},
         {"type": "GENE", "name": "c"},
     ]
-    counts = build_static_site.compute_entity_counts(entities)
+    counts = compute_entity_counts(entities)
     assert counts == {"drug": 2, "gene": 1, "total": 3}
 
 
@@ -45,12 +52,12 @@ def test_entity_counts_do_not_double_count_aliases_or_source_duplicates():
             "metadata": {"aliases": ["ERBB1", "HER1", "ERBB", "PIG61"]},
         },
     ]
-    counts = build_static_site.compute_entity_counts(entities)
+    counts = compute_entity_counts(entities)
     assert counts == {"gene": 1, "total": 1}
 
 
 def test_entity_counts_empty_list():
-    assert build_static_site.compute_entity_counts([]) == {"total": 0}
+    assert compute_entity_counts([]) == {"total": 0}
 
 
 # --- compute_relation_stats: relations / evidence_records / sources ------------
@@ -62,7 +69,7 @@ def test_relation_stats_counts_relations_and_evidence_separately():
         {"evidence": [{"source": "gtopdb"}]},
         {"evidence": []},  # a relation can legitimately carry zero evidence rows
     ]
-    stats = build_static_site.compute_relation_stats(relations)
+    stats = compute_relation_stats(relations)
     assert stats == {"relations": 3, "evidence_records": 3, "sources": 2}
 
 
@@ -70,14 +77,14 @@ def test_relation_stats_source_count_is_distinct_not_raw_row_count():
     relations = [
         {"evidence": [{"source": "gtopdb"}, {"source": "gtopdb"}, {"source": "gtopdb"}]},
     ]
-    stats = build_static_site.compute_relation_stats(relations)
+    stats = compute_relation_stats(relations)
     assert stats["evidence_records"] == 3
     assert stats["sources"] == 1
 
 
 def test_relation_stats_ignores_evidence_with_no_source():
     relations = [{"evidence": [{"source": None}]}]
-    stats = build_static_site.compute_relation_stats(relations)
+    stats = compute_relation_stats(relations)
     assert stats == {"relations": 1, "evidence_records": 1, "sources": 0}
 
 
@@ -99,7 +106,7 @@ def test_benchmark_gold_paths_counts_items_with_a_nonempty_path(tmp_path):
             {"id": "v1-003", "version": "v1"},  # field absent entirely
         ],
     )
-    paths = build_static_site.read_benchmark_gold_paths(tmp_path)
+    paths = read_benchmark_gold_paths(tmp_path)
     assert paths == {"benchmark_gold": 1, "total": 1}
 
 
@@ -107,17 +114,17 @@ def test_benchmark_gold_paths_dedup_by_version_and_id(tmp_path):
     item = {"id": "v1-001", "version": "v1", "gold_evidence_path": [{"subject_canonical_id": "a"}]}
     _write_benchmark_file(tmp_path, "core.json", [item])
     _write_benchmark_file(tmp_path, "core_copy.json", [item])  # same curated item, duplicated file
-    paths = build_static_site.read_benchmark_gold_paths(tmp_path)
+    paths = read_benchmark_gold_paths(tmp_path)
     assert paths == {"benchmark_gold": 1, "total": 1}
 
 
 def test_benchmark_gold_paths_returns_none_when_no_benchmark_dir(tmp_path):
-    assert build_static_site.read_benchmark_gold_paths(tmp_path / "does_not_exist") is None
+    assert read_benchmark_gold_paths(tmp_path / "does_not_exist") is None
 
 
 def test_benchmark_gold_paths_returns_none_when_no_item_has_a_path(tmp_path):
     _write_benchmark_file(tmp_path, "core.json", [{"id": "v1-001", "version": "v1", "gold_evidence_path": []}])
-    assert build_static_site.read_benchmark_gold_paths(tmp_path) is None
+    assert read_benchmark_gold_paths(tmp_path) is None
 
 
 def test_real_benchmark_directory_gold_path_count_matches_checked_in_items():
@@ -127,8 +134,6 @@ def test_real_benchmark_directory_gold_path_count_matches_checked_in_items():
     72 held-out generated items, all with a real, non-empty path) -- and must
     skip non-item artifacts under data/benchmarks/ (e.g. run_benchmark.py's
     results_v2.json, a single JSON object, not a list of items)."""
-    import build_static_site as bss
-
     real_benchmarks_root = Path(__file__).resolve().parent.parent / "data" / "benchmarks"
     expected = 0
     for file in real_benchmarks_root.glob("**/*.json"):
@@ -136,7 +141,7 @@ def test_real_benchmark_directory_gold_path_count_matches_checked_in_items():
         if isinstance(items, list):
             expected += sum(1 for item in items if isinstance(item, dict) and item.get("gold_evidence_path"))
 
-    paths = bss.read_benchmark_gold_paths(real_benchmarks_root)
+    paths = read_benchmark_gold_paths(real_benchmarks_root)
     assert paths == {"benchmark_gold": expected, "total": expected}
     assert expected > 0
 
@@ -151,11 +156,11 @@ def test_count_mechanistic_paths_counts_only_the_endpoint_predicate():
         {"predicate": "decreases_activity_of", "evidence": []},  # DrugMechDB's direct-target edge, not a path record
         {"predicate": "targets", "evidence": []},
     ]
-    assert build_static_site.count_mechanistic_paths(relations) == 2
+    assert count_mechanistic_paths(relations) == 2
 
 
 def test_count_mechanistic_paths_zero_when_absent():
-    assert build_static_site.count_mechanistic_paths([{"predicate": "targets", "evidence": []}]) == 0
+    assert count_mechanistic_paths([{"predicate": "targets", "evidence": []}]) == 0
 
 
 def test_compute_stats_paths_combines_mechanistic_and_benchmark_gold(tmp_path):
@@ -168,7 +173,7 @@ def test_compute_stats_paths_combines_mechanistic_and_benchmark_gold(tmp_path):
         {"predicate": "implicated_in_mechanism_for", "evidence": []},
         {"predicate": "implicated_in_mechanism_for", "evidence": []},
     ]
-    stats = build_static_site.compute_stats([], relations, benchmarks_root=tmp_path)
+    stats = compute_stats([], relations, benchmarks_root=tmp_path)
     assert stats["paths"] == {"mechanistic": 2, "benchmark_gold": 1, "total": 3}
 
 
@@ -178,7 +183,7 @@ def test_compute_stats_paths_combines_mechanistic_and_benchmark_gold(tmp_path):
 def test_compute_stats_omits_paths_when_no_benchmark_dir(tmp_path):
     entities = [{"type": "DRUG", "name": "a"}]
     relations = [{"evidence": [{"source": "gtopdb"}]}]
-    stats = build_static_site.compute_stats(entities, relations, benchmarks_root=tmp_path / "missing")
+    stats = compute_stats(entities, relations, benchmarks_root=tmp_path / "missing")
     assert "paths" not in stats
     assert stats["entities"] == {"drug": 1, "total": 1}
     assert stats["relations"] == 1
@@ -193,14 +198,14 @@ def test_compute_stats_includes_paths_when_benchmark_dir_has_items(tmp_path):
         "core.json",
         [{"id": "v1-001", "version": "v1", "gold_evidence_path": [{"subject_canonical_id": "a"}]}],
     )
-    stats = build_static_site.compute_stats([], [], benchmarks_root=tmp_path)
+    stats = compute_stats([], [], benchmarks_root=tmp_path)
     assert stats["paths"] == {"benchmark_gold": 1, "total": 1}
 
 
 def test_compute_stats_never_fabricates_a_zero_valued_publication_category():
     """No PAPER entity present -> no "publication" key at all, not "publication": 0."""
     entities = [{"type": "DRUG", "name": "a"}, {"type": "GENE", "name": "b"}]
-    stats = build_static_site.compute_stats(entities, [])
+    stats = compute_stats(entities, [])
     assert "paper" not in stats["entities"]
 
 
@@ -210,12 +215,12 @@ def test_graph_version_picks_the_latest_release_seen_in_evidence_context():
         {"evidence": [{"source": "gene_ontology", "context": {"release": "2026-09-17T20:34:16Z"}}]},
         {"evidence": [{"source": "clinicaltrials_gov", "context": None}]},
     ]
-    stats = build_static_site.compute_stats([], relations)
+    stats = compute_stats([], relations)
     assert stats["graph_version"] == "2026-09-17T20:34:16Z"
 
 
 def test_graph_version_absent_when_no_evidence_carries_a_release():
-    stats = build_static_site.compute_stats([], [{"evidence": [{"source": "x", "context": None}]}])
+    stats = compute_stats([], [{"evidence": [{"source": "x", "context": None}]}])
     assert "graph_version" not in stats
 
 

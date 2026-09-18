@@ -22,6 +22,17 @@ uvicorn oncograph.main:app --reload
 
 Open `http://127.0.0.1:8000/docs` for the API documentation.
 
+### MCP server (research agents/LLMs)
+
+```bash
+pip install -e '.[mcp]'
+oncograph-mcp
+```
+
+Exposes the same graph as structured [Model Context Protocol](https://modelcontextprotocol.io)
+tools (stdio transport) for external agents -- see `docs/MCP.md` for the full tool
+reference, retrieval-strategy options, and provenance semantics.
+
 ## Source adapters
 
 The adapter contract lives in `oncograph.sources`. Adapters emit normalized entity and edge candidates without directly mutating the database. `oncograph.importing` validates records before persistence, and `oncograph.normalization` canonicalizes external identifier namespaces.
@@ -52,7 +63,8 @@ results, `docs/BENCHMARK_RUN_v3_hybrid.md` for a fifth retriever adding semantic
 `oncograph.semantic`) and structural signals -- honestly reporting that the full design does not
 beat the simpler lexical-only one, with an ablation study of which components help -- and
 `docs/STATS.md` for the homepage coverage-statistics artifact (`web/data/stats.json`) and its
-path-count semantics.
+path-count semantics, and `docs/MCP.md` for the Model Context Protocol server (research
+agents/LLMs) -- tool reference, retrieval-strategy options, and provenance semantics.
 
 ## Public explorer and hosting
 
