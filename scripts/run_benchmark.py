@@ -36,12 +36,18 @@ from oncograph.benchmark import (
 )
 from oncograph.models import ClaimState, Entity, Evidence, Relation, VerificationStatus
 from oncograph.query import GraphRetriever, RetrievalQuery
-from oncograph.rank import DEFAULT_RELATIVE_THRESHOLD, QueryConditionedRetriever
+from oncograph.rank import (
+    DEFAULT_RELATIVE_THRESHOLD,
+    HybridPathRanker,
+    HybridWeights,
+    QueryConditionedRetriever,
+)
 
 RETRIEVERS = {
     "graph_retriever": GraphRetriever,
     "vanilla_graph_retriever": VanillaGraphRetriever,
     "query_conditioned": QueryConditionedRetriever,
+    "hybrid": HybridPathRanker,
 }
 
 
@@ -125,15 +131,24 @@ def _required_hops(item) -> int:
     return max(depth, 1)
 
 
-def _make_retriever(session: Session, retriever_name: str, relevance_threshold: float):
+def _make_retriever(session: Session, retriever_name: str, relevance_threshold: float, weights: HybridWeights):
     retriever_cls = RETRIEVERS[retriever_name]
     if retriever_cls is QueryConditionedRetriever:
         return retriever_cls(session, relative_threshold=relevance_threshold)
+    if retriever_cls is HybridPathRanker:
+        return retriever_cls(session, weights=weights, relative_threshold=relevance_threshold)
     return retriever_cls(session)
 
 
-def _run_one(session: Session, retriever_name: str, item, max_hops: int | None, relevance_threshold: float) -> dict:
-    retriever = _make_retriever(session, retriever_name, relevance_threshold)
+def _run_one(
+    session: Session,
+    retriever_name: str,
+    item,
+    max_hops: int | None,
+    relevance_threshold: float,
+    weights: HybridWeights,
+) -> dict:
+    retriever = _make_retriever(session, retriever_name, relevance_threshold, weights)
     root_ref = item.gold_evidence_path[0].subject_canonical_id if item.gold_evidence_path else None
     hops = max_hops if max_hops is not None else _required_hops(item)
     if root_ref is None:
@@ -179,10 +194,22 @@ def main() -> None:
         "--relevance-threshold",
         type=float,
         default=DEFAULT_RELATIVE_THRESHOLD,
-        help="query_conditioned only: keep/drop cutoff as a fraction of the top-scoring entity "
-        "for that query (oncograph.rank.QueryConditionedRetriever). Calibrate on dev only.",
+        help="query_conditioned/hybrid only: keep/drop cutoff as a fraction of the top-scoring "
+        "entity for that query. Calibrate on dev only.",
     )
+    parser.add_argument("--weight-lexical", type=float, default=1.0, help="hybrid only: lexical component weight")
+    parser.add_argument("--weight-semantic", type=float, default=1.0, help="hybrid only: semantic (TF-IDF) component weight")
+    parser.add_argument("--weight-structural", type=float, default=1.0, help="hybrid only: structural component weight")
+    parser.add_argument("--weight-provenance", type=float, default=1.0, help="hybrid only: provenance component weight")
+    parser.add_argument("--weight-hub", type=float, default=1.0, help="hybrid only: hub/branch penalty weight")
     args = parser.parse_args()
+    weights = HybridWeights(
+        lexical=args.weight_lexical,
+        semantic=args.weight_semantic,
+        structural=args.weight_structural,
+        provenance=args.weight_provenance,
+        hub=args.weight_hub,
+    )
 
     db_path = args.db_path or (args.out.parent / "_run_benchmark_scratch.db")
     if not args.db_path:
@@ -201,13 +228,15 @@ def main() -> None:
         "item_count": len(all_items),
         "max_hops": args.max_hops if args.max_hops is not None else "auto-per-item",
         "relevance_threshold": args.relevance_threshold,
+        "hybrid_weights": asdict(weights),
         "by_retriever": {},
     }
 
     with Session(engine) as session:
         for retriever_name in args.retriever:
             per_item = [
-                _run_one(session, retriever_name, item, args.max_hops, args.relevance_threshold) for item in all_items
+                _run_one(session, retriever_name, item, args.max_hops, args.relevance_threshold, weights)
+                for item in all_items
             ]
             by_task_type: dict[str, list[dict]] = {}
             for item, row in zip(all_items, per_item, strict=True):

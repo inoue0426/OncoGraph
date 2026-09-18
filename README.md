@@ -48,7 +48,10 @@ evidence-blind ablation on successive frozen snapshots (v3 adds real combination
 and measures a principled-path-selection fix for a citation-precision failure mode v2 found),
 `docs/BENCHMARK_RUN_v3_ranked.md` for a fourth retriever (query-conditioned relation/path ranking,
 `oncograph.rank`) evaluated on the same v3 gold set with dev-only calibration and degree-stratified
-results, and `docs/STATS.md` for the homepage coverage-statistics artifact (`web/data/stats.json`) and its
+results, `docs/BENCHMARK_RUN_v3_hybrid.md` for a fifth retriever adding semantic (local TF-IDF,
+`oncograph.semantic`) and structural signals -- honestly reporting that the full design does not
+beat the simpler lexical-only one, with an ablation study of which components help -- and
+`docs/STATS.md` for the homepage coverage-statistics artifact (`web/data/stats.json`) and its
 path-count semantics.
 
 ## Public explorer and hosting
