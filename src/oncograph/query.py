@@ -246,6 +246,11 @@ class RetrievalQuery:
     sources: frozenset[str] | None = None
     min_confidence: float | None = None
     require_publication: bool = False
+    # The caller's natural-language question, if any -- optional, and unused
+    # by GraphRetriever/VanillaGraphRetriever. A query-conditioned retriever
+    # (oncograph.rank.QueryConditionedRetriever) uses it to rank candidate
+    # relations by lexical relevance; never required, never a gold answer.
+    question_text: str | None = None
 
 
 @dataclass

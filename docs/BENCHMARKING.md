@@ -1,15 +1,18 @@
 # Research benchmarking & evaluation (Issue #9)
 
 This module started as infrastructure only (a schema, real scoring functions, and a
-common retrieval-comparison interface -- no run, no reported number). Two real runs
+common retrieval-comparison interface -- no run, no reported number). Three real runs
 now exist: `docs/BENCHMARK_RUN_v2.md` (`GraphRetriever` vs. an evidence-blind
 `VanillaGraphRetriever` ablation on a frozen snapshot, with honest results including
-where the metrics came out low) and `docs/BENCHMARK_RUN_v3.md` (a rerun on a newer
+where the metrics came out low), `docs/BENCHMARK_RUN_v3.md` (a rerun on a newer
 frozen snapshot -- with real combination-treatment items added and a principled
 path-selection fix for the citation-precision failure mode v2 found, on the same
-unchanged gold set). `LLMOnlyRetriever` and `VectorRAGRetriever` remain unimplemented
-scaffolds -- there is no LLM or embedding infrastructure in this repository to back a
-real run of either.
+unchanged gold set), and `docs/BENCHMARK_RUN_v3_ranked.md` (a fourth retriever,
+`oncograph.rank.QueryConditionedRetriever`, evaluated on the *same* v3 gold set and
+frozen snapshot -- dev-calibrated, scored once on held-out, with degree-stratified
+results and honestly-reported failure cases). `LLMOnlyRetriever` and
+`VectorRAGRetriever` remain unimplemented scaffolds -- there is no LLM or embedding
+infrastructure in this repository to back a real run of either.
 
 ## Benchmark item schema
 

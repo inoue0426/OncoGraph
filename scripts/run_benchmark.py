@@ -36,10 +36,12 @@ from oncograph.benchmark import (
 )
 from oncograph.models import ClaimState, Entity, Evidence, Relation, VerificationStatus
 from oncograph.query import GraphRetriever, RetrievalQuery
+from oncograph.rank import DEFAULT_RELATIVE_THRESHOLD, QueryConditionedRetriever
 
 RETRIEVERS = {
     "graph_retriever": GraphRetriever,
     "vanilla_graph_retriever": VanillaGraphRetriever,
+    "query_conditioned": QueryConditionedRetriever,
 }
 
 
@@ -123,16 +125,22 @@ def _required_hops(item) -> int:
     return max(depth, 1)
 
 
-def _run_one(session: Session, retriever_name: str, item, max_hops: int | None) -> dict:
+def _make_retriever(session: Session, retriever_name: str, relevance_threshold: float):
     retriever_cls = RETRIEVERS[retriever_name]
-    retriever = retriever_cls(session)
+    if retriever_cls is QueryConditionedRetriever:
+        return retriever_cls(session, relative_threshold=relevance_threshold)
+    return retriever_cls(session)
+
+
+def _run_one(session: Session, retriever_name: str, item, max_hops: int | None, relevance_threshold: float) -> dict:
+    retriever = _make_retriever(session, retriever_name, relevance_threshold)
     root_ref = item.gold_evidence_path[0].subject_canonical_id if item.gold_evidence_path else None
     hops = max_hops if max_hops is not None else _required_hops(item)
     if root_ref is None:
         prediction_dict = {}
         score = None
     else:
-        result = retriever.retrieve(RetrievalQuery(root_ref=root_ref, max_hops=hops))
+        result = retriever.retrieve(RetrievalQuery(root_ref=root_ref, max_hops=hops, question_text=item.question))
         prediction = graph_retrieval_to_prediction(result)
         score = score_prediction(item, prediction)
         prediction_dict = asdict(prediction)
@@ -167,6 +175,13 @@ def main() -> None:
     )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--db-path", type=Path, default=None, help="Reuse an already-built DB instead of rebuilding it")
+    parser.add_argument(
+        "--relevance-threshold",
+        type=float,
+        default=DEFAULT_RELATIVE_THRESHOLD,
+        help="query_conditioned only: keep/drop cutoff as a fraction of the top-scoring entity "
+        "for that query (oncograph.rank.QueryConditionedRetriever). Calibrate on dev only.",
+    )
     args = parser.parse_args()
 
     db_path = args.db_path or (args.out.parent / "_run_benchmark_scratch.db")
@@ -185,12 +200,15 @@ def main() -> None:
         "benchmark_files": [str(p) for p in args.benchmark],
         "item_count": len(all_items),
         "max_hops": args.max_hops if args.max_hops is not None else "auto-per-item",
+        "relevance_threshold": args.relevance_threshold,
         "by_retriever": {},
     }
 
     with Session(engine) as session:
         for retriever_name in args.retriever:
-            per_item = [_run_one(session, retriever_name, item, args.max_hops) for item in all_items]
+            per_item = [
+                _run_one(session, retriever_name, item, args.max_hops, args.relevance_threshold) for item in all_items
+            ]
             by_task_type: dict[str, list[dict]] = {}
             for item, row in zip(all_items, per_item, strict=True):
                 by_task_type.setdefault(item.task_type.value, []).append(row)
