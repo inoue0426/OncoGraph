@@ -42,10 +42,12 @@ combination-treatment logic (part of the existing ClinicalTrials.gov adapter); t
 schema and the remaining biological/mechanistic/treatment-context sources documented above are not
 yet part of it. See `docs/QUERY_API.md` for the evidence-aware graph traversal API
 (`/query/traverse` and representative query helpers), `docs/BENCHMARKING.md` for the
-benchmark-item schema and metrics infrastructure, `docs/BENCHMARK_RUN_v2.md` for the first real
-(non-fabricated) evaluation of `GraphRetriever` against an evidence-blind ablation on a frozen
-snapshot, and `docs/STATS.md` for the homepage coverage-statistics artifact (`web/data/stats.json`)
-and its path-count semantics.
+benchmark-item schema and metrics infrastructure, `docs/BENCHMARK_RUN_v2.md` and
+`docs/BENCHMARK_RUN_v3.md` for two real (non-fabricated) evaluations of `GraphRetriever` against an
+evidence-blind ablation on successive frozen snapshots (v3 adds real combination-treatment items
+and measures a principled-path-selection fix for a citation-precision failure mode v2 found), and
+`docs/STATS.md` for the homepage coverage-statistics artifact (`web/data/stats.json`) and its
+path-count semantics.
 
 ## Public explorer and hosting
 
