@@ -36,6 +36,7 @@ class BenchmarkTaskType(StrEnum):
     CONTRADICTION_DETECTION = "contradiction_detection"
     CONTEXT_SPECIFIC_DRUG_RESPONSE = "context_specific_drug_response"
     PROVENANCE_AWARE_REASONING = "provenance_aware_reasoning"
+    COMBINATION_TREATMENT_REASONING = "combination_treatment_reasoning"
 
 
 @dataclass(frozen=True)
@@ -100,7 +101,24 @@ class Prediction:
 
 
 def graph_retrieval_to_prediction(result: RetrievalResult) -> Prediction:
-    """Convert a GraphRetriever RetrievalResult into a scoreable Prediction."""
+    """Convert a GraphRetriever RetrievalResult into a scoreable Prediction.
+
+    Evidence is selected via **principled path selection**: only relations
+    that lie on the shortest path from the root to an actually-reached
+    entity (``result.paths``, ``traverse()``'s own BFS shortest-path
+    bookkeeping -- see ``oncograph.query``) are cited, never every relation
+    the neighborhood traversal happened to touch along the way.
+
+    This replaces an earlier version that cited the whole touched
+    neighborhood, which made ``citation_correctness``/``path_correctness``
+    degrade sharply with root-entity degree (a real, measured failure mode
+    -- see docs/BENCHMARK_RUN_v2.md's "one justified follow-up analysis"):
+    a high-degree root (many trials, many GO relations, ...) touches many
+    relations irrelevant to any specific claimed answer, inflating the
+    precision denominator for reasons unrelated to retrieval quality.
+    Citing only each answer's justifying path fixes that at the root cause
+    rather than post-hoc filtering scores.
+    """
     if result.root is None:
         return Prediction()
     canonical_by_id = {e["id"]: e["canonical_id"] for e in result.entities if e.get("canonical_id")}
@@ -108,19 +126,30 @@ def graph_retrieval_to_prediction(result: RetrievalResult) -> Prediction:
     answer_ids = tuple(
         sorted({cid for eid, cid in canonical_by_id.items() if cid and cid != root_canonical})
     )
+
+    relations_by_id = {relation["id"]: relation for relation in result.relations}
     evidence_refs: list[GoldEvidenceRef] = []
+    seen_refs: set[tuple[str, str, str, str | None]] = set()
     contradictions_flagged = False
-    for relation in result.relations:
-        subject_cid = canonical_by_id.get(relation["subject_id"])
-        object_cid = canonical_by_id.get(relation["object_id"])
-        if not subject_cid or not object_cid:
-            continue
-        if relation.get("has_contradictory_evidence"):
-            contradictions_flagged = True
-        for evidence in relation["evidence"]:
-            evidence_refs.append(
-                GoldEvidenceRef(subject_cid, relation["predicate"], object_cid, evidence.get("source"))
-            )
+
+    for relation_ids in result.paths.values():
+        for relation_id in relation_ids:
+            relation = relations_by_id.get(relation_id)
+            if relation is None:
+                continue
+            subject_cid = canonical_by_id.get(relation["subject_id"])
+            object_cid = canonical_by_id.get(relation["object_id"])
+            if not subject_cid or not object_cid:
+                continue
+            if relation.get("has_contradictory_evidence"):
+                contradictions_flagged = True
+            for evidence in relation["evidence"]:
+                ref_key = (subject_cid, relation["predicate"], object_cid, evidence.get("source"))
+                if ref_key in seen_refs:
+                    continue
+                seen_refs.add(ref_key)
+                evidence_refs.append(GoldEvidenceRef(*ref_key))
+
     return Prediction(
         answer_canonical_ids=answer_ids,
         evidence_refs=tuple(evidence_refs),

@@ -133,6 +133,42 @@ def test_generate_go_chain_items_requires_a_genuine_chain_not_two_unrelated_edge
     assert items == []
 
 
+def test_generate_combination_treatment_items_uses_real_component_and_trial_edges():
+    by_id = {
+        "combo1": _entity("combo1", "COMBINATION_TREATMENT", "durvalumab + olaparib", "ctgov_combo:1"),
+        "d1": _entity("d1", "DRUG", "durvalumab", "gtopdb:9223"),
+        "d2": _entity("d2", "DRUG", "olaparib", "gtopdb:7519"),
+        "t1": _entity("t1", "TRIAL", "Ovarian cancer combo trial", "clinicaltrials.gov:NCT03737643"),
+    }
+    by_predicate = {
+        "has_component": [
+            _relation("combo1", "has_component", "d1", source="clinicaltrials_gov"),
+            _relation("combo1", "has_component", "d2", source="clinicaltrials_gov"),
+        ],
+        "tested_in": [_relation("combo1", "tested_in", "t1", source="clinicaltrials_gov")],
+    }
+    items = gen.generate_combination_treatment_items(gen.random.Random(1), by_id, by_predicate, count=5)
+
+    assert len(items) == 1
+    item = items[0]
+    assert item["task_type"] == "combination_treatment_reasoning"
+    assert item["gold_answer_canonical_ids"] == ["gtopdb:7519", "gtopdb:9223"]
+    predicates = {ref["predicate"] for ref in item["gold_evidence_path"]}
+    assert predicates == {"has_component", "tested_in"}
+    assert len(item["gold_evidence_path"]) == 3  # 2 components + 1 trial edge
+
+
+def test_generate_combination_treatment_items_requires_2plus_components_and_a_trial():
+    by_id = {
+        "combo1": _entity("combo1", "COMBINATION_TREATMENT", "solo drug", "ctgov_combo:1"),
+        "d1": _entity("d1", "DRUG", "drugA", "gtopdb:1"),
+    }
+    # Only one component -- not a real combination, must not be emitted.
+    by_predicate = {"has_component": [_relation("combo1", "has_component", "d1")], "tested_in": []}
+    items = gen.generate_combination_treatment_items(gen.random.Random(1), by_id, by_predicate, count=5)
+    assert items == []
+
+
 def test_split_dev_heldout_partitions_without_overlap():
     items = [{"task_type": "single_hop_factual_retrieval", "id": f"i{i}"} for i in range(10)]
     dev, heldout = gen.split_dev_heldout(gen.random.Random(1), items, dev_per_task=3)

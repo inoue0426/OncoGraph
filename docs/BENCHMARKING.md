@@ -1,12 +1,15 @@
 # Research benchmarking & evaluation (Issue #9)
 
 This module started as infrastructure only (a schema, real scoring functions, and a
-common retrieval-comparison interface -- no run, no reported number). A real first
-run now exists: see `docs/BENCHMARK_RUN_v2.md` for `GraphRetriever` vs. an
-evidence-blind `VanillaGraphRetriever` ablation on a frozen snapshot, with honest
-results including where the metrics come out low. `LLMOnlyRetriever` and
-`VectorRAGRetriever` remain unimplemented scaffolds -- there is no LLM or embedding
-infrastructure in this repository to back a real run of either.
+common retrieval-comparison interface -- no run, no reported number). Two real runs
+now exist: `docs/BENCHMARK_RUN_v2.md` (`GraphRetriever` vs. an evidence-blind
+`VanillaGraphRetriever` ablation on a frozen snapshot, with honest results including
+where the metrics came out low) and `docs/BENCHMARK_RUN_v3.md` (a rerun on a newer
+frozen snapshot -- with real combination-treatment items added and a principled
+path-selection fix for the citation-precision failure mode v2 found, on the same
+unchanged gold set). `LLMOnlyRetriever` and `VectorRAGRetriever` remain unimplemented
+scaffolds -- there is no LLM or embedding infrastructure in this repository to back a
+real run of either.
 
 ## Benchmark item schema
 
@@ -26,10 +29,12 @@ A benchmark file (e.g. `data/benchmarks/v1/oncology_core.json`) is a JSON list o
 }
 ```
 
-`task_type` is one of the nine `BenchmarkTaskType` values (`single_hop_factual_retrieval`,
+`task_type` is one of the ten `BenchmarkTaskType` values (`single_hop_factual_retrieval`,
 `multi_hop_reasoning`, `drug_target_disease_reasoning`, `pathway_reasoning`, `trial_lookup`,
 `publication_evidence_attribution`, `contradiction_detection`, `context_specific_drug_response`,
-`provenance_aware_reasoning`).
+`provenance_aware_reasoning`, `combination_treatment_reasoning`). The last was added for Issue
+#11's real ClinicalTrials.gov-derived combination treatments; `v1`'s 9 hand-written items predate
+it and cover only the original nine.
 
 **Gold references use canonical IDs, never database row UUIDs.** This repository's SQLite
 database is regenerated from scratch on every refresh (`docs/HOSTING.md`) -- a UUID from one
@@ -89,6 +94,13 @@ references stripped before scoring -- it isolates exactly what evidence-awarenes
 `LLMOnlyRetriever` and `VectorRAGRetriever` in `oncograph.benchmark` declare the same interface but
 raise `NotImplementedError` -- there is no LLM or embedding infrastructure in this repository to
 back them, so they remain scaffolding rather than a fabricated result.
+
+`graph_retrieval_to_prediction()` uses **principled path selection**: it cites only relations on
+the shortest path (`RetrievalResult.paths`, `traverse()`'s own BFS bookkeeping) to each reached
+entity, never every relation the neighborhood traversal happened to touch. An earlier version cited
+the whole touched neighborhood, which made `citation_correctness`/`path_correctness` degrade sharply
+with root-entity degree -- a real, measured failure mode from the v2 run; see
+`docs/BENCHMARK_RUN_v3.md` for the fix and its measured effect on the same, unchanged gold set.
 
 ```python
 from oncograph.benchmark import graph_retrieval_to_prediction, load_benchmark_items, score_prediction

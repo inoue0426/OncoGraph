@@ -76,11 +76,15 @@ BENCHMARK_FILE = Path(__file__).resolve().parent.parent / "data" / "benchmarks" 
 # --- Loading the versioned item file --------------------------------------------
 
 
-def test_oncology_core_v1_loads_and_covers_every_task_type():
+def test_oncology_core_v1_loads_and_covers_its_original_nine_task_types():
+    """v1 was written before Issue #11's real combination-treatment data existed,
+    so it covers the original 9 task types, not every BenchmarkTaskType member
+    that exists today (combination_treatment_reasoning is v2-only, generated
+    from real data -- see scripts/generate_benchmark_items.py)."""
     items = load_benchmark_items(BENCHMARK_FILE)
     assert len(items) == 9
     task_types = {item.task_type for item in items}
-    assert task_types == set(BenchmarkTaskType)
+    assert task_types == set(BenchmarkTaskType) - {BenchmarkTaskType.COMBINATION_TREATMENT_REASONING}
 
 
 def test_loaded_item_fields_round_trip():
@@ -225,6 +229,41 @@ def test_graph_retriever_prediction_scores_correctly_against_its_own_data():
     assert score.answer_correctness == 1.0
     assert score.citation_correctness == 1.0
     assert score.evidence_completeness == 1.0
+
+
+def test_graph_retrieval_to_prediction_uses_principled_path_selection_not_whole_neighborhood():
+    """A back-edge between two already-reached nodes must not be cited as
+    evidence for any answer -- it explains no entity's reachability, so
+    citing it would only hurt citation_correctness for no retrieval-quality
+    reason. This is the exact failure mode docs/BENCHMARK_RUN_v2.md found
+    (citation_correctness degrading with root-entity degree) and the fix
+    this test locks in.
+    """
+    with _memory_session() as session:
+        drug = Entity(type="drug", name="TestDrug", canonical_id="gtopdb:1")
+        gene = Entity(type="gene", name="TestGene", canonical_id="hgnc:HGNC:1")
+        session.add_all([drug, gene])
+        session.flush()
+        # The real, path-justifying edge.
+        targets = Relation(subject_id=drug.id, predicate="targets", object_id=gene.id)
+        # A second, distinct-predicate edge between the SAME two (already
+        # mutually reachable) nodes -- touched by the hop-2 BFS candidate
+        # query but explains no new entity's reachability.
+        back_edge = Relation(subject_id=gene.id, predicate="unrelated_back_reference", object_id=drug.id)
+        session.add_all([targets, back_edge])
+        session.flush()
+        session.add(Evidence(relation_id=targets.id, source="gtopdb"))
+        session.add(Evidence(relation_id=back_edge.id, source="some_other_source"))
+        session.commit()
+
+        result = GraphRetriever(session).retrieve(RetrievalQuery(root_ref="TestDrug", max_hops=2))
+        # Sanity check: the BFS really did touch the back-edge.
+        assert any(r["predicate"] == "unrelated_back_reference" for r in result.relations)
+
+        prediction = graph_retrieval_to_prediction(result)
+
+    cited_predicates = {ref.predicate for ref in prediction.evidence_refs}
+    assert cited_predicates == {"targets"}  # the back-edge is never cited
 
 
 # --- Retrieval-baseline scaffolding: explicitly not implemented -----------------

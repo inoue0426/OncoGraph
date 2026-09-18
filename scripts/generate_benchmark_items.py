@@ -191,6 +191,69 @@ def generate_go_chain_items(rng: random.Random, by_id: dict, by_predicate: dict[
     return items
 
 
+def generate_combination_treatment_items(
+    rng: random.Random, by_id: dict, by_predicate: dict[str, list[dict]], count: int
+) -> list[dict]:
+    """A real CombinationTreatment (Issue #11) and its real components + trial.
+
+    ``has_component`` edges list each component drug; a matching
+    ``tested_in`` edge (same combination subject) names the real trial it
+    was tested in. Both predicates come from
+    ``sources/clinicaltrials.py``'s real cross-drug-match detection --
+    nothing here is synthesized.
+    """
+    trial_by_combo: dict[str, dict] = {
+        relation["subject_id"]: relation for relation in by_predicate.get("tested_in", [])
+    }
+    components_by_combo: dict[str, list[dict]] = {}
+    for relation in by_predicate.get("has_component", []):
+        components_by_combo.setdefault(relation["subject_id"], []).append(relation)
+
+    candidates = [
+        combo_id
+        for combo_id, components in components_by_combo.items()
+        if len(components) >= 2
+        and combo_id in trial_by_combo
+        and by_id.get(combo_id, {}).get("canonical_id")
+        and all(by_id.get(c["object_id"], {}).get("canonical_id") for c in components)
+        and by_id.get(trial_by_combo[combo_id]["object_id"], {}).get("canonical_id")
+    ]
+    sample = rng.sample(candidates, k=min(count, len(candidates)))
+    items = []
+    for combo_id in sample:
+        combo = by_id[combo_id]
+        components = components_by_combo[combo_id]
+        trial_relation = trial_by_combo[combo_id]
+        trial = by_id[trial_relation["object_id"]]
+        drug_names = ", ".join(sorted(by_id[c["object_id"]]["name"] for c in components))
+        items.append(
+            {
+                "task_type": "combination_treatment_reasoning",
+                "question": f"Which drugs are combined in the treatment tested in '{trial['name']}' ({drug_names})?",
+                "gold_answer_canonical_ids": sorted(by_id[c["object_id"]]["canonical_id"] for c in components),
+                "gold_evidence_path": [
+                    {
+                        "subject_canonical_id": combo["canonical_id"],
+                        "predicate": "has_component",
+                        "object_canonical_id": by_id[c["object_id"]]["canonical_id"],
+                        "source": _primary_source(c["evidence"]),
+                    }
+                    for c in components
+                ]
+                + [
+                    {
+                        "subject_canonical_id": combo["canonical_id"],
+                        "predicate": "tested_in",
+                        "object_canonical_id": trial["canonical_id"],
+                        "source": _primary_source(trial_relation["evidence"]),
+                    }
+                ],
+                "context": {"grounding": "verified_live_data", "generated_by": "generate_benchmark_items.py"},
+            }
+        )
+    return items
+
+
 def generate_all(by_id: dict, relations: list[dict], seed: int, per_task: int) -> list[dict]:
     rng = random.Random(seed)
     by_predicate = _relations_by_predicate(relations)
@@ -219,6 +282,7 @@ def generate_all(by_id: dict, relations: list[dict], seed: int, per_task: int) -
     )
     generated += generate_drug_disease_reasoning_items(rng, by_id, by_predicate, per_task)
     generated += generate_go_chain_items(rng, by_id, by_predicate, per_task)
+    generated += generate_combination_treatment_items(rng, by_id, by_predicate, per_task)
 
     # provenance_aware_reasoning reuses the "targets" fact structure but is
     # graded on provenance_coverage, not just answer_correctness -- sample a
