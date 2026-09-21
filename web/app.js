@@ -135,6 +135,7 @@ function typeLabel(type) {
 }
 
 function tierKeyForItem(item) {
+  if (item.tier) return item.tier;
   const primary = item.evidence[0];
   if (!primary) return "unknown";
   if (primary.evidence_type === "approved_indication") return "approved";
@@ -233,6 +234,37 @@ function neighborsOfType(entityId, targetType) {
   return found;
 }
 
+function relationEvidence(left, right) {
+  // Keep the complete provenance trail for a derived path, without inventing
+  // evidence for the path itself. Duplicate rows are removed by source/id.
+  const seen = new Set();
+  return [...left, ...right].filter((e) => {
+    const key = `${e.source || ""}:${e.source_id || ""}:${e.retrieved_at || ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function diseaseRelatedDrugs(disease) {
+  const found = new Map();
+  for (const geneEdge of neighborsOfType(disease.id, "gene")) {
+    const gene = geneEdge.entity;
+    for (const drugEdge of neighborsOfType(gene.id, "drug")) {
+      const evidence = relationEvidence(geneEdge.evidence, drugEdge.evidence);
+      if (!found.has(drugEdge.entity.id)) {
+        found.set(drugEdge.entity.id, {
+          entity: drugEdge.entity,
+          evidence,
+          predicate: `${drugEdge.predicate} via ${gene.name}`,
+          reason: `Drug target path: ${drugEdge.entity.name} → ${gene.name} → ${disease.name}`,
+        });
+      }
+    }
+  }
+  return [...found.values()];
+}
+
 // Drug (or any entity) -> targets -> Gene -> predicate -> objectType, e.g.
 // Drug -> Gene -> associated_with -> Disease, or Drug -> Gene -> part_of_pathway -> Pathway.
 function viaGeneTargets(entityId, objectType, predicate) {
@@ -295,6 +327,19 @@ function computeFacetGroups(center, facet) {
       if (viaTarget.length) groups.push(["computed", viaTarget]);
     }
     return groups;
+  }
+
+  if (facet === "drug" && center.type === "disease") {
+    const direct = neighborsOfType(center.id, "drug");
+    const viaGene = diseaseRelatedDrugs(center);
+    return groupByTier([
+      ...direct,
+      ...viaGene.map((item) => ({ ...item, tier: "computed" })),
+    ]).map(([key, items]) => [key, items]);
+  }
+
+  if (facet === "gene" && center.type === "disease") {
+    return groupByTier(neighborsOfType(center.id, "gene"));
   }
 
   if (facet === "pathway") {
@@ -402,6 +447,7 @@ function showEvidencePanel(item) {
       ["Confidence", typeof ev.confidence === "number" ? ev.confidence.toFixed(2) : null],
       ["Verification state", ev.verification_status],
       ["License", ev.license],
+      ["Release", ev.context?.release],
       ["Retrieved", ev.retrieved_at ? ev.retrieved_at.slice(0, 10) : null],
       ["Context", ev.context ? JSON.stringify(ev.context) : null],
     ].filter((p) => p && p[1] !== null && p[1] !== undefined);
@@ -461,6 +507,13 @@ function renderNeighborItem(item) {
   pivot.dataset.id = item.entity.id;
   pivot.textContent = item.entity.name;
   li.append(pivot, badge(typeLabel(item.entity.type)));
+
+  if (item.reason || item.predicate) {
+    const reason = document.createElement("div");
+    reason.className = "result-reason";
+    reason.textContent = item.reason || `Shown because of relation: ${item.predicate} (${item.evidence.length} evidence record(s))`;
+    li.append(reason);
+  }
 
   const score = evidenceContextValue(item.evidence, "score");
   if (typeof score === "number") li.append(badge(`score ${score.toFixed(2)}`));
@@ -572,6 +625,19 @@ function renderEntityHeader(entity) {
   meta.className = "meta";
   meta.textContent = `${typeLabel(entity.type)} · ${entity.canonical_id || "no canonical ID"}`;
   header.append(name, meta);
+  const neighbors = allNeighbors(entity.id);
+  const sourceCounts = new Map();
+  for (const neighbor of neighbors) {
+    const relationSources = new Set(neighbor.evidence.map((evidence) => evidence.source).filter(Boolean));
+    for (const source of relationSources) {
+      sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
+    }
+  }
+  const summary = document.createElement("p");
+  summary.className = "meta relation-summary";
+  const sources = [...sourceCounts.entries()].map(([source, count]) => `${source} ${count}`).join(", ");
+  summary.textContent = `${neighbors.length} relation(s) · source relation counts: ${sources || "none"}`;
+  header.append(summary);
   const aliases = entity.metadata?.aliases;
   if (Array.isArray(aliases) && aliases.length) {
     const aliasLine = document.createElement("div");
@@ -620,6 +686,17 @@ function renderDrugDetail(entity) {
   return sections;
 }
 
+function renderDiseaseDetail(entity) {
+  const sections = [];
+  const genes = neighborsOfType(entity.id, "gene");
+  if (genes.length) sections.push(renderTierGroup("curated_database", genes, { label: "Related genes" }));
+  const drugs = neighborsOfType(entity.id, "drug");
+  const viaGenes = diseaseRelatedDrugs(entity);
+  if (drugs.length) sections.push(renderTierGroup("curated_database", drugs, { label: "Directly related drugs" }));
+  if (viaGenes.length) sections.push(renderTierGroup("computed", viaGenes, { label: "Drugs via related genes" }));
+  return sections;
+}
+
 // Every non-root entity type type of GO term is filtered when it's a root
 // term (e.g. "biological_process") or has an unusually large child_count --
 // issue #5/#8's "low-information term" concern.
@@ -653,6 +730,40 @@ function renderGenericDetail(entity) {
   return sections;
 }
 
+function renderRelationInventory(entity) {
+  const rows = [];
+  const seen = new Set();
+  for (const neighbor of allNeighbors(entity.id)) {
+    const other = entityById.get(neighbor.id);
+    if (!other) continue;
+    const key = `${neighbor.predicate}:${neighbor.id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({
+      entity: other,
+      evidence: neighbor.evidence,
+      predicate: neighbor.predicate,
+      reason: neighbor.direction === "out"
+        ? `${entity.name} —${neighbor.predicate}→ ${other.name}`
+        : `${other.name} —${neighbor.predicate}→ ${entity.name}`,
+    });
+  }
+  if (!rows.length) return null;
+  const section = document.createElement("section");
+  section.className = "relation-inventory";
+  const heading = document.createElement("h3");
+  heading.textContent = `Relations and evidence (${rows.length})`;
+  section.append(heading);
+  const list = document.createElement("ul");
+  for (const row of rows) list.append(renderNeighborItem(row));
+  section.append(list);
+  const note = document.createElement("p");
+  note.className = "empty";
+  note.textContent = "Multiple sources remain separate; conflicts are shown as warnings and missing evidence is not inferred.";
+  section.append(note);
+  return section;
+}
+
 function renderDetail(entityId) {
   const entity = entityById.get(entityId);
   if (!entity) return;
@@ -670,7 +781,11 @@ function renderDetail(entityId) {
   back.addEventListener("click", closeDetail);
 
   const header = renderEntityHeader(entity);
-  const sections = entity.type === "drug" ? renderDrugDetail(entity) : renderGenericDetail(entity);
+  const sections = entity.type === "drug"
+    ? renderDrugDetail(entity)
+    : entity.type === "disease" ? renderDiseaseDetail(entity) : renderGenericDetail(entity);
+  const inventory = renderRelationInventory(entity);
+  if (inventory) sections.unshift(inventory);
   const graph = renderLocalGraph(entity);
 
   if (!sections.length) {
@@ -702,9 +817,9 @@ function typeColor(type) {
 function allNeighbors(entityId) {
   const found = [];
   const outMap = outByPredicate.get(entityId);
-  if (outMap) for (const items of outMap.values()) for (const i of items) found.push({ id: i.objectId, evidence: i.evidence, predicate: i.predicate });
+  if (outMap) for (const items of outMap.values()) for (const i of items) found.push({ id: i.objectId, evidence: i.evidence, predicate: i.predicate, direction: "out" });
   const inMap = inByPredicate.get(entityId);
-  if (inMap) for (const items of inMap.values()) for (const i of items) found.push({ id: i.subjectId, evidence: i.evidence, predicate: i.predicate });
+  if (inMap) for (const items of inMap.values()) for (const i of items) found.push({ id: i.subjectId, evidence: i.evidence, predicate: i.predicate, direction: "in" });
   return found;
 }
 
@@ -874,6 +989,13 @@ function renderSearchResultCard(entity) {
     counts.textContent = `${relationCount} relation(s) · ${sourceCount} source(s)`;
     card.append(counts);
   }
+
+  const reason = document.createElement("div");
+  reason.className = "result-reason";
+  reason.textContent = relationCount
+    ? `Matched ${typeLabel(entity.type)} name/ID; ${relationCount} stored relation(s) can be inspected.`
+    : `Matched ${typeLabel(entity.type)} name/ID; no stored relation is available yet.`;
+  card.append(reason);
 
   return card;
 }

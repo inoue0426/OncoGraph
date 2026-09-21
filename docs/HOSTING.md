@@ -51,6 +51,15 @@ The frontend (`web/app.js`) joins the two indexes client-side: selecting a drug 
 targets and clinical trials, plus diseases associated with those targets (a two-hop, drug→target→
 disease view, since no direct drug→disease indication source is wired in yet).
 
+The explorer also supports deterministic disease-first queries such as `ovarian cancer drugs`.
+It only returns stored `Disease ← Gene ← Drug` paths and labels these as paths through a related gene;
+it never infers a missing indication. Entity detail pages show relation counts, per-source evidence
+counts, source record IDs/URLs, retrieval date or release from context, and evidence type. Multiple
+sources remain separate. Coexisting `supports`/`contradicts` evidence is shown as a warning, while
+missing evidence is reported rather than filled in. ClinicalTrials.gov registration metadata is not
+an efficacy or approval claim. Independent MONDO/EFO ingestion, CIViC, and openFDA are documented
+future candidates, not data currently published by this workflow.
+
 When the static MVP is no longer enough, move snapshots to object storage, normalized data to
 PostgreSQL, optional traversals to a graph database, and expose them through a versioned API.
 Evidence and provenance identifiers remain the publication boundary throughout that transition.

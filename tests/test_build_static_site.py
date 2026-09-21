@@ -30,9 +30,16 @@ def _seeded_db(path: Path) -> None:
             canonical_id="pubmed:12345",
             entity_metadata=json.dumps({"journal": "Example Journal", "year": "2024"}),
         )
+        disease = Entity(
+            type="disease",
+            name="Ovarian cancer",
+            canonical_id="mondo:000 ovarian",
+            entity_metadata=json.dumps({"aliases": ["ovarian carcinoma"]}),
+        )
         session.add(drug)
         session.add(gene)
         session.add(paper)
+        session.add(disease)
         session.flush()
         relation = Relation(subject_id=drug.id, predicate="targets", object_id=gene.id)
         session.add(relation)
@@ -83,6 +90,7 @@ def test_read_entities_and_relations_round_trip(tmp_path):
         "gtopdb:22",
         "hgnc:HGNC:5293",
         "pubmed:12345",
+        "mondo:000 ovarian",
     }
 
     drug_id = next(e["id"] for e in entities if e["canonical_id"] == "gtopdb:22")
@@ -92,6 +100,8 @@ def test_read_entities_and_relations_round_trip(tmp_path):
     # Genes export only "aliases", dropping the rest of their metadata blob.
     assert gene["metadata"] == {"aliases": ["5-HT2A"]}
     assert paper["metadata"] == {"journal": "Example Journal", "year": "2024"}
+    disease = next(e for e in entities if e["canonical_id"] == "mondo:000 ovarian")
+    assert disease["metadata"] == {"aliases": ["ovarian carcinoma"]}
 
     assert len(relations) == 1
     assert relations[0]["subject_id"] == drug_id

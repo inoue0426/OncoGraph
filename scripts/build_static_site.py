@@ -58,7 +58,7 @@ def _exported_metadata(entity_type: str, raw_metadata: str | None) -> dict | Non
     metadata = json.loads(raw_metadata)
     if entity_type == "PAPER":
         return metadata
-    if entity_type == "GENE":
+    if entity_type in {"GENE", "DISEASE"}:
         aliases = metadata.get("aliases")
         return {"aliases": aliases} if aliases else None
     return None

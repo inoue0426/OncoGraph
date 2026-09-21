@@ -89,6 +89,24 @@ transcription-factor-target regulation from TRRUST (CC BY-SA 4.0); and normal-ti
 summaries from the GTEx Portal (open access, aggregate median expression only). See `docs/SOURCES.md`
 and `docs/MECHANISTIC_SOURCES.md`.
 
+### Explorer MVP の読み方
+
+検索は entity 名・canonical ID・登録 alias の決定論的検索です。`<疾患名> drug(s)` の入力は、
+一致した Disease から `Disease ← Gene ← Drug` の保存済み relation を辿ります。データにない経路や同義語は
+推測せず、結果がなければ未収録として表示します。結果カードには表示理由を、詳細画面には Relation と
+Evidence（source、source ID、source URL、取得日または release、根拠種別）を表示します。
+
+`approved_indication`、`clinical_trial_enrollment`、`target_disease_association` は別々の根拠種別です。
+ClinicalTrials.gov の登録は試験の存在・登録情報を示すもので、有効性や承認の根拠ではありません。複数 source の
+証拠は統合して強く見せず別行で保持し、`supports` と `contradicts` が共存する場合は警告を表示します。
+Evidence が不足する場合も補完しません。
+
+現行の公開更新で利用するのは `refresh-data.yml` に実際に記載された HGNC、Gene Ontology、GtoPdb、
+ClinicalTrials.gov、Open Targets、DrugMechDB、ChEMBL、TRRUST、GTEx などの公開データです。
+MONDO/EFO の独立 ontology 取込、CIViC、Open Targets の全機能、openFDA はこの MVP の公開更新には
+含まれません。次の追加候補として、疾病 identifier/alias（MONDO/EFO）、臨床 evidence（CIViC）、医薬品
+安全性・ラベル情報（openFDA）を、provenance と根拠種別を保ったまま追加します。
+
 ## Data model
 
 ```text

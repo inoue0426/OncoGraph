@@ -136,6 +136,25 @@ footer {
   font-size: 0.85rem;
 }
 
+.result-reason {
+  flex-basis: 100%;
+  color: #8b949e;
+  font-size: 0.8rem;
+}
+
+.relation-summary {
+  margin-top: 6px;
+}
+
+.relation-inventory {
+  margin: 20px 0;
+}
+
+.relation-inventory h3 {
+  font-size: 1rem;
+  color: #8b949e;
+}
+
 .empty {
   color: #8b949e;
 }
