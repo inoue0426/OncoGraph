@@ -1,4 +1,4 @@
-// The workflow imports these ten bounded sources into a static snapshot.
+// The workflow imports these eleven bounded sources into a static snapshot.
 // Evidence counts are read from the deployed relations, not hard-coded.
 const PUBLIC_SOURCES = [
   { name: "HGNC", url: "https://www.genenames.org/", keys: [], scope: "Human gene names and identifiers; entity input only." },
@@ -11,6 +11,7 @@ const PUBLIC_SOURCES = [
   { name: "GTEx", url: "https://gtexportal.org/", keys: ["gtex"], scope: "Aggregate median expression in normal tissues; no individual-level data." },
   { name: "ChEMBL", url: "https://www.ebi.ac.uk/chembl/", keys: ["chembl"], scope: "Mechanism of action records for drugs resolved from the GtoPdb drug-name set." },
   { name: "CIViC", url: "https://civicdb.org/", keys: ["civic"], scope: "Accepted molecular evidence returned for nine selected cancer genes; not the full CIViC database." },
+  { name: "Reactome", url: "https://reactome.org/", keys: ["reactome"], scope: "Human pathway memberships for nine selected cancer genes, mapped by exact NCBI Gene IDs in HGNC; not the entire pathway catalog." },
 ];
 
 function renderDataSources(statsData) {
@@ -72,6 +73,6 @@ function renderDataSources(statsData) {
   caveat.textContent = "Evidence rows count links stored in this index, not the number of unique upstream records or the size of each database. Zero means no edge evidence from that source in this snapshot; HGNC contributes gene entities, so an edge count does not apply. Trial registration does not show efficacy or approval.";
   const excluded = document.createElement("p");
   excluded.className = "source-note";
-  excluded.textContent = "Not in this public refresh: Reactome, DGIdb, OncoKB, Europe PMC, openFDA, and the full Open Targets or CIViC datasets. Some have adapters or documentation only.";
+  excluded.textContent = "External references only: OncoKB and COSMIC link to their own sites; their annotations are not imported, counted or labeled as OncoGraph evidence. COSMIC may require login. Not in this public refresh: DGIdb, Europe PMC, openFDA, and the full Reactome, Open Targets or CIViC datasets.";
   holder.replaceChildren(date, scroll, caveat, excluded);
 }

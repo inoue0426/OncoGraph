@@ -44,7 +44,7 @@ def import_source(
     hgnc_complete_set: str = typer.Option(
         None,
         "--hgnc-complete-set",
-        help="HGNC complete-set TSV, for resolving bare gene symbols (required for the trrust source)",
+        help="HGNC complete-set TSV (required for trrust; maps civic genes and scopes reactome)",
     ),
 ) -> None:
     """Import a locally permitted source file into the database.
@@ -65,6 +65,8 @@ def import_source(
         if not hgnc_complete_set:
             raise typer.BadParameter("--hgnc-complete-set is required for the trrust source")
         adapter = adapter_cls(path, hgnc_complete_set, release=release)
+    elif source in {"reactome", "civic"}:
+        adapter = adapter_cls(path, release=release, hgnc_path=hgnc_complete_set)
     else:
         adapter = adapter_cls(path, release=release)
     create_db_and_tables()

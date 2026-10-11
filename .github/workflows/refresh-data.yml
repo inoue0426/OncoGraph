@@ -7,7 +7,9 @@ on:
     paths:
       - scripts/fetch_open_drug_associations.py
       - scripts/fetch_civic_evidence.py
+      - scripts/fetch_reactome.py
       - src/oncograph/sources/civic.py
+      - src/oncograph/sources/reactome.py
       - .github/workflows/refresh-data.yml
   schedule:
     - cron: "17 7 * * 1"
@@ -34,6 +36,7 @@ jobs:
       - run: python scripts/fetch_trrust.py
       - run: python scripts/fetch_gtex_expression.py
       - run: python scripts/fetch_civic_evidence.py
+      - run: python scripts/fetch_reactome.py
       - name: Extract real drug names from the GtoPdb interactions file for ChEMBL lookup
         run: |
           python -c "
@@ -92,7 +95,11 @@ jobs:
       - name: Import curated CIViC evidence
         env:
           ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
-        run: oncograph import-source civic data/raw/civic_evidence.json --release "$RELEASE"
+        run: oncograph import-source civic data/raw/civic_evidence.json --hgnc-complete-set data/raw/hgnc_complete_set.txt --release "$RELEASE"
+      - name: Import Reactome human pathways for nine selected cancer genes
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source reactome data/raw/NCBI2Reactome.txt --hgnc-complete-set data/raw/hgnc_complete_set.txt --release "$RELEASE"
       - name: Build static search index
         env:
           ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db

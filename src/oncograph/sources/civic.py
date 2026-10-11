@@ -25,6 +25,7 @@ being forced into ``confidence``. ``evidence_direction`` maps to
 ``claim_state`` (DOES_NOT_SUPPORT -> contradicts).
 """
 
+import csv
 import json
 from collections.abc import Iterable
 from pathlib import Path
@@ -66,9 +67,24 @@ class CivicAdapter(SourceAdapter):
         license="CC0",
     )
 
-    def __init__(self, json_path: str | Path, release: str | None = None):
+    def __init__(
+        self, json_path: str | Path, release: str | None = None,
+        hgnc_path: str | Path | None = None,
+    ):
         self.json_path = Path(json_path)
         self.release = release
+        self.hgnc_path = Path(hgnc_path) if hgnc_path else None
+
+    def _gene_ids(self) -> dict[str, str]:
+        if self.hgnc_path is None:
+            return {}
+        with self.hgnc_path.open(encoding="utf-8", newline="") as handle:
+            return {
+                (row.get("entrez_id") or "").strip(): (row.get("hgnc_id") or "").strip()
+                for row in csv.DictReader(handle, delimiter="\t")
+                if (row.get("entrez_id") or "").strip()
+                and (row.get("hgnc_id") or "").strip()
+            }
 
     def _records(self) -> list[dict]:
         return json.loads(self.json_path.read_text(encoding="utf-8"))
@@ -99,6 +115,14 @@ class CivicAdapter(SourceAdapter):
                 profiles[profile_id] = row
         return profiles
 
+    def _variants(self) -> dict[str, dict]:
+        variants: dict[str, dict] = {}
+        for row in self._records():
+            variant_id = str(row.get("variant_id") or "").strip()
+            if variant_id and row.get("variant_name") and variant_id not in variants:
+                variants[variant_id] = row
+        return variants
+
     def iter_entities(self) -> Iterable[EntityRecord]:
         for doid, row in self._diseases().items():
             yield EntityRecord(
@@ -121,6 +145,13 @@ class CivicAdapter(SourceAdapter):
                 identifiers=(ExternalIdentifier("civic", profile_id),),
                 metadata={"release": self.release, "gene_name": row.get("gene_name")},
             )
+        for variant_id, row in self._variants().items():
+            yield EntityRecord(
+                entity_type="biomarker",
+                name=f"{row.get('gene_name') or 'Gene'} {row['variant_name']}",
+                identifiers=(ExternalIdentifier("civic_variant", variant_id),),
+                metadata={"release": self.release, "civic_variant_id": variant_id},
+            )
 
     def _publication(self, row: dict) -> ExternalIdentifier | None:
         if row.get("source_type") == "PUBMED" and row.get("citation_id"):
@@ -133,6 +164,9 @@ class CivicAdapter(SourceAdapter):
             "molecular_profile": row.get("molecular_profile"),
             "molecular_profile_id": row.get("molecular_profile_id"),
             "evidence_level": row.get("evidence_level"),
+            "evidence_rating": row.get("evidence_rating"),
+            "profile_variants": row.get("profile_variants"),
+            "variant_hgvs": row.get("variant_hgvs"),
             "significance": row.get("significance"),
             "civic_evidence_type": row.get("evidence_type"),
             "civic_evidence_id": row.get("evidence_id"),
@@ -142,6 +176,44 @@ class CivicAdapter(SourceAdapter):
         }
 
     def iter_edges(self) -> Iterable[EdgeRecord]:
+        # Variant membership is structural. It does not transfer a profile's
+        # clinical claim to every member of a complex molecular profile.
+        memberships: set[tuple[str, str]] = set()
+        gene_ids = self._gene_ids()
+        gene_variants: set[tuple[str, str]] = set()
+        for row in self._records():
+            variant_id = str(row.get("variant_id") or "").strip()
+            profile_id = str(row.get("molecular_profile_id") or "").strip()
+            gene_id = gene_ids.get(str(row.get("gene_entrez_id") or ""))
+            gene_variant = (gene_id or "", variant_id)
+            if (
+                gene_id and variant_id and row.get("variant_name")
+                and gene_variant not in gene_variants
+            ):
+                gene_variants.add(gene_variant)
+                yield EdgeRecord(
+                    subject=ExternalIdentifier("hgnc", gene_id),
+                    predicate="has_civic_variant",
+                    object=ExternalIdentifier("civic_variant", variant_id),
+                    source_record_id=f"gene:{gene_id}:variant:{variant_id}",
+                    source_url=f"https://civicdb.org/links/variant/{variant_id}",
+                    context={"release": self.release, "variant_name": row.get("variant_name")},
+                    evidence_type="civic_gene_variant_membership",
+                )
+            pair = (variant_id, profile_id)
+            if (not all(pair) or pair in memberships or not row.get("variant_name")
+                    or not row.get("molecular_profile")):
+                continue
+            memberships.add(pair)
+            yield EdgeRecord(
+                subject=ExternalIdentifier("civic_variant", variant_id),
+                predicate="member_of_molecular_profile",
+                object=ExternalIdentifier("civic", profile_id),
+                source_record_id=f"variant:{variant_id}:profile:{profile_id}",
+                source_url=f"https://civicdb.org/links/variant/{variant_id}",
+                context={"release": self.release, "gene_name": row.get("gene_name")},
+                evidence_type="civic_profile_membership",
+            )
         for row in self._records():
             doid = (row.get("disease_doid") or "").strip()
             if not doid:
@@ -181,8 +253,14 @@ class CivicAdapter(SourceAdapter):
                 gene_entrez_id = row.get("gene_entrez_id")
                 if not gene_entrez_id:
                     continue
+                hgnc_id = gene_ids.get(str(gene_entrez_id))
+                if self.hgnc_path is not None and not hgnc_id:
+                    continue
                 yield EdgeRecord(
-                    subject=ExternalIdentifier("ncbigene", str(gene_entrez_id)),
+                    subject=ExternalIdentifier(
+                        "hgnc" if hgnc_id else "ncbigene",
+                        hgnc_id or str(gene_entrez_id),
+                    ),
                     predicate="clinically_associated_with",
                     object=ExternalIdentifier("doid", doid),
                     source_record_id=str(row.get("evidence_id")),

@@ -25,6 +25,9 @@ from .registry import registry
 
 _SPECIES = "Homo sapiens"
 _FIELDNAMES = ("ncbigene_id", "pathway_id", "url", "pathway_name", "evidence_code", "species")
+_CANCER_GENES = frozenset(
+    {"EGFR", "BRAF", "KRAS", "ALK", "ERBB2", "TP53", "PIK3CA", "BRCA1", "BRCA2"}
+)
 
 
 def _read_rows(path: Path) -> Iterable[dict]:
@@ -44,19 +47,42 @@ class ReactomeAdapter(SourceAdapter):
         redistribution=RedistributionPolicy.OPEN,
         notes=(
             "Reactome data and files derived from it are released under CC0. Only the "
-            "official NCBI Gene-to-pathway mapping file is used, filtered to Homo sapiens."
+            "official NCBI Gene-to-pathway mapping file is used, filtered to Homo sapiens. "
+            "Public refresh further limits edges to nine cancer genes via HGNC's exact NCBI IDs."
         ),
         source_type=SourceType.CURATED_DATABASE,
         license="CC0",
     )
 
-    def __init__(self, ncbi2reactome_path: str | Path, release: str | None = None):
+    def __init__(
+        self, ncbi2reactome_path: str | Path, release: str | None = None,
+        hgnc_path: str | Path | None = None,
+    ):
         self.ncbi2reactome_path = Path(ncbi2reactome_path)
         self.release = release
+        self.hgnc_path = Path(hgnc_path) if hgnc_path else None
+
+    def _selected_ids(self) -> dict[str, str] | None:
+        if self.hgnc_path is None:
+            return None
+        with self.hgnc_path.open(encoding="utf-8", newline="") as handle:
+            return {
+                (row.get("entrez_id") or "").strip(): (row.get("hgnc_id") or "").strip()
+                for row in csv.DictReader(handle, delimiter="\t")
+                if row.get("symbol") in _CANCER_GENES
+                and (row.get("entrez_id") or "").strip()
+                and (row.get("hgnc_id") or "").strip()
+            }
+
+    def _selected_rows(self) -> Iterable[dict]:
+        selected = self._selected_ids()
+        for row in _read_rows(self.ncbi2reactome_path):
+            if selected is None or (row.get("ncbigene_id") or "").strip() in selected:
+                yield row
 
     def _pathways(self) -> dict[str, dict]:
         pathways: dict[str, dict] = {}
-        for row in _read_rows(self.ncbi2reactome_path):
+        for row in self._selected_rows():
             pathway_id = (row.get("pathway_id") or "").strip()
             if pathway_id and pathway_id not in pathways:
                 pathways[pathway_id] = row
@@ -72,13 +98,17 @@ class ReactomeAdapter(SourceAdapter):
             )
 
     def iter_edges(self) -> Iterable[EdgeRecord]:
-        for row in _read_rows(self.ncbi2reactome_path):
+        selected = self._selected_ids()
+        for row in self._selected_rows():
             ncbigene_id = (row.get("ncbigene_id") or "").strip()
             pathway_id = (row.get("pathway_id") or "").strip()
             if not ncbigene_id or not pathway_id:
                 continue
             yield EdgeRecord(
-                subject=ExternalIdentifier("ncbigene", ncbigene_id),
+                subject=ExternalIdentifier(
+                    "hgnc" if selected is not None else "ncbigene",
+                    selected[ncbigene_id] if selected is not None else ncbigene_id,
+                ),
                 predicate="part_of_pathway",
                 object=ExternalIdentifier("reactome", pathway_id),
                 source_record_id=f"{ncbigene_id}:{pathway_id}",

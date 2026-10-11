@@ -35,6 +35,7 @@ query GeneEvidence($symbols: [String!]) {
       entrezId
       variants {
         nodes {
+          id
           name
           ... on GeneVariant {
             molecularProfiles {
@@ -48,6 +49,8 @@ query GeneEvidence($symbols: [String!]) {
                     evidenceType
                     evidenceDirection
                     evidenceLevel
+                    evidenceRating
+                    variantHgvs
                     significance
                     therapies { name ncitId }
                     disease { name doid }
@@ -102,9 +105,13 @@ def main() -> None:
                             "evidence_id": item.get("id"),
                             "gene_name": gene_name,
                             "gene_entrez_id": gene_entrez_id,
+                            "variant_id": variant.get("id"),
+                            "variant_name": variant.get("name"),
+                            "variant_hgvs": item.get("variantHgvs"),
                             "evidence_type": item.get("evidenceType"),
                             "evidence_direction": item.get("evidenceDirection"),
                             "evidence_level": item.get("evidenceLevel"),
+                            "evidence_rating": item.get("evidenceRating"),
                             "significance": item.get("significance"),
                             "therapies": [
                                 {"name": t.get("name"), "ncit_id": t.get("ncitId")}
@@ -126,6 +133,13 @@ def main() -> None:
 
     if not records:
         raise RuntimeError("CIViC returned no accepted evidence; refusing an empty snapshot")
+    profile_variants: dict[str, set[str]] = {}
+    for record in records:
+        profile_variants.setdefault(str(record["molecular_profile_id"]), set()).add(
+            f"{record['gene_name']} {record['variant_name']}"
+        )
+    for record in records:
+        record["profile_variants"] = sorted(profile_variants[str(record["molecular_profile_id"])])
     OUTPUT_PATH.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
     manifest = {
         "source": "CIViC",

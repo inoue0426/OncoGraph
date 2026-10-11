@@ -91,6 +91,28 @@ def test_reactome_gene_pathway_edge_resolves_and_records_evidence(tmp_path):
     assert all(e.source_type == "curated_database" for e in evidence_rows)
 
 
+def test_reactome_public_scope_uses_hgnc_canonical_ids(tmp_path):
+    mapping = tmp_path / "hgnc.tsv"
+    mapping.write_text(
+        "hgnc_id\tsymbol\tentrez_id\nHGNC:3236\tEGFR\t1956\n"
+        "HGNC:9999\tOTHER\t13649\n", encoding="utf-8"
+    )
+    path = tmp_path / "NCBI2Reactome.txt"
+    path.write_text(REACTOME_TSV, encoding="utf-8")
+    adapter = ReactomeAdapter(path, hgnc_path=mapping)
+    edges = list(adapter.iter_edges())
+    assert len(edges) == 2
+    assert all(edge.subject == ExternalIdentifier("hgnc", "HGNC:3236") for edge in edges)
+
+    with _memory_session() as session:
+        import_entities(session, [EntityRecord(
+            entity_type="gene", name="EGFR",
+            identifiers=(ExternalIdentifier("hgnc", "HGNC:3236"),),
+        )])
+        report = import_adapter(session, adapter)
+    assert report.edges_created == 2
+
+
 # --- CIViC -----------------------------------------------------------------
 
 CIVIC_RECORDS = [
@@ -211,6 +233,31 @@ def test_civic_profile_is_browsable_with_its_own_disease_evidence(tmp_path):
     context = json.loads(evidence.context)
     assert context["molecular_profile_id"] == "815"
     assert context["civic_review_status"] == "ACCEPTED"
+
+
+def test_civic_variant_membership_preserves_profile_evidence_scope(tmp_path):
+    mapping = tmp_path / "hgnc.tsv"
+    mapping.write_text("hgnc_id\tsymbol\tentrez_id\nHGNC:3236\tEGFR\t1956\n")
+    records = [{
+        **CIVIC_RECORDS[0], "molecular_profile_id": 815,
+        "variant_id": 42, "variant_name": "T790M", "variant_hgvs": "p.T790M",
+        "profile_variants": ["EGFR T790M"], "evidence_rating": 5,
+    }]
+    path = tmp_path / "civic.json"
+    path.write_text(json.dumps(records))
+    adapter = CivicAdapter(path, hgnc_path=mapping)
+    with _memory_session() as session:
+        import_entities(session, [EntityRecord(
+            entity_type="gene", name="EGFR",
+            identifiers=(ExternalIdentifier("hgnc", "HGNC:3236"),),
+        )])
+        import_adapter(session, adapter)
+        variant = session.exec(select(Entity).where(Entity.canonical_id == "civic_variant:42")).one()
+        links = session.exec(select(Relation).where(Relation.object_id == variant.id)).all()
+        evidence = session.exec(select(Evidence).where(Evidence.source_id == "238")).first()
+    assert variant.name == "EGFR T790M"
+    assert [link.predicate for link in links] == ["has_civic_variant"]
+    assert json.loads(evidence.context)["evidence_rating"] == 5
 
 
 # --- DGIdb -------------------------------------------------------------------

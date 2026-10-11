@@ -35,7 +35,9 @@ In the explorer, choose a suggested drug, press **Surprise me**, or search for o
 
 **Explore by cancer name** groups disease entities currently in the public index using explicit matches on their names. Open a subtype to inspect its direct relations and, when available, accepted CIViC molecular-profile evidence. The groups are a browsing shortcut, not a complete ontology or a claim that all matching diseases are equivalent.
 
-CIViC records are retained separately with their molecular profile, evidence type, level, significance, review status, source record, and support/contradiction direction. A molecular profile can represent one or more variants or another genomic event; it must not be treated as a single variant by default. CIViC curated evidence is neither an approved indication nor a recommendation for a patient.
+CIViC records retain their molecular profile, named variants, HGVS expression when available, evidence type, level, trust rating, significance, review status, source record, and support/contradiction direction. A profile can contain multiple variants; its clinical evidence does not necessarily apply to each member. Filter to accepted level A/B records rated at least 4/5 by CIViC to focus on stronger study-level evidence; this does not guarantee a positive result or clinical actionability. OncoKB and COSMIC are outbound lookups only; their content is not imported or graded here, and COSMIC may require login.
+
+Reactome human pathway memberships for the same nine genes are browsable from those gene and pathway entries. Membership is pathway context, not proof of drug efficacy or a causal gene–disease relationship.
 
 ### Disease evidence overview and shareable views
 
@@ -102,7 +104,7 @@ This serves graph tools via the [Model Context Protocol](https://modelcontextpro
 
 ## Data sources and refresh
 
-**The public explorer uses a generated snapshot, not live database connections.** The scheduled/manual [`refresh-data.yml`](.github/workflows/refresh-data.yml) workflow imports the following ten scoped inputs into temporary SQLite, exports the site index, and uploads it as a build artifact. [`pages.yml`](.github/workflows/pages.yml) publishes the latest successful artifact. The site shows the snapshot generation time and counts evidence rows by source under **Data sources**; those counts are neither unique upstream record counts nor the size of the original databases. Raw downloads and SQLite are not committed to Git. See [hosting documentation](docs/HOSTING.md).
+**The public explorer uses a generated snapshot, not live database connections.** The scheduled/manual [`refresh-data.yml`](.github/workflows/refresh-data.yml) workflow imports the following eleven scoped inputs into temporary SQLite, exports the site index, and uploads it as a build artifact. [`pages.yml`](.github/workflows/pages.yml) publishes the latest successful artifact. The site shows the snapshot generation time and counts evidence rows by source under **Data sources**; those counts are neither unique upstream record counts nor the size of the original databases. Raw downloads and SQLite are not committed to Git. See [hosting documentation](docs/HOSTING.md).
 
 | Input in public refresh | What is actually included |
 | --- | --- |
@@ -116,8 +118,11 @@ This serves graph tools via the [Model Context Protocol](https://modelcontextpro
 | [GTEx](https://gtexportal.org/) | Open aggregate median expression in normal tissues; no individual-level data |
 | [ChEMBL](https://www.ebi.ac.uk/chembl/) | Mechanism-of-action data looked up for the GtoPdb approved-drug name set |
 | [CIViC](https://civicdb.org/) | Accepted molecular evidence returned for nine selected cancer genes; not the full database |
+| [Reactome](https://reactome.org/) | Human pathway memberships for those nine genes, matched by exact NCBI Gene ID from HGNC; not all Reactome mappings |
 
-**Not in this public refresh:** Reactome, DGIdb, OncoKB, Europe PMC, openFDA, a standalone MONDO/EFO ontology import, and full Open Targets/CIViC exports. Some of these have adapters or documentation in the repository, but their presence in the code does not mean their data appear on the public site. AACT and DrugComb/NCI ALMANAC/DREAM/AstraZeneca–Sanger remain scaffolds rather than active refresh inputs.
+**External references only:** [OncoKB](https://www.oncokb.org/) and [COSMIC](https://cancer.sanger.ac.uk/cosmic/) have outbound gene or variant lookup links. Neither dataset is imported into the snapshot nor used to grade evidence. OncoKB API access requires a token/license; COSMIC downloads require registration and are subject to its reuse terms. No restricted datasets or credentials are shipped.
+
+**Not in this public refresh:** DGIdb, Europe PMC, openFDA, a standalone MONDO/EFO ontology import, and full Reactome/Open Targets/CIViC exports. Some of these have adapters or documentation in the repository, but their presence in the code does not mean their data appear on the public site. AACT and DrugComb/NCI ALMANAC/DREAM/AstraZeneca–Sanger remain scaffolds rather than active refresh inputs.
 
 ### Attribution and licensing
 
@@ -128,6 +133,7 @@ The repository does not bundle restricted upstream datasets, private credentials
 - **DrugMechDB:** CC0.
 - **ChEMBL:** CC BY-SA 3.0.
 - **CIViC:** CC0.
+- **Reactome:** CC0 database content; selected NCBI Gene-to-pathway mappings only.
 - **TRRUST:** CC BY-SA 4.0.
 - **GTEx:** open-access aggregate median-expression summaries only.
 - **ClinicalTrials.gov:** trial registry metadata; registration is not evidence of clinical efficacy.
