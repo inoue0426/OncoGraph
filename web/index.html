@@ -7,21 +7,25 @@
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="evidence-trails.css" />
     <link rel="stylesheet" href="guide.css" />
+    <link rel="stylesheet" href="dashboard.css" />
   </head>
   <body>
     <main>
       <h1>OncoGraph</h1>
-      <p>Evidence-first oncology knowledge graph.</p>
+      <p>Explore oncology evidence by disease, drug, gene, and source.</p>
+      <label class="search-label" for="search">Search the graph</label>
       <input
         id="search"
         type="search"
         placeholder="e.g. gefitinib, EGFR, ovarian cancer drugs, osimertinib trials"
       />
-      <section id="stats" class="stats" aria-label="Knowledge graph coverage" hidden></section>
+      <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
       <p class="examples-label">Try:</p>
       <div id="examples"></div>
       <section id="trail-highlights" class="trail-highlights" aria-label="Guided evidence trails" hidden></section>
-      <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
+      <details class="coverage"><summary>Dataset coverage</summary>
+        <section id="stats" class="stats" aria-label="Knowledge graph coverage" hidden></section>
+      </details>
       <p id="status">Loading…</p>
       <section id="results"></section>
       <section id="detail" hidden></section>
@@ -34,6 +38,8 @@
     <script src="evidence-trails.js" defer></script>
     <script src="disease-guide.js" defer></script>
     <script src="civic-evidence.js" defer></script>
+    <script src="share-state.js" defer></script>
+    <script src="disease-dashboard.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

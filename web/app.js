@@ -608,13 +608,14 @@ function renderIntentEmpty(intent) {
 
 // --- Entity detail view --------------------------------------------------------
 
-function closeDetail() {
+function closeDetail({ historyMode = "push" } = {}) {
   detail.hidden = true;
   detail.replaceChildren();
   evidencePanel.hidden = true;
   evidencePanel.replaceChildren();
   results.hidden = false;
   status.hidden = false;
+  updateShareUrl({ query: search.value.trim() }, historyMode);
 }
 
 function renderEntityHeader(entity) {
@@ -686,19 +687,6 @@ function renderDrugDetail(entity) {
   return sections;
 }
 
-function renderDiseaseDetail(entity) {
-  const sections = [];
-  const biomarkers = neighborsOfType(entity.id, "biomarker");
-  if (biomarkers.length) sections.push(renderTierGroup("curated_database", biomarkers, { label: "CIViC molecular profiles" }));
-  const genes = neighborsOfType(entity.id, "gene");
-  if (genes.length) sections.push(renderTierGroup("curated_database", genes, { label: "Related genes" }));
-  const drugs = neighborsOfType(entity.id, "drug");
-  const viaGenes = diseaseRelatedDrugs(entity);
-  if (drugs.length) sections.push(renderTierGroup("curated_database", drugs, { label: "Directly related drugs" }));
-  if (viaGenes.length) sections.push(renderTierGroup("computed", viaGenes, { label: "Drugs via related genes" }));
-  return sections;
-}
-
 // Every non-root entity type type of GO term is filtered when it's a root
 // term (e.g. "biological_process") or has an unusually large child_count --
 // issue #5/#8's "low-information term" concern.
@@ -766,9 +754,10 @@ function renderRelationInventory(entity) {
   return section;
 }
 
-function renderDetail(entityId) {
+function renderDetail(entityId, { historyMode = "push", filter = "all" } = {}) {
   const entity = entityById.get(entityId);
   if (!entity) return;
+  clearTimeout(searchDebounce);
 
   results.hidden = true;
   status.hidden = true;
@@ -783,12 +772,21 @@ function renderDetail(entityId) {
   back.addEventListener("click", closeDetail);
 
   const header = renderEntityHeader(entity);
-  const sections = entity.type === "drug"
+  const sections = entity.type === "disease"
+    ? [renderDiseaseDashboard(entity, filter)]
+    : entity.type === "drug"
     ? renderDrugDetail(entity)
-    : entity.type === "disease" ? renderDiseaseDetail(entity) : renderGenericDetail(entity);
+    : renderGenericDetail(entity);
   const inventory = renderRelationInventory(entity);
-  if (inventory) sections.unshift(inventory);
-  const civicEvidence = renderCivicEvidence(entity);
+  if (inventory) {
+    const disclosure = document.createElement("details");
+    disclosure.className = "relation-disclosure";
+    const summary = document.createElement("summary");
+    summary.textContent = "All recorded relations and evidence";
+    disclosure.append(summary, inventory);
+    sections.push(disclosure);
+  }
+  const civicEvidence = entity.type === "disease" ? null : renderCivicEvidence(entity);
   if (civicEvidence) sections.unshift(civicEvidence);
   const trail = entity.type === "drug" ? renderEvidenceTrail(entity) : null;
   const graph = renderLocalGraph(entity);
@@ -800,7 +798,10 @@ function renderDetail(entityId) {
     sections.push(empty);
   }
 
-  detail.replaceChildren(back, header, ...(trail ? [trail] : []), graph, ...sections);
+  const share = renderShareControl(entity);
+  detail.replaceChildren(back, header, ...(share ? [share] : []), ...(trail ? [trail] : []),
+    ...(entity.type === "disease" ? [sections[0], graph, ...sections.slice(1)] : [graph, ...sections]));
+  updateShareUrl({ entity, filter }, historyMode);
 }
 
 // --- Local graph visualization (1-2 hop, SVG) ----------------------------------
@@ -970,6 +971,8 @@ function buildGraphSvg(centerEntity, hops, typeFilter) {
 function renderSearchResultCard(entity) {
   const card = document.createElement("article");
   card.dataset.id = entity.id;
+  card.tabIndex = 0;
+  card.setAttribute("role", "button");
 
   const name = document.createElement("strong");
   name.textContent = entity.name;
@@ -1051,7 +1054,11 @@ function render() {
 let searchDebounce = null;
 function debouncedRender() {
   clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(render, 120);
+  searchDebounce = setTimeout(() => {
+    if (!detail.hidden) closeDetail({ historyMode: "none" });
+    render();
+    updateShareUrl({ query: search.value.trim() }, "replace");
+  }, 120);
 }
 
 function renderExamples() {
@@ -1065,6 +1072,7 @@ function renderExamples() {
       button.addEventListener("click", () => {
         search.value = q;
         render();
+        updateShareUrl({ query: q });
         search.scrollIntoView({ behavior: "smooth", block: "start" });
       });
       return button;
@@ -1080,6 +1088,14 @@ detail.addEventListener("click", (event) => {
 results.addEventListener("click", (event) => {
   const card = event.target.closest("article[data-id]");
   if (card && !event.target.closest("a, button")) renderDetail(card.dataset.id);
+});
+
+results.addEventListener("keydown", (event) => {
+  const card = event.target.closest("article[data-id]");
+  if (card && event.target === card && (event.key === "Enter" || event.key === " ")) {
+    event.preventDefault();
+    renderDetail(card.dataset.id);
+  }
 });
 
 function renderAttribution() {
@@ -1161,6 +1177,7 @@ function renderStatCard({ value, label, title, onClick }) {
 function renderTypeListing(type) {
   const list = entitiesByType.get(type) || [];
   search.value = "";
+  updateShareUrl();
   detail.hidden = true;
   detail.replaceChildren();
   evidencePanel.hidden = true;
@@ -1300,10 +1317,14 @@ Promise.all([
     renderTrailHighlights();
     renderDiseaseGuide();
     renderStats(statsData || computeClientSideStats());
-    render();
+    restoreShareUrl();
   })
   .catch(() => {
     status.textContent = "Search index unavailable";
   });
 
 search.addEventListener("input", debouncedRender);
+window.addEventListener("popstate", () => {
+  clearTimeout(searchDebounce);
+  restoreShareUrl();
+});

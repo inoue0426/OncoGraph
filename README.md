@@ -37,6 +37,12 @@ In the explorer, choose a suggested drug, press **Surprise me**, or search for o
 
 CIViC records are retained separately with their molecular profile, evidence type, level, significance, review status, source record, and support/contradiction direction. A molecular profile can represent one or more variants or another genomic event; it must not be treated as a single variant by default. CIViC curated evidence is neither an approved indication nor a recommendation for a patient.
 
+### Disease evidence overview and shareable views
+
+Open a disease to see separate sections for Open Targets approved-stage drug indications, CIViC molecular profiles, related genes, and two-step drug–gene–disease paths. Use **Show evidence type** to focus one section. The approval-stage data is not a jurisdiction-specific prescribing label; a two-step path is a research lead, not an indication. The full relation inventory is available under **All recorded relations and evidence**.
+
+**Copy link to this view** saves the entity's external canonical ID and, for diseases, the selected evidence section in the URL. Search queries can also be linked. Browser back/forward restores these views after the index loads. A previously shared entity may disappear from a later snapshot; in that case the explorer reports that it is missing and offers search. No account or server-side storage is involved.
+
 ## How OncoGraph works
 
 ```text

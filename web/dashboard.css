@@ -1,0 +1,34 @@
+.disease-dashboard {
+  border: 1px solid #365269;
+  border-radius: 8px;
+  background: #111c29;
+  padding: 18px;
+  margin: 20px 0;
+}
+.disease-dashboard h3 { margin: 0 0 6px; }
+.disease-dashboard > p, .dashboard-group > p, .dashboard-more { color: #b8c6d4; margin: 6px 0 14px; }
+.dashboard-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 18px 0; }
+.dashboard-count { border: 1px solid #30475a; border-radius: 6px; padding: 10px 12px; }
+.dashboard-count strong { display: block; font-size: 1.4rem; }
+.dashboard-count span { color: #b8c6d4; font-size: .85rem; }
+.dashboard-filter { display: block; font-weight: 600; margin: 18px 0; }
+.dashboard-filter select { display: block; width: min(100%, 400px); padding: 9px; margin-top: 6px; border: 1px solid #58738b; border-radius: 6px; background: #172636; color: #e6edf3; font: inherit; }
+.dashboard-group { border-top: 1px solid #30475a; padding-top: 14px; margin-top: 18px; }
+.dashboard-group h4 { margin: 0; font-size: 1.02rem; }
+.dashboard-items { list-style: none; margin: 0; padding: 0; }
+.dashboard-items li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border: 1px solid #30475a; border-radius: 6px; padding: 10px 12px; margin: 6px 0; background: #152335; }
+.dashboard-more { font-size: .86rem; }
+.relation-disclosure { border-top: 1px solid #30475a; margin: 26px 0; padding-top: 12px; }
+.relation-disclosure summary, .coverage summary { cursor: pointer; color: #badcff; font-weight: 600; }
+.relation-disclosure .relation-inventory { max-height: 680px; overflow: auto; }
+.coverage { margin: 20px 0; padding: 12px 0; border-top: 1px solid #30363d; border-bottom: 1px solid #30363d; }
+.coverage .stats { margin-top: 14px; }
+.share-control { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 8px 0 20px; }
+.share-control button { border: 1px solid #58738b; border-radius: 6px; padding: 7px 12px; background: #172636; color: #d4e9ff; font: inherit; cursor: pointer; }
+.share-control button:hover { border-color: #79baff; }
+.share-control span { color: #b8c6d4; font-size: .9rem; }
+@media (max-width: 600px) {
+  main { padding: 24px 14px 48px; }
+  .disease-dashboard { padding: 14px; }
+  .dashboard-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
