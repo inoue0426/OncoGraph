@@ -64,6 +64,20 @@ function renderEvidenceTrail(drug) {
   filter.type = "search";
   filter.placeholder = "Type a disease name";
   label.append(filter);
+  const modeLabel = trailText("label", "Connection type", "trail-filter-label");
+  const mode = document.createElement("select");
+  for (const [value, title] of [
+    ["all", "All connected diseases"],
+    ["direct", "Direct recorded relation"],
+    ["via", "Via target gene"],
+    ["both", "Direct and via target"],
+  ]) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = title;
+    mode.append(option);
+  }
+  modeLabel.append(mode);
   const list = trailText("div", "", "trail-choices");
   const summary = trailText("p", "", "trail-count");
   const selected = trailText("div", "", "trail-selected");
@@ -97,10 +111,19 @@ function renderEvidenceTrail(drug) {
 
   function drawChoices() {
     const query = filter.value.trim().toLowerCase();
-    const matches = choices.filter(({ disease }) => disease.name.toLowerCase().includes(query));
+    const matches = choices.filter(({ disease, direct, via }) =>
+      disease.name.toLowerCase().includes(query) &&
+      (mode.value === "all" || mode.value === "direct" && direct.length ||
+        mode.value === "via" && via.length || mode.value === "both" && direct.length && via.length));
+    selected.hidden = !matches.length;
+    if (matches.length && !matches.some((choice) => choice.disease.id === current.disease.id)) {
+      current = matches[0];
+      drawSelection();
+    }
     list.replaceChildren();
     for (const choice of matches.slice(0, 12)) {
-      const button = trailText("button", choice.disease.name, "trail-choice");
+      const label = `${choice.disease.name} · ${choice.direct.length ? "direct" : ""}${choice.direct.length && choice.via.length ? " + " : ""}${choice.via.length ? "via target" : ""}`;
+      const button = trailText("button", label, "trail-choice");
       button.type = "button";
       button.setAttribute("aria-pressed", String(choice.disease.id === current.disease.id));
       button.addEventListener("click", () => {
@@ -115,7 +138,8 @@ function renderEvidenceTrail(drug) {
   }
 
   filter.addEventListener("input", drawChoices);
-  section.append(heading, intro, label, list, summary, selected, caveat);
+  mode.addEventListener("change", drawChoices);
+  section.append(heading, intro, label, modeLabel, list, summary, selected, caveat);
   drawChoices();
   drawSelection();
   return section;
@@ -125,9 +149,11 @@ function renderTrailHighlights() {
   const holder = document.querySelector("#trail-highlights");
   if (!holder) return;
   const preferred = ["osimertinib", "gefitinib", "erlotinib", "imatinib", "vemurafenib"];
-  const featured = preferred.map((name) => (entitiesByType.get("drug") || []).find((entity) => entity.name.toLowerCase() === name))
+  const drugs = entitiesByType.get("drug") || [];
+  const featured = preferred.map((name) => drugs.find((entity) => entity.name.toLowerCase() === name))
     .filter((entity) => entity && findEvidenceTrails(entity).length).slice(0, 3);
-  if (!featured.length) {
+  const discoverable = drugs.filter((drug) => findEvidenceTrails(drug).length);
+  if (!discoverable.length) {
     holder.hidden = true;
     return;
   }
@@ -137,6 +163,13 @@ function renderTrailHighlights() {
     button.addEventListener("click", () => renderDetail(drug.id));
     return button;
   });
-  holder.replaceChildren(trailText("h2", "Follow the evidence"), trailText("p", "Open a drug and follow its recorded links to diseases, one source at a time."), ...buttons);
+  const surprise = trailText("button", "Surprise me →", "trail-highlight");
+  surprise.type = "button";
+  surprise.addEventListener("click", () => {
+    const drug = discoverable[Math.floor(Math.random() * discoverable.length)];
+    renderDetail(drug.id);
+    detail.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  holder.replaceChildren(trailText("h2", "Follow the evidence"), trailText("p", "Pick a drug at random or open an example, then follow its recorded links to diseases, one source at a time."), surprise, ...buttons);
   holder.hidden = false;
 }

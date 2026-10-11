@@ -47,11 +47,11 @@ OPEN_TARGETS_DISEASES_JSON = RAW_DIR / "open_targets_target_diseases.json"
 OPEN_TARGETS_INDICATIONS_JSON = RAW_DIR / "open_targets_drug_indications.json"
 
 CTGOV_API = "https://clinicaltrials.gov/api/v2/studies"
-CTGOV_PAGE_SIZE = 20
+CTGOV_PAGE_SIZE = 60  # bounded first page; preserves one request per drug
 CTGOV_MIN_NAME_LENGTH = 4  # skip drug names too short/generic to search reliably
 
 OPEN_TARGETS_API = "https://api.platform.opentargets.org/api/v4/graphql"
-OPEN_TARGETS_TOP_K = 10
+OPEN_TARGETS_TOP_K = 20  # include more associations while keeping the static index bounded
 OPEN_TARGETS_MIN_SCORE = 0.4
 OPEN_TARGETS_MIN_DRUG_NAME_LENGTH = 4  # skip drug names too short/generic to search reliably
 OPEN_TARGETS_APPROVAL_STAGE = "APPROVAL"
@@ -414,6 +414,7 @@ def main() -> None:
                     "license_url": None,
                     "notes": "Public registry metadata only; preserve NCT identifiers.",
                     "query": "query.intr=<drug name>, name-match filtered",
+                    "page_size": CTGOV_PAGE_SIZE,
                     "min_drug_name_length": CTGOV_MIN_NAME_LENGTH,
                     "drug_count": len(drugs),
                     "trial_link_count": len(trials),

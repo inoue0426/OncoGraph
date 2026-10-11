@@ -7,12 +7,13 @@ snapshot: an entity index (`id`, `type`, `name`, `canonical_id`) and a relation 
 database is present, both are written empty. Kept intentionally minimal for the MVP; no full
 descriptions or per-entity metadata are exported.
 
-Data refresh and Pages deployment are two separate workflows, so an ordinary code push never
-refetches or reimports data, and deploying a UI-only change stays fast.
+Data refresh and Pages deployment are separate workflows. UI-only pushes redeploy quickly; a
+change to the drug association fetcher also launches a full refresh.
 
 ## `refresh-data.yml` — heavy data pipeline
 
-Triggered only by manual dispatch or a weekly schedule (never by push). It:
+Triggered by manual dispatch, a weekly schedule, or a push changing
+`scripts/fetch_open_drug_associations.py` on `main`. It:
 
 1. Fetches the open HGNC, GtoPdb, and Gene Ontology sources with `scripts/fetch_open_gene_sources.py`.
 2. Fetches drug-associated clinical trials (ClinicalTrials.gov API) and target-disease associations
@@ -33,7 +34,8 @@ be committed or published.
 
 ## `pages.yml` — lightweight deploy
 
-Triggered by every push to `main` and by manual dispatch. It does **not** fetch, import, or parse
+Triggered by every push to `main`, manual dispatch, or completion of a successful refresh.
+It does **not** fetch, import, or parse
 any upstream source. It finds the most recent successful `refresh-data.yml` run, downloads that
 run's `search-index` artifact, verifies `search-index.json` and `relations.json` are present and
 non-empty, copies them into `web/data/`, then deploys `web/` to Pages as-is. If no successful
@@ -42,14 +44,16 @@ non-empty, copies them into `web/data/`, then deploys `web/` to Pages as-is. If 
 
 Because it reuses the last known-good data, a pure UI/code change (editing `web/app.js`, adapters,
 etc.) redeploys in about a minute instead of waiting on a full refetch. To pick up new upstream
-data, run the "Refresh data" workflow manually (or wait for its Monday schedule) and then either
-push to `main` or dispatch "Pages" again.
+data, run "Refresh data" manually or wait for its Monday schedule; a successful run automatically
+starts a fresh Pages deployment. When the fetcher changes, the initial push deployment may briefly
+show the previous snapshot until the refresh and follow-up deployment finish.
 
 The currently published Pages site is left untouched until a `pages.yml` run completes successfully.
 
 The frontend (`web/app.js`) joins the two indexes client-side: selecting a drug shows its direct
-targets and clinical trials, plus diseases associated with those targets (a two-hop, drug→target→
-disease view, since no direct drug→disease indication source is wired in yet).
+targets, trials, and Open Targets approved-stage drug–disease indications, alongside diseases
+associated with its targets (a separate two-hop drug→target→disease view). The evidence trail
+lets visitors filter direct and target-mediated connections and inspect each source record.
 
 The explorer also supports deterministic disease-first queries such as `ovarian cancer drugs`.
 It only returns stored `Disease ← Gene ← Drug` paths and labels these as paths through a related gene;

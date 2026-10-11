@@ -25,9 +25,11 @@ The GitHub Pages explorer searches a generated public entity index. Selecting a 
 
 The public explorer covers only relationships present in its published index; absence from results does not mean that a biological association does not exist.
 
+The public refresh requests up to **60 trial records per approved drug** (then keeps only intervention-name matches) and the **top 20 target–disease associations per target** with score ≥ 0.4. Both are bounded snapshots, not exhaustive catalogs; these limits apply to newly generated indexes after a data refresh.
+
 ### Follow an evidence path
 
-In the explorer, choose a suggested drug or search for one, then open **Trace an evidence path**. Filter connected diseases and inspect direct drug–disease relations separately from recorded drug → gene → disease paths. Each step opens its own provenance records. The path count is not a measure of evidence strength, and a target–disease link does not demonstrate an approved indication or clinical benefit.
+In the explorer, choose a suggested drug, press **Surprise me**, or search for one, then open **Trace an evidence path**. Filter connected diseases by name and connection type, and inspect direct drug–disease relations separately from recorded drug → gene → disease paths. Each step opens its own provenance records. The path count is not a measure of evidence strength, and a target–disease link does not demonstrate an approved indication or clinical benefit.
 
 ## How OncoGraph works
 

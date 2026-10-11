@@ -44,7 +44,8 @@
 .trail-highlight:focus-visible,
 .trail-choice:focus-visible,
 .trail-step button:focus-visible,
-.trail-filter-label input:focus-visible {
+.trail-filter-label input:focus-visible,
+.trail-filter-label select:focus-visible {
   outline: 3px solid #79baff;
   outline-offset: 3px;
 }
@@ -55,10 +56,20 @@
   margin: 16px 0 5px;
 }
 
-.trail-filter-label input {
+.trail-filter-label input,
+.trail-filter-label select {
   display: block;
   width: 100%;
   margin: 8px 0;
+}
+
+.trail-filter-label select {
+  padding: 7px 8px;
+  border: 1px solid #406884;
+  border-radius: 6px;
+  background: #182638;
+  color: #d4e9ff;
+  font: inherit;
 }
 
 .trail-selected {

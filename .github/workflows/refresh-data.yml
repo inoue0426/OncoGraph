@@ -2,6 +2,10 @@ name: Refresh data
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - scripts/fetch_open_drug_associations.py
   schedule:
     - cron: "17 7 * * 1"
 
