@@ -62,6 +62,23 @@ footer {
   color: #b8c6d4;
 }
 
+.source-guide {
+  margin: 12px 0 22px;
+  padding: 12px 0;
+  border-bottom: 1px solid #30363d;
+}
+
+.source-guide summary { cursor: pointer; color: #badcff; font-weight: 600; }
+.source-table-scroll { overflow-x: auto; }
+.source-guide table { border-collapse: collapse; width: 100%; min-width: 680px; font-size: .9rem; }
+.source-guide caption { text-align: left; font-weight: 600; padding: 10px 0; }
+.source-guide th, .source-guide td { padding: 9px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid #303f50; }
+.source-guide thead th { color: #c9d7e5; }
+.source-guide tbody th { width: 170px; }
+.source-guide td:last-child { width: 128px; text-align: right; white-space: nowrap; }
+.source-guide a { color: #83bfff; }
+.source-note { font-size: .88rem; color: #b8c6d4; line-height: 1.55; }
+
 footer {
   margin-top: 48px;
   font-size: 0.85rem;

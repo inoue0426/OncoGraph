@@ -44,9 +44,10 @@ produce `search-index.json`/`relations.json` -- never hand-maintained.
   where almost every relation has exactly one evidence row).
 - `sources`: count of *distinct* `evidence.source` values actually present
   in this deployed snapshot -- reflects real coverage of the scheduled
-  refresh pipeline, not the full adapter registry (several adapters, e.g.
-  Reactome/CIViC/DGIdb/OncoKB/drug_response, are not wired into
-  `refresh-data.yml`; see `docs/BIOLOGICAL_SOURCES.md`).
+  refresh pipeline, not the full adapter registry. HGNC provides gene
+  entities but no edge evidence, so it is not included in this count;
+  Reactome/DGIdb/OncoKB/drug_response are not wired into `refresh-data.yml`.
+  See `docs/BIOLOGICAL_SOURCES.md` and the site's **Data sources** table.
 - `graph_version`: the latest per-adapter `--release` label found in any
   evidence row's `context.release` (set from `refresh-data.yml`'s run
   timestamp). Omitted if no evidence row carries one.

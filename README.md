@@ -2,7 +2,7 @@
 
 **An evidence-first, provenance-aware knowledge graph for oncology research**
 
-[**Explore OncoGraph**](https://inoue0426.github.io/OncoGraph/) · [**Quick start**](#quick-start) · [**Documentation**](#documentation) · [**Benchmarks**](#retrieval-and-benchmarks)
+[**Explore OncoGraph**](https://inoue0426.github.io/OncoGraph/) · [**Data sources**](#data-sources-and-refresh) · [**Quick start**](#quick-start) · [**Documentation**](#documentation) · [**Benchmarks**](#retrieval-and-benchmarks)
 
 OncoGraph connects drugs, targets, diseases, publications, and clinical trials to the evidence supporting their relationships. Its central principle is **provenance first**: an edge is more than a link between entities. Each relationship can retain its source, original identifier, biological or clinical context, extraction method, confidence, and verification state.
 
@@ -102,24 +102,22 @@ This serves graph tools via the [Model Context Protocol](https://modelcontextpro
 
 ## Data sources and refresh
 
-The public index is built from open or otherwise permitted data, including:
+**The public explorer uses a generated snapshot, not live database connections.** The scheduled/manual [`refresh-data.yml`](.github/workflows/refresh-data.yml) workflow imports the following ten scoped inputs into temporary SQLite, exports the site index, and uploads it as a build artifact. [`pages.yml`](.github/workflows/pages.yml) publishes the latest successful artifact. The site shows the snapshot generation time and counts evidence rows by source under **Data sources**; those counts are neither unique upstream record counts nor the size of the original databases. Raw downloads and SQLite are not committed to Git. See [hosting documentation](docs/HOSTING.md).
 
-| Source | Information used in the public refresh |
+| Input in public refresh | What is actually included |
 | --- | --- |
-| HGNC | Gene identifiers and nomenclature |
-| Gene Ontology | Functional ontology information |
-| IUPHAR/BPS Guide to PHARMACOLOGY (GtoPdb) | Approved drugs and primary targets |
-| ClinicalTrials.gov | Trial registry metadata, including combination treatments and termination-reason processing |
-| Open Targets Platform | Target–disease associations |
-| CIViC | Accepted evidence for nine selected cancer genes, molecular profiles and their disease context |
-| DrugMechDB | Curated drug-mechanism paths |
-| ChEMBL | Mechanisms of action |
-| TRRUST | Transcription-factor–target regulation |
-| GTEx | Open-access aggregate tissue-expression summaries |
+| [HGNC](https://www.genenames.org/) | Human gene names and identifiers; gene entities, not gene–disease evidence |
+| [Gene Ontology](https://geneontology.org/) | GO terms and their ontology hierarchy; no gene-to-GO annotation dataset |
+| [GtoPdb](https://www.guidetopharmacology.org/) | Its approved-drug/primary-target subset and target-to-HGNC mapping; not all ligands |
+| [ClinicalTrials.gov](https://clinicaltrials.gov/) | Registry metadata for GtoPdb drug-name matches, up to 60 returned studies per drug before intervention-name filtering; registration does not establish efficacy |
+| [Open Targets Platform](https://platform.opentargets.org/) | Top 20 target–disease associations per selected target (score ≥ 0.4) and APPROVAL-stage indications for matched drugs; not a full platform export or jurisdiction-specific label |
+| [DrugMechDB](https://sulab.github.io/DrugMechDB/) | Curated drug–mechanism–disease paths, with a limited graph representation of each path |
+| [TRRUST](https://www.grnpedia.org/trrust/) | Human transcription-factor/target regulation resolved to HGNC identifiers |
+| [GTEx](https://gtexportal.org/) | Open aggregate median expression in normal tissues; no individual-level data |
+| [ChEMBL](https://www.ebi.ac.uk/chembl/) | Mechanism-of-action data looked up for the GtoPdb approved-drug name set |
+| [CIViC](https://civicdb.org/) | Accepted molecular evidence returned for nine selected cancer genes; not the full database |
 
-The scheduled/manual [`refresh-data.yml`](.github/workflows/refresh-data.yml) workflow imports these sources into a temporary SQLite database and publishes a generated index as a build artifact. Raw upstream downloads and the database are not committed to Git. [`pages.yml`](.github/workflows/pages.yml) deploys the latest artifact with the explorer on pushes to `main`, without fetching upstream data again. See [hosting documentation](docs/HOSTING.md).
-
-**Scope matters:** integration ideas documented elsewhere are not necessarily enabled in the published refresh. In particular, standalone MONDO/EFO ontology ingestion, openFDA, and the full scope of Open Targets are not included in the current public refresh. CIViC is limited to accepted evidence returned for nine selected genes; it is not the full CIViC database. AACT and DrugComb/NCI ALMANAC/DREAM/AstraZeneca–Sanger integrations remain scaffolds rather than active refresh inputs.
+**Not in this public refresh:** Reactome, DGIdb, OncoKB, Europe PMC, openFDA, a standalone MONDO/EFO ontology import, and full Open Targets/CIViC exports. Some of these have adapters or documentation in the repository, but their presence in the code does not mean their data appear on the public site. AACT and DrugComb/NCI ALMANAC/DREAM/AstraZeneca–Sanger remain scaffolds rather than active refresh inputs.
 
 ### Attribution and licensing
 

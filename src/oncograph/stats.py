@@ -42,8 +42,9 @@ def compute_relation_stats(relations: list[dict]) -> dict[str, int]:
     carry several, one per contributing source); ``sources`` counts the
     distinct ``evidence.source`` values actually present, i.e. adapters
     that contributed data to this deployed snapshot -- not the full adapter
-    registry, some of which (Reactome/CIViC/DGIdb/OncoKB/drug_response) are
-    not wired into the scheduled refresh (see docs/BIOLOGICAL_SOURCES.md).
+    registry, some of which (Reactome/DGIdb/OncoKB/drug_response) are not
+    wired into the scheduled refresh. HGNC contributes gene entities but no
+    edge evidence and is therefore not counted here (see docs/SOURCES.md).
     """
     evidence_records = 0
     sources: set[str] = set()

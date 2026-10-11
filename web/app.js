@@ -1317,6 +1317,7 @@ Promise.all([
     renderTrailHighlights();
     renderDiseaseGuide();
     renderStats(statsData || computeClientSideStats());
+    renderDataSources(statsData);
     restoreShareUrl();
   })
   .catch(() => {
