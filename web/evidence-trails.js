@@ -160,7 +160,10 @@ function renderTrailHighlights() {
   const buttons = featured.map((drug) => {
     const button = trailText("button", `Trace ${drug.name} →`, "trail-highlight");
     button.type = "button";
-    button.addEventListener("click", () => renderDetail(drug.id));
+    button.addEventListener("click", () => {
+      renderDetail(drug.id);
+      detail.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
     return button;
   });
   const surprise = trailText("button", "Surprise me →", "trail-highlight");
