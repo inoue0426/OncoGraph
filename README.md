@@ -25,6 +25,10 @@ The GitHub Pages explorer searches a generated public entity index. Selecting a 
 
 The public explorer covers only relationships present in its published index; absence from results does not mean that a biological association does not exist.
 
+### Follow an evidence path
+
+In the explorer, choose a suggested drug or search for one, then open **Trace an evidence path**. Filter connected diseases and inspect direct drug–disease relations separately from recorded drug → gene → disease paths. Each step opens its own provenance records. The path count is not a measure of evidence strength, and a target–disease link does not demonstrate an approved indication or clinical benefit.
+
 ## How OncoGraph works
 
 ```text

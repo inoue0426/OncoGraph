@@ -1,0 +1,106 @@
+.trail-highlights,
+.trail-explorer {
+  margin: 22px 0;
+  padding: 18px;
+  border: 1px solid #315577;
+  border-radius: 12px;
+  background: #111c29;
+}
+
+.trail-highlights h2,
+.trail-explorer h3,
+.trail-selected h4 {
+  margin: 0 0 8px;
+}
+
+.trail-highlights p,
+.trail-intro,
+.trail-caveat,
+.trail-count {
+  color: #a8b5c3;
+  line-height: 1.55;
+}
+
+.trail-highlight,
+.trail-choice {
+  display: inline-block;
+  margin: 4px 5px 4px 0;
+  padding: 7px 12px;
+  border: 1px solid #406884;
+  border-radius: 99px;
+  background: #182638;
+  color: #d4e9ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.trail-highlight:hover,
+.trail-choice:hover,
+.trail-choice[aria-pressed="true"] {
+  border-color: #58a6ff;
+  background: #213c54;
+}
+
+.trail-highlight:focus-visible,
+.trail-choice:focus-visible,
+.trail-step button:focus-visible,
+.trail-filter-label input:focus-visible {
+  outline: 3px solid #79baff;
+  outline-offset: 3px;
+}
+
+.trail-filter-label {
+  display: block;
+  font-weight: 600;
+  margin: 16px 0 5px;
+}
+
+.trail-filter-label input {
+  display: block;
+  width: 100%;
+  margin: 8px 0;
+}
+
+.trail-selected {
+  border-top: 1px solid #30475a;
+  padding-top: 16px;
+}
+
+.trail-selected h5 {
+  font-size: 0.9rem;
+  color: #a8b5c3;
+  margin: 18px 0 8px;
+}
+
+.trail-card {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid #365269;
+  border-radius: 8px;
+  background: #152335;
+}
+
+.trail-step {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 6px 0;
+  padding: 6px 4px;
+}
+
+.trail-step-title {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.trail-step-source {
+  font-size: .8rem;
+  color: #a8b5c3;
+}
+
+.trail-caveat {
+  font-size: .84rem;
+  margin-bottom: 0;
+}

@@ -786,6 +786,7 @@ function renderDetail(entityId) {
     : entity.type === "disease" ? renderDiseaseDetail(entity) : renderGenericDetail(entity);
   const inventory = renderRelationInventory(entity);
   if (inventory) sections.unshift(inventory);
+  const trail = entity.type === "drug" ? renderEvidenceTrail(entity) : null;
   const graph = renderLocalGraph(entity);
 
   if (!sections.length) {
@@ -795,7 +796,7 @@ function renderDetail(entityId) {
     sections.push(empty);
   }
 
-  detail.replaceChildren(back, header, graph, ...sections);
+  detail.replaceChildren(back, header, ...(trail ? [trail] : []), graph, ...sections);
 }
 
 // --- Local graph visualization (1-2 hop, SVG) ----------------------------------
@@ -1292,6 +1293,7 @@ Promise.all([
     inByPredicate = indexed.inc;
     renderAttribution();
     renderExamples();
+    renderTrailHighlights();
     renderStats(statsData || computeClientSideStats());
     render();
   })
