@@ -193,6 +193,26 @@ def test_civic_no_therapy_emits_gene_disease_edge(tmp_path):
     assert evidence.evidence_type == "civic_diagnostic"
 
 
+def test_civic_profile_is_browsable_with_its_own_disease_evidence(tmp_path):
+    records = [{**CIVIC_RECORDS[0], "molecular_profile_id": "815", "citation_url": "https://pubmed.ncbi.nlm.nih.gov/20942809/"}]
+    path = tmp_path / "profiles.json"
+    path.write_text(json.dumps(records), encoding="utf-8")
+
+    with _memory_session() as session:
+        report = import_adapter(session, CivicAdapter(path, release="2026-10"))
+        profile = session.exec(select(Entity).where(Entity.canonical_id == "civic:815")).one()
+        relation = session.exec(select(Relation).where(Relation.predicate == "has_civic_evidence_for")).one()
+        evidence = session.exec(select(Evidence).where(Evidence.relation_id == relation.id)).one()
+
+    assert report.edges_created >= 1
+    assert profile.type == EntityType.BIOMARKER
+    assert relation.subject_id == profile.id
+    assert evidence.claim_state == ClaimState.CONTRADICTS
+    context = json.loads(evidence.context)
+    assert context["molecular_profile_id"] == "815"
+    assert context["civic_review_status"] == "ACCEPTED"
+
+
 # --- DGIdb -------------------------------------------------------------------
 
 DGIDB_RECORDS = [

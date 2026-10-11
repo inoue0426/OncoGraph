@@ -12,7 +12,9 @@ Run:
     python scripts/fetch_civic_evidence.py
 """
 
+import hashlib
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -37,6 +39,7 @@ query GeneEvidence($symbols: [String!]) {
           ... on GeneVariant {
             molecularProfiles {
               nodes {
+                id
                 name
                 evidenceItems {
                   nodes {
@@ -76,7 +79,11 @@ def _post_json(query: str, variables: dict) -> dict:
 def main() -> None:
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     payload = _post_json(_QUERY, {"symbols": GENES})
+    if payload.get("errors"):
+        raise RuntimeError(f"CIViC GraphQL query failed: {payload['errors']}")
     genes = ((payload.get("data") or {}).get("genes") or {}).get("nodes", [])
+    if not genes:
+        raise RuntimeError("CIViC returned no genes; refusing to publish an empty snapshot")
 
     records: list[dict] = []
     for gene in genes:
@@ -86,7 +93,7 @@ def main() -> None:
             for profile in (variant.get("molecularProfiles") or {}).get("nodes", []):
                 molecular_profile = profile.get("name")
                 for item in (profile.get("evidenceItems") or {}).get("nodes", []):
-                    if item.get("status") != "ACCEPTED":
+                    if item.get("status") != "ACCEPTED" or not item.get("id"):
                         continue
                     source = item.get("source") or {}
                     disease = item.get("disease") or {}
@@ -106,13 +113,34 @@ def main() -> None:
                             "disease_name": disease.get("name"),
                             "disease_doid": disease.get("doid"),
                             "molecular_profile": molecular_profile,
+                            "molecular_profile_id": profile.get("id"),
                             "source_type": source.get("sourceType"),
                             "citation_id": source.get("citationId"),
-                            "source_url": source.get("sourceUrl"),
+                            "source_url": (
+                                f"https://civicdb.org/links/evidence/{item['id']}"
+                                if item.get("id") else source.get("sourceUrl")
+                            ),
+                            "citation_url": source.get("sourceUrl"),
                         }
                     )
 
+    if not records:
+        raise RuntimeError("CIViC returned no accepted evidence; refusing an empty snapshot")
     OUTPUT_PATH.write_text(json.dumps(records, indent=2) + "\n", encoding="utf-8")
+    manifest = {
+        "source": "CIViC",
+        "homepage": "https://civicdb.org/",
+        "license_url": "https://docs.civicdb.org/en/latest/about.html",
+        "retrieved_at": datetime.now(UTC).isoformat(),
+        "genes_requested": GENES,
+        "gene_count_returned": len(genes),
+        "accepted_evidence_records": len(records),
+        "filename": OUTPUT_PATH.name,
+        "sha256": hashlib.sha256(OUTPUT_PATH.read_bytes()).hexdigest(),
+    }
+    (OUTPUT_PATH.parent / "manifest_civic.json").write_text(
+        json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
+    )
     print(f"Wrote {OUTPUT_PATH} ({len(records)} evidence items for {len(genes)} genes)")
 
 

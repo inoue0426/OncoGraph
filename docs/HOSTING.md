@@ -8,17 +8,19 @@ database is present, both are written empty. Kept intentionally minimal for the 
 descriptions or per-entity metadata are exported.
 
 Data refresh and Pages deployment are separate workflows. UI-only pushes redeploy quickly; a
-change to the drug association fetcher also launches a full refresh.
+change to a public fetcher, its CIViC adapter, or the refresh workflow launches a full refresh.
 
 ## `refresh-data.yml` — heavy data pipeline
 
-Triggered by manual dispatch, a weekly schedule, or a push changing
-`scripts/fetch_open_drug_associations.py` on `main`. It:
+Triggered by manual dispatch, a weekly schedule, or a push changing the drug association
+fetcher, CIViC fetcher/adapter, or this workflow on `main`. It:
 
 1. Fetches the open HGNC, GtoPdb, and Gene Ontology sources with `scripts/fetch_open_gene_sources.py`.
 2. Fetches drug-associated clinical trials (ClinicalTrials.gov API) and target-disease associations
    (Open Targets Platform API) with `scripts/fetch_open_drug_associations.py`, scoped to the
    approved drugs/targets the first step already fetched.
+   It also fetches accepted CIViC evidence for nine selected cancer genes; this is a limited
+   public snapshot, not a full export of CIViC.
 3. Imports everything in dependency order with `oncograph import-source`: HGNC first so genes exist
    before GtoPdb resolves drug targets to them, then GtoPdb (adds drug entities and drug→target
    edges), then Gene Ontology, then ClinicalTrials.gov (drug→trial edges, keyed to GtoPdb drug IDs)
@@ -61,7 +63,7 @@ it never infers a missing indication. Entity detail pages show relation counts, 
 counts, source record IDs/URLs, retrieval date or release from context, and evidence type. Multiple
 sources remain separate. Coexisting `supports`/`contradicts` evidence is shown as a warning, while
 missing evidence is reported rather than filled in. ClinicalTrials.gov registration metadata is not
-an efficacy or approval claim. Independent MONDO/EFO ingestion, CIViC, and openFDA are documented
+an efficacy or approval claim. Independent MONDO/EFO ingestion and openFDA are documented
 future candidates, not data currently published by this workflow.
 
 When the static MVP is no longer enough, move snapshots to object storage, normalized data to

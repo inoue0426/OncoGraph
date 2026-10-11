@@ -6,11 +6,18 @@ on:
     branches: [main]
     paths:
       - scripts/fetch_open_drug_associations.py
+      - scripts/fetch_civic_evidence.py
+      - src/oncograph/sources/civic.py
+      - .github/workflows/refresh-data.yml
   schedule:
     - cron: "17 7 * * 1"
 
 permissions:
   contents: read
+
+concurrency:
+  group: oncograph-refresh
+  cancel-in-progress: true
 
 jobs:
   refresh:
@@ -26,6 +33,7 @@ jobs:
       - run: python scripts/fetch_drugmechdb.py
       - run: python scripts/fetch_trrust.py
       - run: python scripts/fetch_gtex_expression.py
+      - run: python scripts/fetch_civic_evidence.py
       - name: Extract real drug names from the GtoPdb interactions file for ChEMBL lookup
         run: |
           python -c "
@@ -81,6 +89,10 @@ jobs:
         env:
           ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
         run: oncograph import-source chembl data/raw/chembl_mechanisms.json --release "$RELEASE"
+      - name: Import curated CIViC evidence
+        env:
+          ONCOGRAPH_DATABASE_URL: sqlite:///${{ runner.temp }}/oncograph.db
+        run: oncograph import-source civic data/raw/civic_evidence.json --release "$RELEASE"
       - name: Build static search index
         env:
           ONCOGRAPH_SQLITE_PATH: ${{ runner.temp }}/oncograph.db
@@ -98,6 +110,7 @@ jobs:
           mkdir -p _artifact
           cp web/data/search-index.json web/data/relations.json web/data/stats.json _artifact/
           cp data/raw/manifest.json data/raw/manifest_drug_associations.json _artifact/
+          cp data/raw/manifest_civic.json _artifact/
       - uses: actions/upload-artifact@v4
         with:
           name: search-index

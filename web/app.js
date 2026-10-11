@@ -688,6 +688,8 @@ function renderDrugDetail(entity) {
 
 function renderDiseaseDetail(entity) {
   const sections = [];
+  const biomarkers = neighborsOfType(entity.id, "biomarker");
+  if (biomarkers.length) sections.push(renderTierGroup("curated_database", biomarkers, { label: "CIViC molecular profiles" }));
   const genes = neighborsOfType(entity.id, "gene");
   if (genes.length) sections.push(renderTierGroup("curated_database", genes, { label: "Related genes" }));
   const drugs = neighborsOfType(entity.id, "drug");
@@ -786,6 +788,8 @@ function renderDetail(entityId) {
     : entity.type === "disease" ? renderDiseaseDetail(entity) : renderGenericDetail(entity);
   const inventory = renderRelationInventory(entity);
   if (inventory) sections.unshift(inventory);
+  const civicEvidence = renderCivicEvidence(entity);
+  if (civicEvidence) sections.unshift(civicEvidence);
   const trail = entity.type === "drug" ? renderEvidenceTrail(entity) : null;
   const graph = renderLocalGraph(entity);
 
@@ -1294,6 +1298,7 @@ Promise.all([
     renderAttribution();
     renderExamples();
     renderTrailHighlights();
+    renderDiseaseGuide();
     renderStats(statsData || computeClientSideStats());
     render();
   })

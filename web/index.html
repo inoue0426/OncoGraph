@@ -6,6 +6,7 @@
     <title>OncoGraph</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="evidence-trails.css" />
+    <link rel="stylesheet" href="guide.css" />
   </head>
   <body>
     <main>
@@ -20,6 +21,7 @@
       <p class="examples-label">Try:</p>
       <div id="examples"></div>
       <section id="trail-highlights" class="trail-highlights" aria-label="Guided evidence trails" hidden></section>
+      <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
       <p id="status">Loading…</p>
       <section id="results"></section>
       <section id="detail" hidden></section>
@@ -30,6 +32,8 @@
       </footer>
     </main>
     <script src="evidence-trails.js" defer></script>
+    <script src="disease-guide.js" defer></script>
+    <script src="civic-evidence.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

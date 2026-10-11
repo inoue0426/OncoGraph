@@ -1,0 +1,26 @@
+.disease-guide, .civic-records {
+  margin: 22px 0;
+  padding: 18px;
+  border: 1px solid #315577;
+  border-radius: 12px;
+  background: #111c29;
+}
+.disease-guide h2, .civic-records h3 { margin: 0 0 8px; }
+.disease-guide p, .civic-records p { color: #a8b5c3; line-height: 1.45; }
+.disease-guide-tabs, .disease-guide-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.disease-guide-tab, .disease-guide-item {
+  border: 1px solid #406884;
+  border-radius: 8px;
+  padding: 8px 11px;
+  color: #d4e9ff;
+  background: #182638;
+  font: inherit;
+  cursor: pointer;
+}
+.disease-guide-tab[aria-pressed="true"], .disease-guide-tab:hover, .disease-guide-item:hover { background: #213c54; border-color: #58a6ff; }
+.disease-guide-tab:focus-visible, .disease-guide-item:focus-visible { outline: 3px solid #79baff; outline-offset: 3px; }
+.disease-guide-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.disease-guide-item { text-align: left; }
+.civic-record { padding: 12px 0; border-top: 1px solid #30475a; }
+.civic-record p { margin: 6px 0; font-size: .88rem; overflow-wrap: anywhere; }
+.civic-record .evidence-link { margin: 6px 0 0; }

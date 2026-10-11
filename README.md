@@ -31,6 +31,12 @@ The public refresh requests up to **60 trial records per approved drug** (then k
 
 In the explorer, choose a suggested drug, press **Surprise me**, or search for one, then open **Trace an evidence path**. Filter connected diseases by name and connection type, and inspect direct drug–disease relations separately from recorded drug → gene → disease paths. Each step opens its own provenance records. The path count is not a measure of evidence strength, and a target–disease link does not demonstrate an approved indication or clinical benefit.
 
+### Browse cancer names and molecular evidence
+
+**Explore by cancer name** groups disease entities currently in the public index using explicit matches on their names. Open a subtype to inspect its direct relations and, when available, accepted CIViC molecular-profile evidence. The groups are a browsing shortcut, not a complete ontology or a claim that all matching diseases are equivalent.
+
+CIViC records are retained separately with their molecular profile, evidence type, level, significance, review status, source record, and support/contradiction direction. A molecular profile can represent one or more variants or another genomic event; it must not be treated as a single variant by default. CIViC curated evidence is neither an approved indication nor a recommendation for a patient.
+
 ## How OncoGraph works
 
 ```text
@@ -99,6 +105,7 @@ The public index is built from open or otherwise permitted data, including:
 | IUPHAR/BPS Guide to PHARMACOLOGY (GtoPdb) | Approved drugs and primary targets |
 | ClinicalTrials.gov | Trial registry metadata, including combination treatments and termination-reason processing |
 | Open Targets Platform | Target–disease associations |
+| CIViC | Accepted evidence for nine selected cancer genes, molecular profiles and their disease context |
 | DrugMechDB | Curated drug-mechanism paths |
 | ChEMBL | Mechanisms of action |
 | TRRUST | Transcription-factor–target regulation |
@@ -106,7 +113,7 @@ The public index is built from open or otherwise permitted data, including:
 
 The scheduled/manual [`refresh-data.yml`](.github/workflows/refresh-data.yml) workflow imports these sources into a temporary SQLite database and publishes a generated index as a build artifact. Raw upstream downloads and the database are not committed to Git. [`pages.yml`](.github/workflows/pages.yml) deploys the latest artifact with the explorer on pushes to `main`, without fetching upstream data again. See [hosting documentation](docs/HOSTING.md).
 
-**Scope matters:** integration ideas documented elsewhere are not necessarily enabled in the published refresh. In particular, standalone MONDO/EFO ontology ingestion, CIViC, openFDA, and the full scope of Open Targets are not included in the current public refresh. AACT and DrugComb/NCI ALMANAC/DREAM/AstraZeneca–Sanger integrations remain scaffolds rather than active refresh inputs.
+**Scope matters:** integration ideas documented elsewhere are not necessarily enabled in the published refresh. In particular, standalone MONDO/EFO ontology ingestion, openFDA, and the full scope of Open Targets are not included in the current public refresh. CIViC is limited to accepted evidence returned for nine selected genes; it is not the full CIViC database. AACT and DrugComb/NCI ALMANAC/DREAM/AstraZeneca–Sanger integrations remain scaffolds rather than active refresh inputs.
 
 ### Attribution and licensing
 
@@ -116,6 +123,7 @@ The repository does not bundle restricted upstream datasets, private credentials
 - **Open Targets Platform:** CC0.
 - **DrugMechDB:** CC0.
 - **ChEMBL:** CC BY-SA 3.0.
+- **CIViC:** CC0.
 - **TRRUST:** CC BY-SA 4.0.
 - **GTEx:** open-access aggregate median-expression summaries only.
 - **ClinicalTrials.gov:** trial registry metadata; registration is not evidence of clinical efficacy.

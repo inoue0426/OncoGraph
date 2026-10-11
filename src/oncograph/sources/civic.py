@@ -16,6 +16,9 @@ Each evidence item becomes one edge:
   a variant): Gene (NCBI Gene) -> Disease (DOID), predicate
   ``clinically_associated_with``.
 
+When CIViC supplies a molecular profile ID, a distinct Biomarker entity
+also links to its disease, preserving variant context as a browsable item.
+
 CIViC's evidence_level (A-E) and significance (SENSITIVITY/RESISTANCE/...)
 are qualitative, not a 0-1 score, so they stay in ``context`` rather than
 being forced into ``confidence``. ``evidence_direction`` maps to
@@ -88,6 +91,14 @@ class CivicAdapter(SourceAdapter):
                     therapies[ncit_id] = name
         return therapies
 
+    def _profiles(self) -> dict[str, dict]:
+        profiles: dict[str, dict] = {}
+        for row in self._records():
+            profile_id = str(row.get("molecular_profile_id") or "").strip()
+            if profile_id and row.get("molecular_profile") and profile_id not in profiles:
+                profiles[profile_id] = row
+        return profiles
+
     def iter_entities(self) -> Iterable[EntityRecord]:
         for doid, row in self._diseases().items():
             yield EntityRecord(
@@ -103,6 +114,13 @@ class CivicAdapter(SourceAdapter):
                 identifiers=(ExternalIdentifier("ncit", ncit_id),),
                 metadata={"release": self.release},
             )
+        for profile_id, row in self._profiles().items():
+            yield EntityRecord(
+                entity_type="biomarker",
+                name=row["molecular_profile"],
+                identifiers=(ExternalIdentifier("civic", profile_id),),
+                metadata={"release": self.release, "gene_name": row.get("gene_name")},
+            )
 
     def _publication(self, row: dict) -> ExternalIdentifier | None:
         if row.get("source_type") == "PUBMED" and row.get("citation_id"):
@@ -113,9 +131,14 @@ class CivicAdapter(SourceAdapter):
         return {
             "release": self.release,
             "molecular_profile": row.get("molecular_profile"),
+            "molecular_profile_id": row.get("molecular_profile_id"),
             "evidence_level": row.get("evidence_level"),
             "significance": row.get("significance"),
             "civic_evidence_type": row.get("evidence_type"),
+            "civic_evidence_id": row.get("evidence_id"),
+            "civic_review_status": "ACCEPTED",
+            "gene_name": row.get("gene_name"),
+            "citation_url": row.get("citation_url"),
         }
 
     def iter_edges(self) -> Iterable[EdgeRecord]:
@@ -126,6 +149,20 @@ class CivicAdapter(SourceAdapter):
             claim_state = _CLAIM_STATE_BY_DIRECTION.get(row.get("evidence_direction"), "uncertain")
             evidence_type = f"civic_{(row.get('evidence_type') or 'unknown').lower()}"
             therapies = [t for t in (row.get("therapies") or []) if (t.get("ncit_id") or "").strip()]
+
+            profile_id = str(row.get("molecular_profile_id") or "").strip()
+            if profile_id and row.get("molecular_profile"):
+                yield EdgeRecord(
+                    subject=ExternalIdentifier("civic", profile_id),
+                    predicate="has_civic_evidence_for",
+                    object=ExternalIdentifier("doid", doid),
+                    source_record_id=str(row.get("evidence_id")),
+                    source_url=row.get("source_url"),
+                    context=self._shared_context(row),
+                    evidence_type=evidence_type,
+                    claim_state=claim_state,
+                    publication=self._publication(row),
+                )
 
             if therapies:
                 for therapy in therapies:
