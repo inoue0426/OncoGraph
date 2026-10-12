@@ -1,4 +1,4 @@
-"""Loopback app; optional bounded public access through a Cloudflare Tunnel.
+"""Loopback-only Ollama bridge for the optional local question interface.
 
 Launch with: uvicorn oncograph.local_ask:app --host 127.0.0.1 --port 8765
 No browser CORS allowance or external model API credentials are configured.
@@ -7,13 +7,9 @@ No browser CORS allowance or external model API credentials are configured.
 from __future__ import annotations
 
 import asyncio
-import ipaddress
 import json
 import os
-import re
 import threading
-import time
-from collections import defaultdict, deque
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
@@ -28,45 +24,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 _OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 _MODEL = os.getenv("ONCOGRAPH_OLLAMA_MODEL", "gemma3:4b")
 _WEB_ROOT = Path(os.getenv("ONCOGRAPH_WEB_DIR", "web")).resolve()
-_PUBLIC = os.getenv("ONCOGRAPH_PUBLIC_MODE") == "1"
-_PUBLIC_HOST = os.getenv("ONCOGRAPH_PUBLIC_HOST", "").lower()
-if _PUBLIC_HOST and not re.fullmatch(r"[a-z0-9][a-z0-9.-]*[a-z0-9]", _PUBLIC_HOST):
-    raise ValueError("ONCOGRAPH_PUBLIC_HOST must be a bare DNS hostname")
 _HOSTS = ["localhost", "127.0.0.1"]
-if _PUBLIC:
-    _HOSTS.append("*.trycloudflare.com")
-    if _PUBLIC_HOST:
-        _HOSTS.append(_PUBLIC_HOST)
-
-
-class _PublicBudget:
-    """Small in-memory inference budget; one worker and one model call at a time."""
-
-    def __init__(self):
-        self.lock = threading.Lock()
-        self.busy = threading.BoundedSemaphore(1)
-        self.daily: deque[float] = deque()
-        self.by_ip: dict[str, deque[float]] = defaultdict(deque)
-
-    def claim(self, ip: str) -> None:
-        now = time.monotonic()
-        with self.lock:
-            while self.daily and self.daily[0] < now - 86400:
-                self.daily.popleft()
-            for address, times in list(self.by_ip.items()):
-                while times and times[0] < now - 3600:
-                    times.popleft()
-                if not times:
-                    del self.by_ip[address]
-            if len(self.daily) >= 60 or len(self.by_ip[ip]) >= 3:
-                raise HTTPException(429, "Public model budget reached; try again later")
-            if not self.busy.acquire(blocking=False):
-                raise HTTPException(429, "The local model is busy; try again later")
-            self.daily.append(now)
-            self.by_ip[ip].append(now)
-
-
-_budget = _PublicBudget()
 _model_slot = threading.BoundedSemaphore(1)
 
 
@@ -135,7 +93,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=_HOSTS)
 
 @app.get("/api/local-answer/status")
 def local_answer_status():
-    return {"available": True, "mode": "public_bounded" if _PUBLIC else "local_only"}
+    return {"available": True, "mode": "local_only"}
 
 
 @app.post("/api/local-answer")
@@ -146,7 +104,7 @@ async def local_answer(request: WebRequest):
     expected_origin = f"http://{host}" if local else f"https://{host}"
     if request.headers.get("origin") != expected_origin:
         raise HTTPException(403, "Only the same-origin OncoGraph page can use this bridge")
-    if not local and not _PUBLIC:
+    if not local:
         raise HTTPException(403, "Public access is disabled")
     raw = bytearray()
     async for chunk in request.stream():
@@ -157,22 +115,12 @@ async def local_answer(request: WebRequest):
         payload = Question.model_validate_json(bytes(raw))
     except (ValidationError, ValueError) as exc:
         raise HTTPException(422, "Invalid question or evidence packet") from exc
-    if not local:
-        address = request.headers.get("cf-connecting-ip", "")
-        try:
-            ipaddress.ip_address(address)
-        except ValueError as exc:
-            raise HTTPException(403, "Public requests must arrive through Cloudflare") from exc
-        _budget.claim(address)
     try:
         answer = await asyncio.to_thread(_ask_ollama, payload)
     except RuntimeError as exc:
         raise HTTPException(429, "The local model is busy; try again later") from exc
     except (HTTPError, URLError, TimeoutError, ValueError) as exc:
         raise HTTPException(503, "Ollama is unavailable. Start it and pull the configured model.") from exc
-    finally:
-        if not local:
-            _budget.busy.release()
     return {"answer": answer, "model": _MODEL, "record_count": len(payload.records)}
 
 

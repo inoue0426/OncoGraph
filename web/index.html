@@ -47,12 +47,6 @@
       </section>
 
       <details id="more-tools" class="advanced-tools"><summary>More tools and details for researchers</summary>
-        <div id="remote-llm-entry" class="remote-llm-entry">
-          <h3>Use a shared AI demo</h3>
-          <p>If someone gave you a demo link, paste it here. No installation is needed. <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#temporary-public-demo-from-a-windows-machine">How to host a demo</a></p>
-          <form><label for="remote-llm-url">Demo link</label><input id="remote-llm-url" type="url" placeholder="https://example.trycloudflare.com" required /><button type="submit">Open demo</button></form>
-          <p id="remote-llm-error" role="status"></p>
-        </div>
         <p><a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#ask-from-github-pages-with-your-own-ollama">Use your own Ollama on this computer</a> (requires setup).</p>
 
       <section id="explore" class="home-section" aria-labelledby="explore-title">
@@ -98,7 +92,7 @@
             <tr><th scope="row">Search entities and inspect source-backed relationships</th><td>Yes, published snapshot</td><td>Yes, Python and HTTP API</td></tr>
             <tr><th scope="row">Compare accepted CIViC molecular profiles</th><td>Yes, published snapshot</td><td>Source records available after import</td></tr>
             <tr><th scope="row">Evidence Tree by gene, variant/profile, disease</th><td>Browser search and JSON export</td><td>Python, HTTP API, local MCP</td></tr>
-            <tr><th scope="row">Ask questions about recorded relationships</th><td>Source-backed record matching and prompt copy</td><td>Optional direct connection to your own Ollama on localhost, or a separate shared Windows instance</td></tr>
+            <tr><th scope="row">Ask questions about recorded relationships</th><td>Source-backed record matching and prompt copy</td><td>Optional connection to your own Ollama on localhost</td></tr>
             <tr><th scope="row">Live query endpoint or remote MCP hosted on Pages</th><td>No</td><td>Run and host separately</td></tr>
             <tr><th scope="row">US FDA label and CIViC Assertion grading</th><td>Not integrated</td><td>Not integrated</td></tr>
           </tbody>
@@ -128,7 +122,6 @@
     <script src="evidence-tree.js" defer></script>
     <script src="home-guide.js" defer></script>
     <script src="ask-evidence.js" defer></script>
-    <script src="remote-llm-entry.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>
