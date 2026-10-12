@@ -11,6 +11,20 @@ function treatmentLimitAnswer(question) {
     : "These sampled records cannot establish a best drug. Why ask for more detail? Treatment options can differ by cancer subtype, stage, tumor biomarkers, and prior therapy. A variant is a difference from a reference DNA sequence; tumor changes and inherited changes need different interpretation. These research links do not establish a patient's variant status or a drug's benefit for that person.";
 }
 
+function citedMolecularProfiles(records) {
+  const profiles = new Map();
+  for (const record of records) {
+    for (const source of record.sources || []) {
+      if (String(source.source).toLowerCase() !== "civic" ||
+          typeof source.molecular_profile !== "string" || !source.molecular_profile.trim()) continue;
+      const name = source.molecular_profile.trim();
+      if (!profiles.has(name)) profiles.set(name, new Set());
+      profiles.get(name).add(record.id);
+    }
+  }
+  return [...profiles].map(([name, ids]) => ({ name, ids: [...ids] }));
+}
+
 // Relevance is based on the question and the *kind* of stored link, not on a
 // model's guess about clinical strength. Keep categories separate.
 function questionTopics(question, matches) {
@@ -217,7 +231,11 @@ function renderAskEvidence(entities, relations) {
       const heading = document.createElement("h3");
       heading.textContent = `[${record.id}] ${record.subject} → ${record.object}`;
       const relation = document.createElement("p"); relation.className = "ask-relation";
-      relation.textContent = `Recorded link: ${record.predicate.replaceAll("_", " ")}`;
+      const scoped = record.predicate === "clinically_evidenced_for" &&
+        record.sources.some((source) => source.source?.toLowerCase() === "civic" && source.molecular_profile);
+      relation.textContent = scoped
+        ? "CIViC evidence for the molecular profiles below; not a general treatment indication"
+        : `Recorded link: ${record.predicate.replaceAll("_", " ")}`;
       card.append(heading, relation);
       for (const source of record.sources) {
         const line = document.createElement("p");
@@ -244,6 +262,13 @@ function renderAskEvidence(entities, relations) {
     if (bestTreatment) {
       const limit = document.createElement("p"); limit.className = "ask-generated";
       limit.textContent = treatmentLimitAnswer(bundle.question);
+      const profiles = citedMolecularProfiles(bundle.records);
+      if (profiles.length) {
+        const note = document.createElement("p"); note.className = "ask-relation";
+        const examples = profiles.slice(0, 6).map(({ name, ids }) => `${name} [${ids.join(", ")}]`);
+        note.textContent = `Molecular profiles mentioned in the sampled CIViC records: ${examples.join("; ")}${profiles.length > 6 ? "; more below" : ""}. These are research contexts, not a person's test results or general drug approvals.`;
+        output.prepend(note);
+      }
       output.prepend(limit);
       return;
     }
@@ -306,4 +331,6 @@ function renderAskEvidence(entities, relations) {
   }
 }
 
-if (typeof module !== "undefined") module.exports = { findQuestionEvidence, asksForBestTreatment };
+if (typeof module !== "undefined") module.exports = {
+  findQuestionEvidence, asksForBestTreatment, citedMolecularProfiles,
+};
