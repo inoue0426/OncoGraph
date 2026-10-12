@@ -1320,6 +1320,7 @@ Promise.all([
     renderDataSources(statsData);
     renderVariantComparison(relationRows, entityById);
     renderEvidenceTree(entityRows, relationRows);
+    renderAskEvidence(entityRows, relationRows);
     restoreShareUrl();
   })
   .catch(() => {
@@ -1328,6 +1329,8 @@ Promise.all([
     if (comparison) comparison.textContent = "Variant comparison unavailable: search index could not be loaded.";
     const tree = document.querySelector("#evidence-tree");
     if (tree) tree.textContent = "Evidence tree unavailable: search index could not be loaded.";
+    const ask = document.querySelector("#ask-evidence");
+    if (ask) ask.textContent = "Question search unavailable: search index could not be loaded.";
   });
 
 search.addEventListener("input", debouncedRender);

@@ -17,12 +17,14 @@ The project includes a public, searchable explorer, a Python API and graph-query
 | What is recorded for a cancer subtype? | Search a disease or browse disease names in the [explorer](https://inoue0426.github.io/OncoGraph/#explore). | Separate Open Targets approved-stage indications, CIViC molecular profiles, gene associations, and paths through genes. The approved-stage data is not a US FDA label. |
 | Why is a drug linked to a disease? | Open a drug, then **Trace an evidence path**. | Source-backed direct relations and distinct drug → gene → disease paths; a path is not an indication. |
 | What published evidence mentions a variant/profile in a cancer type? | [Compare CIViC profiles](https://inoue0426.github.io/OncoGraph/#compare-tool), then [inspect one Evidence Tree](https://inoue0426.github.io/OncoGraph/#evidence-tool). | Accepted CIViC evidence IDs with source links, claim direction, molecular-profile scope and optional therapies. Complex-profile membership is not variant-specific proof. |
+| Can I ask a research question in plain language? | [Ask with sources](https://inoue0426.github.io/OncoGraph/#ask). | Literal entity matching returns recorded links and original sources, plus a copyable prompt. An optional [local Ollama setup](docs/ASK.md) adds model-generated explanations without a hosted API key. |
 | How can an agent retrieve the same tree? | Use the [Python function, local HTTP endpoint, or local stdio MCP tool](docs/EVIDENCE_TREE.md). | Structured v1 response from an imported local database; its contents can differ from the published snapshot. |
 
 | Interface | Browser on GitHub Pages | Database-backed local process |
 | --- | --- | --- |
 | Search and provenance | Published static snapshot | Python / HTTP queries |
 | CIViC Evidence Tree | Browser calculation and JSON download | Python, `GET /evidence-tree`, local MCP `get_evidence_tree` |
+| Question interface | Source-backed record matching and prompt copy | Optional local Ollama explanation |
 | Live HTTP query service or remote MCP on Pages | Unavailable | Requires separate hosting |
 | US FDA labels or CIViC Assertions | Not integrated | Not integrated |
 

@@ -1,0 +1,10 @@
+#ask-evidence form { display: flex; flex-wrap: wrap; align-items: end; gap: .65rem; }
+#ask-evidence label { flex-basis: 100%; font-weight: 600; }
+#ask-evidence input { flex: 1 1 18rem; margin: 0; }
+#ask-evidence button { padding: .6rem .8rem; margin: .3rem .6rem .3rem 0; font: inherit; cursor: pointer; color: #e6edf3; background: #22364a; border: 1px solid #65809d; border-radius: .35rem; }
+#ask-evidence button:disabled { cursor: wait; opacity: .6; }
+#ask-evidence .ask-record { cursor: default; }
+#ask-evidence .ask-record h3 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+#ask-evidence .ask-record p { margin: .45rem 0; font-size: .9rem; overflow-wrap: anywhere; }
+#ask-evidence a { color: #83bfff; }
+#ask-evidence .ask-generated { padding: 1rem; border-left: 3px solid #65809d; white-space: pre-wrap; overflow-wrap: anywhere; }
