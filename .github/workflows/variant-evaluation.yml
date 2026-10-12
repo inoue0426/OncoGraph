@@ -1,0 +1,60 @@
+name: Variant retrieval evaluation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/evaluate_variant_questions.cjs'
+      - 'data/benchmarks/variant_review_queue.json'
+      - 'data/benchmarks/variant_gold_adjudicated.json'
+      - '.github/workflows/variant-evaluation.yml'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Refresh data']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  evaluate:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Find latest successful data refresh
+        id: find_run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow refresh-data.yml \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo '::error::No successful Refresh data run; generate the public snapshot first.'
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Using refresh run $run_id"
+      - uses: actions/download-artifact@v4
+        with:
+          name: search-index
+          path: _data-refresh
+          run-id: ${{ steps.find_run.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Compare retrieval on the frozen refresh artifact
+        run: |
+          node scripts/evaluate_variant_questions.cjs \
+            --snapshot _data-refresh \
+            --queue data/benchmarks/variant_review_queue.json \
+            --gold data/benchmarks/variant_gold_adjudicated.json \
+            --out _variant-evaluation
+          node -e 'const r=require("./_variant-evaluation/report.json"); console.log(JSON.stringify({snapshot_sha256:r.snapshot_sha256,candidate_count:r.candidate_count,adjudicated_count:r.adjudicated_count,metrics_on_adjudicated_only:r.metrics_on_adjudicated_only},null,2))' | tee "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: variant-evaluation-report
+          path: _variant-evaluation/
