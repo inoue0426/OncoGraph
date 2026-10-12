@@ -1,13 +1,20 @@
-#ask-evidence form { display: flex; flex-wrap: wrap; align-items: end; gap: .65rem; }
+#ask-evidence form { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; }
 #ask-evidence label { flex-basis: 100%; font-weight: 600; }
-#ask-evidence input { flex: 1 1 18rem; margin: 0; }
-#ask-evidence button { padding: .6rem .8rem; margin: .3rem .6rem .3rem 0; font: inherit; cursor: pointer; color: #e6edf3; background: #22364a; border: 1px solid #65809d; border-radius: .35rem; }
+#ask-evidence input { flex: 1 1 22rem; margin: 0; }
+#ask-evidence button { padding: .6rem .8rem; font: inherit; cursor: pointer; color: #e6edf3; background: #22364a; border: 1px solid #65809d; border-radius: .35rem; }
 #ask-evidence button:disabled { cursor: wait; opacity: .6; }
+#ask-evidence .ask-secondary { background: transparent; border-color: #536579; }
+#ask-evidence .ask-examples { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .65rem; margin: .8rem 0 1rem; font-size: .9rem; color: #b8c6d4; }
+#ask-evidence .ask-example { padding: .15rem 0; background: transparent; border: 0; color: #83bfff; text-decoration: underline; text-underline-offset: 2px; }
+#ask-evidence .ask-sources-title { margin: 1.2rem 0 .5rem; font-size: 1.1rem; }
 #ask-evidence .ask-record { cursor: default; }
+#ask-evidence .ask-record:hover { border-color: #30363d; }
 #ask-evidence .ask-record h3 { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
 #ask-evidence .ask-record p { margin: .45rem 0; font-size: .9rem; overflow-wrap: anywhere; }
+#ask-evidence .ask-record .ask-relation { color: #b8c6d4; }
 #ask-evidence a { color: #83bfff; }
-#ask-evidence .ask-generated { padding: 1rem; border-left: 3px solid #65809d; white-space: pre-wrap; overflow-wrap: anywhere; }
+#ask-evidence .ask-generated { margin: 1rem 0; padding: 1rem; border-left: 3px solid #83bfff; background: #141a22; white-space: pre-wrap; overflow-wrap: anywhere; }
 #ask-evidence .ask-more { margin: .8rem 0; padding: .8rem 1rem; border: 1px solid #344252; border-radius: 6px; }
 #ask-evidence .ask-more > summary { cursor: pointer; font-weight: 600; }
 #ask-evidence .ask-more > a { display: inline-block; margin: .8rem 1rem .4rem 0; }
+@media (max-width: 620px) { #ask-evidence input { flex-basis: 100%; } }

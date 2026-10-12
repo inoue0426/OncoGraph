@@ -17,25 +17,32 @@
     <main>
       <header class="site-intro">
         <h1>OncoGraph</h1>
-        <p>Search genes, medicines, cancers, and the research links between them.</p>
+        <p>Ask about cancer research links, search the data, and check original sources.</p>
         <p class="scope-note">For research, not medical advice.</p>
       </header>
       <nav class="section-nav" aria-label="OncoGraph sections">
-        <a href="#explore">Search the data</a>
         <a href="#ask">Ask a question</a>
-        <a href="#molecular">Variant evidence</a>
+        <a href="#explore">Browse the data</a>
         <a href="#downloads">Download the data</a>
         <a href="#more-tools">More tools</a>
       </nav>
 
+      <section id="ask" class="home-section" aria-labelledby="ask-title">
+        <h2 id="ask-title">Ask a research question</h2>
+        <p>Ask about a gene, drug, cancer, or variant. See an AI explanation with numbered links to the records it used.</p>
+        <div id="ask-evidence"><p>Loading evidence index…</p></div>
+        <p class="interpretation-note">The answer uses a sample of published records. It may miss evidence or be wrong. Check the source links. Do not enter patient information. <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md">How answers work</a>.</p>
+      </section>
+
+
       <section id="explore" class="home-section" aria-labelledby="explore-title">
-        <h2 id="explore-title">Search genes, drugs, and cancers</h2>
-        <p>Search by name, or try a question like “EGFR drugs”. Select a result to see its links and original sources.</p>
-        <label class="search-label" for="search">Search by name or connection</label>
-        <input id="search" type="search" placeholder="e.g. EGFR, gefitinib, ovarian cancer drugs" />
+        <h2 id="explore-title">Browse the data</h2>
+        <p>Enter a name to inspect its connections and original sources. Try “EGFR drugs” to search a relationship.</p>
+        <label class="search-label" for="search">Gene, drug, cancer, or relationship</label>
+        <input id="search" type="search" placeholder="e.g. EGFR, gefitinib, ovarian cancer drugs" autocomplete="off" />
         <div class="search-controls"><label for="search-kind">Show</label>
           <select id="search-kind">
-            <option value="all">Everything</option>
+            <option value="all">All categories</option>
             <option value="gene">Genes</option>
             <option value="drug">Drugs</option>
             <option value="disease">Cancers and diseases</option>
@@ -43,7 +50,7 @@
             <option value="pathway">Pathways</option>
             <option value="paper">Papers</option>
           </select>
-          <span class="interpretation-note">Choose “Everything” for connection searches such as “EGFR drugs”.</span>
+          <span class="interpretation-note">Use “All categories” for queries such as “EGFR drugs”.</span>
         </div>
         <p class="examples-label">Try:</p>
         <div id="examples"></div>
@@ -54,14 +61,6 @@
         <details class="tool-panel" id="browse-diseases"><summary>Browse disease names in the snapshot</summary>
           <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
         </details>
-      </section>
-
-
-      <section id="ask" class="home-section" aria-labelledby="ask-title">
-        <h2 id="ask-title">Ask about recorded links</h2>
-        <p>Try “What do we know about EGFR?” or “What is linked to osimertinib?” Search finds a sample of matching records; the optional AI explains up to eight of them with record references.</p>
-        <div id="ask-evidence"><p>Loading evidence index…</p></div>
-        <p class="interpretation-note">Search finds matching names in a saved copy of research data. Hosted AI sends your question and selected public records to Cloudflare after you ask; do not enter patient information. The model may be unavailable when its free quota runs out, and its explanation can be wrong. Open original sources before drawing conclusions.</p>
       </section>
 
 
@@ -79,7 +78,7 @@
       </section>
 
       <details id="more-tools" class="advanced-tools"><summary>More tools and details for researchers</summary>
-        <p><a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#ask-from-github-pages-with-your-own-ollama">Use your own Ollama on this computer</a> (requires setup).</p>
+        <p><a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#optional-local-explanation-no-api-key">Run locally with Ollama</a> (requires setup).</p>
 
       <section id="drug-paths" class="home-section" aria-labelledby="drug-paths-title">
         <h2 id="drug-paths-title">Follow a drug evidence path</h2>

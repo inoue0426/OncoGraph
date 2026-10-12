@@ -30,3 +30,55 @@ test("unmatched and clipped queries do not become claims", () => {
   assert.equal(result.omitted, true);
   assert.throws(() => findQuestionEvidence("a", entities, relations));
 });
+
+test("broad gene questions keep different relationship types in the AI context", () => {
+  const related = [
+    ...Array.from({ length: 14 }, (_, i) => ({
+      subject_id: "g", object_id: `t${i}`, predicate: "expressed_in",
+      evidence: [{ source: "gtex" }],
+    })),
+    { subject_id: "g", object_id: "d", predicate: "associated_with", evidence: [{ source: "open_targets" }] },
+    { subject_id: "drug", object_id: "g", predicate: "targets", evidence: [{ source: "gtopdb" }] },
+    { subject_id: "g", object_id: "v", predicate: "has_civic_variant", evidence: [{ source: "civic" }] },
+  ];
+  const items = [
+    ...entities,
+    ...Array.from({ length: 14 }, (_, i) => ({ id: `t${i}`, name: `Tissue ${i}`, type: "tissue" })),
+    { id: "drug", name: "Gefitinib", type: "drug" },
+    { id: "v", name: "EGFR V600E", type: "biomarker" },
+  ];
+  const result = findQuestionEvidence("What do we know about EGFR?", items, related);
+  assert.equal(result.records.length, 12);
+  assert.equal(result.omitted, true);
+  const prioritized = result.records.slice(0, result.aiCount);
+  assert.equal(result.aiCount, 5);
+  assert(prioritized.some((record) => record.predicate === "associated_with"));
+  assert(prioritized.some((record) => record.predicate === "targets"));
+  assert(prioritized.some((record) => record.predicate === "has_civic_variant"));
+  assert.equal(prioritized.filter((record) => record.predicate === "expressed_in").length, 2);
+  assert.deepEqual(result.records.map((record, i) => record.id),
+    Array.from({ length: 12 }, (_, i) => `R${i + 1}`));
+});
+
+test("a topic question prefers the requested relationship and a named pair", () => {
+  const items = [...entities, { id: "t", name: "Liver", type: "tissue" },
+    { id: "drug", name: "Gefitinib", type: "drug" }];
+  const related = [
+    { subject_id: "g", object_id: "t", predicate: "expressed_in", evidence: [{ source: "gtex" }] },
+    { subject_id: "g", object_id: "d", predicate: "associated_with", evidence: [{ source: "open_targets" }] },
+    { subject_id: "drug", object_id: "g", predicate: "targets", evidence: [{ source: "gtopdb" }] },
+    { subject_id: "g", object_id: "trial", predicate: "studied_in", evidence: [{ source: "clinicaltrials_gov" }] },
+  ];
+  items.push({ id: "trial", name: "Trial ABC", type: "trial" });
+  const drugs = findQuestionEvidence("EGFR drugs", items, related);
+  assert.equal(drugs.records[0].predicate, "targets");
+  assert.equal(drugs.aiCount, 4);
+  assert.equal(findQuestionEvidence("EGFR 発現", items, related).records[0].predicate, "expressed_in");
+  assert.equal(findQuestionEvidence("EGFR clinical trials in lung cancer", items, related).records[0].predicate,
+    "studied_in");
+  assert.equal(findQuestionEvidence("EGFR clinical trials", items, related).records[0].predicate, "studied_in");
+  assert.equal(findQuestionEvidence("How are EGFR and Gefitinib linked?", items, related).records[0].predicate,
+    "targets");
+  const pair = findQuestionEvidence("How is EGFR linked to lung cancer?", items, related);
+  assert.equal(pair.records[0].object, "Lung cancer");
+});

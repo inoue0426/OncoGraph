@@ -5,6 +5,8 @@
 .home-section { padding: 1.25rem 0; border-top: 1px solid #344252; scroll-margin-top: 1rem; }
 .home-section > h2 { margin: 0 0 .5rem; font-size: 1.5rem; }
 .home-section > p { margin: .5rem 0 1rem; }
+#ask.home-section { padding-top: 1.5rem; }
+#explore.home-section { margin-top: .5rem; }
 .use-case-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
 .use-case-card { margin: 0; padding: 1rem; background: #161b22; cursor: default; }
 .use-case-card:hover { border-color: #30363d; }
