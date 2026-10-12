@@ -33,6 +33,10 @@ In the explorer, choose a suggested drug, press **Surprise me**, or search for o
 
 ### Browse cancer names and molecular evidence
 
+**Compare variant evidence** on the homepage groups CIViC records by gene, listed variant, cancer type, molecular profile and indexed therapy. It shows separate counts and source links for sensitivity, resistance, contradictions and other evidence, with an optional accepted level A/B and trust ≥4/5 filter. Complex profiles are marked explicitly; their evidence cannot be assigned to one member variant. The comparison appears when a published index contains explicit CIViC variant membership; older snapshots show an update notice.
+
+A [20-question review queue](data/benchmarks/variant_review_queue.json) and [independent evaluation protocol](docs/VARIANT_COMPARISON_EVALUATION.md) accompany the feature. These questions have **no gold answers yet**: source verification and independent domain review must occur before they can be scored or used to claim biomedical accuracy.
+
 **Explore by cancer name** groups disease entities currently in the public index using explicit matches on their names. Open a subtype to inspect its direct relations and, when available, accepted CIViC molecular-profile evidence. The groups are a browsing shortcut, not a complete ontology or a claim that all matching diseases are equivalent.
 
 CIViC records retain their molecular profile, named variants, HGVS expression when available, evidence type, level, trust rating, significance, review status, source record, and support/contradiction direction. A profile can contain multiple variants; its clinical evidence does not necessarily apply to each member. Filter to accepted level A/B records rated at least 4/5 by CIViC to focus on stronger study-level evidence; this does not guarantee a positive result or clinical actionability. OncoKB and COSMIC are outbound lookups only; their content is not imported or graded here, and COSMIC may require login.

@@ -1318,10 +1318,13 @@ Promise.all([
     renderDiseaseGuide();
     renderStats(statsData || computeClientSideStats());
     renderDataSources(statsData);
+    renderVariantComparison(relationRows, entityById);
     restoreShareUrl();
   })
   .catch(() => {
     status.textContent = "Search index unavailable";
+    const comparison = document.querySelector("#variant-comparison");
+    if (comparison) comparison.textContent = "Variant comparison unavailable: search index could not be loaded.";
   });
 
 search.addEventListener("input", debouncedRender);

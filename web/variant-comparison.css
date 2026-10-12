@@ -1,0 +1,48 @@
+.variant-comparison {
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid #344252;
+  border-radius: 8px;
+  background: #161b22;
+}
+
+.variant-comparison h2 { margin: 0 0 8px; font-size: 1.35rem; }
+.variant-comparison > p { margin: 8px 0 16px; color: #c6d2df; }
+.variant-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.variant-controls label { font-weight: 600; font-size: .9rem; }
+.variant-controls select {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 5px;
+  padding: 8px;
+  border: 1px solid #586b7e;
+  border-radius: 6px;
+  color: #e6edf3;
+  background: #0d1117;
+  font: inherit;
+}
+.variant-controls label:last-child { grid-column: 1 / -1; font-weight: 400; }
+.variant-controls input[type="checkbox"] { width: auto; margin: 0 7px 0 0; vertical-align: middle; }
+.variant-table-scroll { max-height: 600px; overflow: auto; }
+.variant-table-scroll table { border-collapse: collapse; width: 100%; min-width: 850px; font-size: .9rem; }
+.variant-table-scroll th, .variant-table-scroll td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #344252;
+  text-align: left;
+  vertical-align: top;
+}
+.variant-table-scroll th { position: sticky; top: 0; background: #202a36; }
+.variant-table-scroll td:nth-child(n+3):nth-child(-n+6) { text-align: center; }
+.variant-table-scroll td small { display: block; margin-top: 3px; color: #bdcbd9; }
+.variant-table-scroll a { color: #89c4ff; display: inline-block; margin-bottom: 6px; }
+.variant-note { font-size: .87rem; }
+@media (max-width: 650px) {
+  .variant-comparison { padding: 14px; }
+  .variant-controls { grid-template-columns: 1fr; }
+}
