@@ -51,3 +51,7 @@ def test_whole_profile_is_distinct_from_unverified_single_variant():
     assert evaluate_evidence_claim(tree, therapy="Osimertinib", effect="sensitivity")["status"] == "insufficient_variant_context"
     assert evaluate_evidence_claim(tree, therapy="Osimertinib", effect="sensitivity",
                                    scope="profile")["status"] == "supporting_records"
+    other = {**tree, "evidence": [{**tree["evidence"][0], "profile": {
+        **tree["evidence"][0]["profile"], "name": "EGFR C797S"}}]}
+    assert evaluate_evidence_claim(other, therapy="Osimertinib", effect="sensitivity",
+                                   scope="profile")["status"] == "insufficient_variant_context"

@@ -19,8 +19,9 @@ function evaluateEvidenceClaim(tree, { therapy, effect, scope = "variant", limit
     // prove that this single variant has the reported effect.
     const exactProfile = scope === "profile" && item.profile?.match_type === "profile_only" &&
       normal(item.profile.name) === normal(tree.query.variant);
-    if (!exactProfile && (item.profile?.match_type !== "variant_member" || item.profile?.complex_profile)) {
-      groups.context_only.push({ ...item, reason: "Variant-specific effect unverified for this molecular profile" });
+    if ((scope === "profile" && !exactProfile) ||
+        (scope === "variant" && (item.profile?.match_type !== "variant_member" || item.profile?.complex_profile))) {
+      groups.context_only.push({ ...item, reason: "Requested variant or molecular profile is not verified by this record" });
       counts.incomplete_profile++; continue;
     }
     const direction = normal(item.claim_state);

@@ -67,4 +67,8 @@ test("legacy snapshot can answer exact whole-profile question while single varia
   const profile = evaluateEvidenceClaim(tree, { therapy: "Osimertinib", effect: "sensitivity", scope: "profile" });
   assert.equal(profile.status, "supporting_records");
   assert.equal(profile.query.scope, "profile");
+  const other = { ...tree, evidence: [{ ...tree.evidence[0], profile: {
+    ...tree.evidence[0].profile, name: "EGFR C797S" } }] };
+  assert.equal(evaluateEvidenceClaim(other, { therapy: "Osimertinib", effect: "sensitivity", scope: "profile" }).status,
+    "insufficient_variant_context");
 });

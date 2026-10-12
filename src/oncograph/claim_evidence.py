@@ -46,9 +46,11 @@ def evaluate_evidence_claim(tree: dict[str, Any], *, therapy: str, effect: str,
         profile = item.get("profile") or {}
         exact_profile = (scope == "profile" and profile.get("match_type") == "profile_only"
                          and normal(profile.get("name")) == normal(tree["query"].get("variant")))
-        if not exact_profile and (profile.get("match_type") != "variant_member" or profile.get("complex_profile")):
+        if ((scope == "profile" and not exact_profile)
+                or (scope == "variant" and (profile.get("match_type") != "variant_member"
+                                             or profile.get("complex_profile"))):
             groups["context_only"].append({**item, "reason":
-                "Variant-specific effect unverified for this molecular profile"})
+                "Requested variant or molecular profile is not verified by this record"})
             excluded["incomplete_profile"] += 1
             continue
         direction = normal(item.get("claim_state"))
