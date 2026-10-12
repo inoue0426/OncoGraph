@@ -7,14 +7,29 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    outputs:
+      lint_error: ${{ steps.lint.outputs.lint_error }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -e '.[dev]'
-      - run: ruff check .
+      - id: lint
+        run: |
+          ruff check . --output-format json > /tmp/oncograph-ruff.json || {
+            jq -r '.[0] | "\(.code) \(.filename):\(.location.row) \(.message)"' /tmp/oncograph-ruff.json | cut -c1-180 | sed 's/^/lint_error=/' >> "$GITHUB_OUTPUT"
+            cat /tmp/oncograph-ruff.json
+            exit 1
+          }
       - run: pytest
       - run: node tests/test_variant_comparison.cjs
       - run: node tests/test_evidence_tree.cjs
       - run: node tests/test_ask_evidence.cjs
+  lint-diagnostic:
+    if: always() && needs.test.outputs.lint_error != ''
+    needs: test
+    name: ${{ needs.test.outputs.lint_error }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'true'
