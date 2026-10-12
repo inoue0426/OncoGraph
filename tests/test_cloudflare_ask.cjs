@@ -17,4 +17,6 @@ test("best drug questions do not call AI or present sampled drugs as recommendat
   assert.equal(result.mode, "evidence_limit");
   assert.equal(result.recordsUsed, 0);
   assert(!result.answer.includes("Fadrozole"));
+  assert.match(result.answer, /variant is a difference from a reference DNA sequence/i);
+  assert.match(result.answer, /tumor.*inherited/i);
 });
