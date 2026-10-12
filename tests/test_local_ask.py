@@ -33,3 +33,17 @@ def test_rejects_unbounded_or_empty_evidence(monkeypatch):
                        headers=headers).status_code == 422
     huge = {**_payload(), "question": "X" * 30000}
     assert client.post("/api/local-answer", json=huge, headers=headers).status_code == 413
+
+
+def test_broad_best_drug_question_does_not_call_model(monkeypatch):
+    def no_model(_packet):
+        raise AssertionError("a best-drug question must not call the model")
+
+    monkeypatch.setattr(local_ask, "_ask_ollama", no_model)
+    client = TestClient(local_ask.app, base_url="http://127.0.0.1:8765")
+    packet = {**_payload(), "question": "What is the best drug for breast cancer?"}
+    response = client.post("/api/local-answer", json=packet,
+                           headers={"Origin": "http://127.0.0.1:8765"})
+    assert response.status_code == 200
+    assert response.json()["mode"] == "evidence_limit"
+    assert response.json()["record_count"] == 0

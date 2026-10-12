@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import threading
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -26,6 +27,12 @@ _MODEL = os.getenv("ONCOGRAPH_OLLAMA_MODEL", "gemma3:4b")
 _WEB_ROOT = Path(os.getenv("ONCOGRAPH_WEB_DIR", "web")).resolve()
 _HOSTS = ["localhost", "127.0.0.1"]
 _model_slot = threading.BoundedSemaphore(1)
+_BEST_TREATMENT = re.compile(
+    r"\b(best|most effective|optimal)\b.*\b(drug|medicine|medication|treatment|therapy|therapies)s?\b"
+    r"|\b(drug|medicine|medication|treatment|therapy|therapies)s?\b.*\b(best|most effective|optimal)\b"
+    r"|(?:最良|最適|一番|ベスト).*(?:薬|治療)|(?:薬|治療).*(?:最良|最適|一番|ベスト)",
+    re.IGNORECASE,
+)
 
 
 class Source(BaseModel):
@@ -118,6 +125,16 @@ async def local_answer(request: WebRequest):
         payload = Question.model_validate_json(bytes(raw))
     except (ValidationError, ValueError) as exc:
         raise HTTPException(422, "Invalid question or evidence packet") from exc
+    if _BEST_TREATMENT.search(payload.question):
+        answer = (
+            "抽出された記録だけでは最良の治療薬を判断できません。がんの種類、病期、バイオマーカー、"
+            "これまでの治療などが必要です。以下の記録は研究上の関連を示すもので、治療の推奨ではありません。"
+            if re.search(r"[\u3040-\u30ff\u3400-\u9fff]", payload.question) else
+            "These sampled records cannot establish a best drug. The choice depends on "
+            "cancer subtype, stage, biomarkers, and prior treatment. The links below are "
+            "research records, not treatment recommendations."
+        )
+        return {"answer": answer, "model": None, "record_count": 0, "mode": "evidence_limit"}
     try:
         answer = await asyncio.to_thread(_ask_ollama, payload)
     except RuntimeError as exc:

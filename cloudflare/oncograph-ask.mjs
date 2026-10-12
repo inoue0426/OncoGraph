@@ -2,6 +2,10 @@
 const SITE = "https://inoue0426.github.io";
 const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8";
 
+function asksForBestTreatment(question) {
+  return /\b(best|most effective|optimal)\b.*\b(drug|medicine|medication|treatment|therap(?:y|ies))s?\b|\b(drug|medicine|medication|treatment|therap(?:y|ies))s?\b.*\b(best|most effective|optimal)\b|(?:最良|最適|一番|ベスト).*(?:薬|治療)|(?:薬|治療).*(?:最良|最適|一番|ベスト)/iu.test(question);
+}
+
 function reply(data, status = 200) {
   return new Response(status === 204 ? null : JSON.stringify(data), {
     status,
@@ -42,6 +46,14 @@ export default {
         !Array.isArray(input.records) || input.records.length < 1 || input.records.length > 8 ||
         input.records.some((record) => !record || typeof record !== "object" || Array.isArray(record))) {
       return reply({ error: "Send a question and 1–8 records" }, 400);
+    }
+
+    // Ranked research links cannot establish a patient-specific treatment ranking.
+    if (asksForBestTreatment(input.question)) {
+      const answer = /[\u3040-\u30ff\u3400-\u9fff]/u.test(input.question)
+        ? "抽出された記録だけでは最良の治療薬を判断できません。がんの種類、病期、バイオマーカー、これまでの治療などが必要です。以下の記録は研究上の関連を示すもので、治療の推奨ではありません。"
+        : "These sampled records cannot establish a best drug. The choice depends on cancer subtype, stage, biomarkers, and prior treatment. The links below are research records, not treatment recommendations.";
+      return reply({ answer, recordsUsed: 0, mode: "evidence_limit" });
     }
 
     try {
