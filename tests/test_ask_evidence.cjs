@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { findQuestionEvidence, asksForBestTreatment } = require("../web/ask-evidence.js");
+const { findQuestionEvidence, asksForBestTreatment, citedMolecularProfiles } = require("../web/ask-evidence.js");
 
 const entities = [
   { id: "g", type: "gene", name: "EGFR", canonical_id: "hgnc:3236" },
@@ -100,4 +100,21 @@ test("specific cancer queries do not pull generic cancer drugs into the evidence
   assert(asksForBestTreatment(result.question));
   assert(asksForBestTreatment("乳がんに最適な薬は？"));
   assert(!asksForBestTreatment("What drugs target EGFR?"));
+});
+
+test("CIViC molecular profiles stay attached to their record IDs", () => {
+  const records = [
+    { id: "R1", sources: [
+      { source: "civic", molecular_profile: "ERBB2 L755S" },
+      { source: "civic", molecular_profile: "ERBB2 L866M" },
+    ] },
+    { id: "R2", sources: [
+      { source: "civic", molecular_profile: "ERBB2 L755S" },
+      { source: "other", molecular_profile: "unknown" },
+    ] },
+  ];
+  assert.deepEqual(citedMolecularProfiles(records), [
+    { name: "ERBB2 L755S", ids: ["R1", "R2"] },
+    { name: "ERBB2 L866M", ids: ["R1"] },
+  ]);
 });
