@@ -59,9 +59,9 @@
 
       <section id="ask" class="home-section" aria-labelledby="ask-title">
         <h2 id="ask-title">Ask about recorded links</h2>
-        <p>Try “What do we know about EGFR?” or “What is linked to osimertinib?” This finds a sample of matching records, not a complete answer.</p>
+        <p>Try “What do we know about EGFR?” or “What is linked to osimertinib?” Search finds a sample of matching records; the optional AI explains up to eight of them with record references.</p>
         <div id="ask-evidence"><p>Loading evidence index…</p></div>
-        <p class="interpretation-note">Search finds matching names in a saved copy of research data. It may miss things. Open the original sources before drawing conclusions.</p>
+        <p class="interpretation-note">Search finds matching names in a saved copy of research data. Hosted AI sends your question and selected public records to Cloudflare after you ask; do not enter patient information. The model may be unavailable when its free quota runs out, and its explanation can be wrong. Open original sources before drawing conclusions.</p>
       </section>
 
 
@@ -108,7 +108,7 @@
             <tr><th scope="row">Search entities and inspect source-backed relationships</th><td>Yes, published snapshot</td><td>Yes, Python and HTTP API</td></tr>
             <tr><th scope="row">Compare accepted CIViC molecular profiles</th><td>Yes, published snapshot</td><td>Source records available after import</td></tr>
             <tr><th scope="row">Evidence Tree by gene, variant/profile, disease</th><td>Browser search and JSON export</td><td>Python, HTTP API, local MCP</td></tr>
-            <tr><th scope="row">Ask questions about recorded relationships</th><td>Source-backed record matching and prompt copy</td><td>Optional connection to your own Ollama on localhost</td></tr>
+            <tr><th scope="row">Ask questions about recorded relationships</th><td>Source-backed matching, prompt copy, and optional Cloudflare AI explanation</td><td>Optional connection to your own Ollama on localhost</td></tr>
             <tr><th scope="row">Live query endpoint or remote MCP hosted on Pages</th><td>No</td><td>Run and host separately</td></tr>
             <tr><th scope="row">US FDA label and CIViC Assertion grading</th><td>Not integrated</td><td>Not integrated</td></tr>
           </tbody>
