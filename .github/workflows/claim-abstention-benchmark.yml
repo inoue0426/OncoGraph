@@ -55,7 +55,21 @@ jobs:
         run: |
           node tests/test_claim_benchmark.cjs
           node scripts/benchmark_claim_abstention.cjs \
-            --snapshot _data-refresh --questions 100 --out _claim-benchmark
+            --snapshot _data-refresh --questions 100 --out _claim-benchmark \
+            2>&1 | tee _benchmark-console.txt
+      - name: Label the result artifact for inspection
+        id: label
+        if: always()
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            let label = "report";
+            if (!fs.existsSync("_claim-benchmark/report.json")) {
+              const log = fs.existsSync("_benchmark-console.txt") ? fs.readFileSync("_benchmark-console.txt", "utf8") : "Missing benchmark output";
+              label = "error-" + (log.match(/(?:Error|TypeError): ([^\n]+)/)?.[1] || "unknown").replace(/[^a-zA-Z0-9]+/g, "-").slice(0, 80);
+            }
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `label=${label}\n`);
+          '
       - name: Summarize method and limitations
         run: |
           node -e '
@@ -73,7 +87,10 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
           '
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: claim-abstention-benchmark-report
-          path: _claim-benchmark/report.json
+          name: claim-abstention-benchmark-${{ steps.label.outputs.label }}
+          path: |
+            _claim-benchmark/report.json
+            _benchmark-console.txt
           retention-days: 30

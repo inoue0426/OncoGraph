@@ -62,7 +62,8 @@ node scripts/benchmark_claim_abstention.cjs --snapshot web/data --questions 100 
 `report.json` includes all 100 query texts, question types, source-derived
 labels, EIDs per method, coverage, abstention counts and SHA-256 hashes of the
 two input JSON files. CI publishes a summary and the report as an Actions
-artifact named `claim-abstention-benchmark-report`; the benchmark workflow
+artifact named `claim-abstention-benchmark-report`; failed runs instead put a
+brief error hint in the artifact name and upload the console log. The workflow
 also runs on pull requests, manually, and after successful data refreshes.
 To evaluate scientific novelty, independently review a held-out set of
 question/claim/source tuples, evaluate claim-level citations and free-text
