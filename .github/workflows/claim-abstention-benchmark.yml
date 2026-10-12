@@ -64,7 +64,14 @@ jobs:
           node -e '
             const fs = require("node:fs");
             let label = "report";
-            if (!fs.existsSync("_claim-benchmark/report.json")) {
+            if (fs.existsSync("_claim-benchmark/report.json")) {
+              const r = JSON.parse(fs.readFileSync("_claim-benchmark/report.json", "utf8"));
+              const m = r.metrics;
+              const u = m.claim_scoped.source_unanswerable_count;
+              const p = m.claim_scoped.source_answerable_count;
+              const falseCount = (method) => Math.round((m[method].false_answer_rate_on_unanswerable || 0) * u);
+              label = `report-${r.scope}-Q${r.question_count}-P${p}-U${u}-B${falseCount("context_blind")}-V${falseCount("variant_only")}-C${falseCount("claim_scoped")}-Y${m.claim_scoped.answered_count}`;
+            } else {
               const log = fs.existsSync("_benchmark-console.txt") ? fs.readFileSync("_benchmark-console.txt", "utf8") : "Missing benchmark output";
               label = "error-" + (log.match(/(?:Error|TypeError): ([^\n]+)/)?.[1] || "unknown").replace(/[^a-zA-Z0-9]+/g, "-").slice(0, 80);
             }
