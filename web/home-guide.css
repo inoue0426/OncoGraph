@@ -22,6 +22,10 @@
 .capability-table thead th { color: #d9e8f8; }
 .capability-table tbody th { width: 42%; font-weight: 600; }
 .home-section .source-guide { margin-bottom: 0; }
+.search-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .8rem; margin: 0 0 .8rem; }
+.search-controls label { font-weight: 600; }
+.search-controls select { padding: .55rem .7rem; font: inherit; color: inherit; background: #161b22; border: 1px solid #65809d; border-radius: 6px; }
+.search-controls .interpretation-note { flex: 1 1 18rem; }
 .site-intro h1 { margin-bottom: .25rem; }
 .site-intro > p { max-width: 42rem; }
 .section-nav { margin: 1rem 0 1.2rem; padding: .65rem .8rem; }

@@ -1,6 +1,7 @@
 // --- DOM refs ---------------------------------------------------------------
 
 const search = document.querySelector("#search");
+const searchKind = document.querySelector("#search-kind");
 const status = document.querySelector("#status");
 const results = document.querySelector("#results");
 const detail = document.querySelector("#detail");
@@ -1009,9 +1010,15 @@ function renderSearchResultCard(entity) {
 }
 
 function renderPlainSearch(query) {
-  const ranked = query ? rankedEntitySearch(query) : [];
-  results.replaceChildren(...ranked.slice(0, 50).map((r) => renderSearchResultCard(r.entity)));
-  status.textContent = query ? `${ranked.length} matches` : `${entities.length} indexed entities`;
+  const kind = searchKind.value;
+  const ranked = query ? rankedEntitySearch(query)
+    : kind === "all" ? [] : (entitiesByType.get(kind) || []).map((entity) => ({ entity }));
+  const filtered = kind === "all" ? ranked : ranked.filter((item) => item.entity.type === kind);
+  results.replaceChildren(...filtered.slice(0, 50).map((item) => renderSearchResultCard(item.entity)));
+  const label = kind === "all" ? "matches" : `${statsEntityLabel(kind).toLowerCase()} found`;
+  status.textContent = query || kind !== "all"
+    ? `${filtered.length} ${label}${filtered.length > 50 ? " (showing first 50)" : ""}`
+    : `${entities.length} names available. Type a name or choose a category.`;
 }
 
 function render() {
@@ -1022,7 +1029,7 @@ function render() {
   }
 
   const intent = parseIntent(query);
-  if (!intent.facet) {
+  if (searchKind.value !== "all" || !intent.facet) {
     renderPlainSearch(query);
     return;
   }
@@ -1070,6 +1077,7 @@ function renderExamples() {
       button.className = "example-query";
       button.textContent = q;
       button.addEventListener("click", () => {
+        searchKind.value = "all";
         search.value = q;
         render();
         updateShareUrl({ query: q });
@@ -1176,6 +1184,7 @@ function renderStatCard({ value, label, title, onClick }) {
 // <facet word>" grammar, which has no "list every X" form on its own.
 function renderTypeListing(type) {
   const list = entitiesByType.get(type) || [];
+  searchKind.value = [...searchKind.options].some((option) => option.value === type) ? type : "all";
   search.value = "";
   updateShareUrl();
   detail.hidden = true;
@@ -1334,6 +1343,10 @@ Promise.all([
   });
 
 search.addEventListener("input", debouncedRender);
+searchKind.addEventListener("change", () => {
+  if (!detail.hidden) closeDetail({ historyMode: "none" });
+  render();
+});
 window.addEventListener("popstate", () => {
   clearTimeout(searchDebounce);
   restoreShareUrl();

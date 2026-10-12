@@ -17,21 +17,53 @@
     <main>
       <header class="site-intro">
         <h1>OncoGraph</h1>
-        <p>Ask about a gene, medicine, or cancer. See what the research data says and where it came from.</p>
+        <p>Search genes, medicines, cancers, and the research links between them.</p>
         <p class="scope-note">For research, not medical advice.</p>
       </header>
       <nav class="section-nav" aria-label="OncoGraph sections">
+        <a href="#explore">Search the data</a>
         <a href="#ask">Ask a question</a>
+        <a href="#molecular">Variant evidence</a>
         <a href="#downloads">Download the data</a>
         <a href="#more-tools">More tools</a>
       </nav>
 
+      <section id="explore" class="home-section" aria-labelledby="explore-title">
+        <h2 id="explore-title">Search genes, drugs, and cancers</h2>
+        <p>Search by name, or try a question like “EGFR drugs”. Select a result to see its links and original sources.</p>
+        <label class="search-label" for="search">Search by name or connection</label>
+        <input id="search" type="search" placeholder="e.g. EGFR, gefitinib, ovarian cancer drugs" />
+        <div class="search-controls"><label for="search-kind">Show</label>
+          <select id="search-kind">
+            <option value="all">Everything</option>
+            <option value="gene">Genes</option>
+            <option value="drug">Drugs</option>
+            <option value="disease">Cancers and diseases</option>
+            <option value="trial">Trials</option>
+            <option value="pathway">Pathways</option>
+            <option value="paper">Papers</option>
+          </select>
+          <span class="interpretation-note">Choose “Everything” for connection searches such as “EGFR drugs”.</span>
+        </div>
+        <p class="examples-label">Try:</p>
+        <div id="examples"></div>
+        <p id="status">Loading…</p>
+        <section id="results" aria-label="Search results"></section>
+        <section id="detail" hidden></section>
+        <section id="evidence-panel" class="evidence-panel" hidden></section>
+        <details class="tool-panel" id="browse-diseases"><summary>Browse disease names in the snapshot</summary>
+          <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
+        </details>
+      </section>
+
+
       <section id="ask" class="home-section" aria-labelledby="ask-title">
-        <h2 id="ask-title">What do you want to know?</h2>
-        <p>Try “What do we know about EGFR?” or “What is linked to osimertinib?” Search is free and needs no setup.</p>
+        <h2 id="ask-title">Ask about recorded links</h2>
+        <p>Try “What do we know about EGFR?” or “What is linked to osimertinib?” This finds a sample of matching records, not a complete answer.</p>
         <div id="ask-evidence"><p>Loading evidence index…</p></div>
         <p class="interpretation-note">Search finds matching names in a saved copy of research data. It may miss things. Open the original sources before drawing conclusions.</p>
       </section>
+
 
       <section id="downloads" class="home-section" aria-labelledby="downloads-title">
         <h2 id="downloads-title">Download the data</h2>
@@ -48,22 +80,6 @@
 
       <details id="more-tools" class="advanced-tools"><summary>More tools and details for researchers</summary>
         <p><a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#ask-from-github-pages-with-your-own-ollama">Use your own Ollama on this computer</a> (requires setup).</p>
-
-      <section id="explore" class="home-section" aria-labelledby="explore-title">
-        <h2 id="explore-title">Search the graph</h2>
-        <p>Search a drug, gene, disease, or trial. Open a result to see why it appears and inspect each source record.</p>
-        <label class="search-label" for="search">Name, identifier, or example query</label>
-        <input id="search" type="search" placeholder="e.g. EGFR, gefitinib, ovarian cancer drugs" />
-        <p class="examples-label">Try:</p>
-        <div id="examples"></div>
-        <p id="status">Loading…</p>
-        <section id="results" aria-label="Search results"></section>
-        <section id="detail" hidden></section>
-        <section id="evidence-panel" class="evidence-panel" hidden></section>
-        <details class="tool-panel" id="browse-diseases"><summary>Browse disease names in the snapshot</summary>
-          <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
-        </details>
-      </section>
 
       <section id="drug-paths" class="home-section" aria-labelledby="drug-paths-title">
         <h2 id="drug-paths-title">Follow a drug evidence path</h2>
