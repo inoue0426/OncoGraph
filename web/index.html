@@ -17,54 +17,43 @@
     <main>
       <header class="site-intro">
         <h1>OncoGraph</h1>
-        <p>Explore recorded cancer research relationships and the evidence behind them.</p>
-        <p class="scope-note">Public snapshot · Research use only · No patient-specific treatment recommendations</p>
+        <p>Ask about a gene, medicine, or cancer. See what the research data says and where it came from.</p>
+        <p class="scope-note">For research, not medical advice.</p>
       </header>
       <nav class="section-nav" aria-label="OncoGraph sections">
-        <a href="#use-cases">Start with a question</a>
-        <a href="#ask">Ask with sources</a>
-        <a href="#explore">Search the graph</a>
-        <a href="#molecular">Variant evidence</a>
-        <a href="#coverage-and-access">Data and access</a>
+        <a href="#ask">Ask a question</a>
+        <a href="#downloads">Download the data</a>
+        <a href="#more-tools">More tools</a>
       </nav>
 
-      <section id="use-cases" class="home-section" aria-labelledby="use-cases-title">
-        <h2 id="use-cases-title">What can I use this for?</h2>
-        <div class="use-case-grid">
-          <article class="use-case-card">
-            <h3>1. Start with a cancer type</h3>
-            <p>Find a disease, then inspect recorded drug indications, CIViC profiles, genes, and two-step drug–gene–disease paths separately.</p>
-            <p class="case-example"><strong>Example question:</strong> Which different kinds of evidence are recorded for a lung cancer subtype?</p>
-            <a href="#explore">Search diseases →</a>
-          </article>
-          <article class="use-case-card">
-            <h3>2. Follow a drug's connections</h3>
-            <p>Open a drug and trace each recorded link to a disease, including the target gene and original source when available.</p>
-            <p class="case-example"><strong>Example question:</strong> How is osimertinib linked to diseases in this snapshot?</p>
-            <a href="#drug-paths">Open drug examples →</a>
-          </article>
-          <article class="use-case-card">
-            <h3>3. Review molecular evidence</h3>
-            <p>Compare accepted CIViC evidence by gene, molecular profile, and cancer type; inspect the literature record and export an Evidence Tree.</p>
-            <p class="case-example"><strong>Example question:</strong> What evidence is recorded for an EGFR T790M profile in a selected cancer type?</p>
-            <a href="#compare-tool">Compare profiles →</a>
-          </article>
-        </div>
-        <p class="interpretation-note">These are research questions about recorded sources. An approved-stage record is not a US FDA label; a trial is not evidence of benefit; a path through a gene is not an indication.</p>
+      <section id="ask" class="home-section" aria-labelledby="ask-title">
+        <h2 id="ask-title">What do you want to know?</h2>
+        <p>Try “What do we know about EGFR?” or “What is linked to osimertinib?” Search is free and needs no setup.</p>
+        <div id="ask-evidence"><p>Loading evidence index…</p></div>
+        <p class="interpretation-note">Search finds matching names in a saved copy of research data. It may miss things. Open the original sources before drawing conclusions.</p>
       </section>
 
-      <section id="ask" class="home-section" aria-labelledby="ask-title">
-        <h2 id="ask-title">Ask a question about this snapshot</h2>
-        <p>Ask a question and get an explanation from Ollama running on your own computer. The page searches this published evidence snapshot first, then sends your question and selected records to your local model. Name matching is literal; model text is not a clinical answer. <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#ask-from-github-pages-with-your-own-ollama">One-time local setup</a></p>
-        <div id="ask-evidence"><p>Loading evidence index…</p></div>
+      <section id="downloads" class="home-section" aria-labelledby="downloads-title">
+        <h2 id="downloads-title">Download the data</h2>
+        <p>Want to check the data yourself? Get the same saved data this site uses.</p>
+        <a class="download-main" href="data/oncograph-snapshot.zip" download>Download all data (ZIP)</a>
+        <details class="tool-panel"><summary>Download individual JSON files</summary>
+          <ul>
+            <li><a href="data/search-index.json" download>Names and IDs</a></li>
+            <li><a href="data/relations.json" download>Links and their sources</a></li>
+            <li><a href="data/stats.json" download>Counts and snapshot date</a></li>
+          </ul>
+        </details>
+      </section>
+
+      <details id="more-tools" class="advanced-tools"><summary>More tools and details for researchers</summary>
         <div id="remote-llm-entry" class="remote-llm-entry">
-          <h3>Share a temporary hosted instance (optional)</h3>
-          <p>If the owner shared a temporary Cloudflare URL, paste it here to open the hosted question interface. This public page does not connect to that server directly. <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#temporary-public-demo-from-a-windows-machine">Windows setup</a></p>
-          <form><label for="remote-llm-url">Hosted URL</label><input id="remote-llm-url" type="url" placeholder="https://example.trycloudflare.com" required /><button type="submit">Open hosted Q&amp;A →</button></form>
+          <h3>Use a shared AI demo</h3>
+          <p>If someone gave you a demo link, paste it here. No installation is needed. <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#temporary-public-demo-from-a-windows-machine">How to host a demo</a></p>
+          <form><label for="remote-llm-url">Demo link</label><input id="remote-llm-url" type="url" placeholder="https://example.trycloudflare.com" required /><button type="submit">Open demo</button></form>
           <p id="remote-llm-error" role="status"></p>
         </div>
-        <p class="interpretation-note">Model text can be wrong or follow misleading source text. Check the original links in the source records. Your local model receives a question only when you press Ask with Ollama or Explain with my Ollama. A shared Windows instance receives a question only when you ask on that instance. Do not enter patient-identifying information.</p>
-      </section>
+        <p><a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#ask-from-github-pages-with-your-own-ollama">Use your own Ollama on this computer</a> (requires setup).</p>
 
       <section id="explore" class="home-section" aria-labelledby="explore-title">
         <h2 id="explore-title">Search the graph</h2>
@@ -123,6 +112,7 @@
           <div id="source-inventory"><p>Loading source summary…</p></div>
         </details>
       </section>
+      </details>
       <footer>
         <p>Research use only. Verify source evidence before drawing conclusions.</p>
         <p id="attribution"></p>

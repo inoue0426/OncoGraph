@@ -64,6 +64,16 @@ jobs:
           cp _data-refresh/relations.json web/data/relations.json
           cp _data-refresh/stats.json web/data/stats.json
 
+      - name: Bundle downloadable snapshot
+        run: |
+          python - <<'PY'
+          from zipfile import ZIP_DEFLATED, ZipFile
+          from pathlib import Path
+          with ZipFile("web/data/oncograph-snapshot.zip", "w", compression=ZIP_DEFLATED, compresslevel=6) as archive:
+              for name in ("search-index.json", "relations.json", "stats.json"):
+                  archive.write(Path("web/data") / name, arcname=name)
+          PY
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

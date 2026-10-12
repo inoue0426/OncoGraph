@@ -22,4 +22,11 @@
 .capability-table thead th { color: #d9e8f8; }
 .capability-table tbody th { width: 42%; font-weight: 600; }
 .home-section .source-guide { margin-bottom: 0; }
+.site-intro h1 { margin-bottom: .25rem; }
+.site-intro > p { max-width: 42rem; }
+.section-nav { margin: 1rem 0 1.2rem; padding: .65rem .8rem; }
+.home-section a.download-main { display: inline-block; margin: .2rem 0 1rem; padding: .7rem 1rem; background: #28435d; border: 1px solid #83bfff; border-radius: 6px; color: #fff; font-weight: 650; text-decoration: none; }
+.advanced-tools { margin: 1.2rem 0; padding: .9rem 1rem; border: 1px solid #344252; border-radius: 8px; }
+.advanced-tools > summary { cursor: pointer; font-size: 1.1rem; font-weight: 650; }
+.advanced-tools > .remote-llm-entry { margin-top: 1rem; }
 @media (max-width: 720px) { .use-case-grid { grid-template-columns: 1fr; } }

@@ -48,10 +48,10 @@ function renderAskEvidence(entities, relations) {
   const label = document.createElement("label"); label.htmlFor = "ask-question"; label.textContent = "Question";
   const input = document.createElement("input"); input.id = "ask-question";
   input.type = "search"; input.required = true; input.maxLength = 500;
-  input.placeholder = "e.g. What evidence mentions EGFR?";
-  const submit = document.createElement("button"); submit.type = "submit"; submit.textContent = "Ask with Ollama";
+  input.placeholder = "e.g. What do we know about EGFR?";
+  const submit = document.createElement("button"); submit.type = "submit"; submit.textContent = "Search";
   const sourcesOnly = document.createElement("button"); sourcesOnly.type = "button";
-  sourcesOnly.textContent = "Find source records only";
+  sourcesOnly.textContent = "Show sources only"; sourcesOnly.hidden = true;
   form.append(label, input, submit, sourcesOnly);
   const status = document.createElement("p"); status.setAttribute("role", "status");
   const output = document.createElement("div");
@@ -60,8 +60,14 @@ function renderAskEvidence(entities, relations) {
     .then((response) => response.ok && response.headers.get("content-type")?.includes("application/json")
       ? response.json() : null)
     .then((value) => value?.available === true).catch(() => false);
+  let bridgeAvailable = false;
+  bridge.then((available) => {
+    bridgeAvailable = available;
+    submit.textContent = available ? "Ask the AI" : "Search";
+    sourcesOnly.hidden = !available;
+  });
 
-  form.addEventListener("submit", (event) => { event.preventDefault(); showEvidence(true); });
+  form.addEventListener("submit", (event) => { event.preventDefault(); showEvidence(bridgeAvailable); });
   sourcesOnly.addEventListener("click", () => showEvidence(false));
 
   function showEvidence(explainRequested) {
@@ -69,10 +75,15 @@ function renderAskEvidence(entities, relations) {
     let bundle;
     try { bundle = findQuestionEvidence(input.value, entities, relations); }
     catch (error) { status.textContent = error.message; return; }
+    const matchedNames = [...new Set(bundle.matches.map((m) => m.name))];
     status.textContent = bundle.records.length
-      ? `Showing ${bundle.records.length}${bundle.omitted ? " of more" : ""} source-backed relationship(s) for ${bundle.matches.map((m) => m.name).join(", ")}. Literal name matching; these records do not answer every part of the question.`
-      : "No source-backed relationships found by literal name matching in this snapshot. Try an exact entity name in graph search.";
-    for (const record of bundle.records) {
+      ? `Found ${bundle.records.length}${bundle.omitted ? "+" : ""} links for ${matchedNames.join(", ")}. These are research records, not a medical answer.`
+      : "No matching records found here. Try the exact name of a gene, medicine, or cancer.";
+    const more = document.createElement("details"); more.className = "ask-more";
+    const moreTitle = document.createElement("summary");
+    moreTitle.textContent = `Show ${Math.max(0, bundle.records.length - 3)} more records`;
+    more.append(moreTitle);
+    for (const [index, record] of bundle.records.entries()) {
       const card = document.createElement("article"); card.className = "ask-record";
       const heading = document.createElement("h3");
       heading.textContent = `[${record.id}] ${record.subject} —${record.predicate}→ ${record.object}`;
@@ -87,8 +98,9 @@ function renderAskEvidence(entities, relations) {
         }
         card.append(line);
       }
-      output.append(card);
+      (index < 3 ? output : more).append(card);
     }
+    if (bundle.records.length > 3) output.append(more);
     if (!bundle.records.length) return;
     const copy = document.createElement("button"); copy.type = "button";
     copy.textContent = "Copy grounded prompt";
@@ -127,7 +139,16 @@ function renderAskEvidence(entities, relations) {
         }
         finally { explain.disabled = false; }
       });
-      output.prepend(explain, llmResult);
+      if (available) output.prepend(explain, llmResult);
+      else {
+        const optional = document.createElement("details"); optional.className = "ask-more";
+        const summary = document.createElement("summary"); summary.textContent = "Use my own Ollama (setup needed)";
+        const setup = document.createElement("a");
+        setup.href = "https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#ask-from-github-pages-with-your-own-ollama";
+        setup.textContent = "Setup steps";
+        optional.append(summary, setup, explain, llmResult);
+        output.append(optional);
+      }
       if (explainRequested) explain.click();
     });
   }

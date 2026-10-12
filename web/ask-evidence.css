@@ -8,3 +8,6 @@
 #ask-evidence .ask-record p { margin: .45rem 0; font-size: .9rem; overflow-wrap: anywhere; }
 #ask-evidence a { color: #83bfff; }
 #ask-evidence .ask-generated { padding: 1rem; border-left: 3px solid #65809d; white-space: pre-wrap; overflow-wrap: anywhere; }
+#ask-evidence .ask-more { margin: .8rem 0; padding: .8rem 1rem; border: 1px solid #344252; border-radius: 6px; }
+#ask-evidence .ask-more > summary { cursor: pointer; font-weight: 600; }
+#ask-evidence .ask-more > a { display: inline-block; margin: .8rem 1rem .4rem 0; }
