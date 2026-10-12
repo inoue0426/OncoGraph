@@ -45,12 +45,15 @@ test("keeps multi-variant profiles and no-therapy evidence explicit", () => {
   assert.equal(rows[0].profileId, "10");
 });
 
-test("omits unaccepted and legacy records lacking explicit variant membership", () => {
+test("omits unaccepted records and marks legacy profiles without claiming a variant", () => {
   const unaccepted = record({ id: 126 });
   unaccepted.context.civic_review_status = "SUBMITTED";
   const legacy = record({ id: 127 });
   delete legacy.context.profile_variants;
   const relations = [{ subject_id: "p1", object_id: "d1",
     predicate: "has_civic_evidence_for", evidence: [unaccepted, legacy] }];
-  assert.equal(context.buildVariantComparisonRows(relations, entities).length, 0);
+  const rows = context.buildVariantComparisonRows(relations, entities);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].hasExplicitVariants, false);
+  assert.equal(rows[0].variants[0], "Profile: EGFR T790M");
 });

@@ -13,8 +13,12 @@ function buildVariantComparisonRows(relations, byId) {
       const context = evidence.context || {};
       if (evidence.source !== "civic" || context.civic_review_status !== "ACCEPTED"
           || !context.civic_evidence_id || !context.molecular_profile_id
-          || !context.gene_name || !Array.isArray(context.profile_variants)
-          || !context.profile_variants.length) continue;
+          || !context.gene_name) continue;
+      const explicitVariants = Array.isArray(context.profile_variants)
+        && context.profile_variants.length > 0;
+      const variants = explicitVariants ? context.profile_variants
+        : context.molecular_profile ? [`Profile: ${context.molecular_profile}`] : [];
+      if (!variants.length) continue;
       const evidenceId = String(context.civic_evidence_id);
       const profileId = String(context.molecular_profile_id);
       const key = [evidenceId, profileId, disease.canonical_id].join("|");
@@ -23,7 +27,8 @@ function buildVariantComparisonRows(relations, byId) {
         profileId,
         profileName: context.molecular_profile || `CIViC profile ${profileId}`,
         gene: context.gene_name,
-        variants: context.profile_variants,
+        variants,
+        hasExplicitVariants: explicitVariants,
         disease,
         type: context.civic_evidence_type,
         significance: context.significance,
@@ -61,10 +66,10 @@ function renderVariantComparison(relations, byId) {
   const heading = document.createElement("h2");
   heading.textContent = "Compare variant evidence";
   const intro = document.createElement("p");
-  intro.textContent = "Compare accepted CIViC evidence by gene, listed variant and cancer type. Counts are individual evidence items, not patients or independent studies. No treatment recommendation is calculated.";
+  intro.textContent = "Compare accepted CIViC evidence by gene, molecular profile and cancer type. Updated snapshots also list each profile's variants. Counts are evidence items, not patients or independent studies. No treatment recommendation is calculated.";
   if (!allRows.length) {
     const empty = document.createElement("p");
-    empty.textContent = "Variant-level comparison is waiting for a data refresh with CIViC variant details. The rest of the explorer remains available.";
+    empty.textContent = "No comparable CIViC molecular-profile records are present in this published snapshot.";
     section.replaceChildren(heading, intro, empty);
     return;
   }
@@ -84,14 +89,14 @@ function renderVariantComparison(relations, byId) {
   tableHolder.className = "variant-table-scroll";
   const note = document.createElement("p");
   note.className = "variant-note";
-  note.textContent = "Sensitivity and resistance refer to a CIViC evidence item's significance, in its recorded disease and molecular-profile context. Contradicts means the record does not support its stated claim. A complex profile may list more than one variant; its evidence is not assigned to any member alone. Empty results mean no matching row in this bounded snapshot.";
+  note.textContent = "Sensitivity and resistance refer to a CIViC evidence item's significance, in its recorded disease and molecular-profile context. Contradicts means the record does not support its stated claim. A complex profile may list more than one variant; its evidence is not assigned to any member alone. In older snapshots, Profile: means variant membership was not exported. Empty results mean no matching row in this bounded snapshot.";
 
   function labelSelect(label, select) {
     const holder = document.createElement("label");
     holder.append(document.createTextNode(label), select);
     return holder;
   }
-  controls.append(labelSelect("Gene", geneSelect), labelSelect("Listed variant", variantSelect),
+  controls.append(labelSelect("Gene", geneSelect), labelSelect("Variant or profile", variantSelect),
     labelSelect("Cancer type", diseaseSelect), highLabel);
 
   function options(select, values, chosen) {
@@ -164,7 +169,9 @@ function renderVariantComparison(relations, byId) {
       const name = document.createElement("strong");
       name.textContent = group.row.disease.name;
       const profileInfo = document.createElement("small");
-      profileInfo.textContent = `${group.row.profileName} (${group.row.variants.length === 1 ? "single listed variant" : "complex profile"})`;
+      profileInfo.textContent = `${group.row.profileName} (${!group.row.hasExplicitVariants
+        ? "variant members unavailable" : group.row.variants.length === 1
+          ? "single listed variant" : "complex profile"})`;
       profile.append(name, profileInfo);
       const therapy = document.createElement("td");
       therapy.textContent = group.row.drug?.name || "No indexed therapy";

@@ -33,7 +33,7 @@ In the explorer, choose a suggested drug, press **Surprise me**, or search for o
 
 ### Browse cancer names and molecular evidence
 
-**Compare variant evidence** on the homepage groups CIViC records by gene, listed variant, cancer type, molecular profile and indexed therapy. It shows separate counts and source links for sensitivity, resistance, contradictions and other evidence, with an optional accepted level A/B and trust ≥4/5 filter. Complex profiles are marked explicitly; their evidence cannot be assigned to one member variant. The comparison appears when a published index contains explicit CIViC variant membership; older snapshots show an update notice.
+**Compare variant evidence** on the homepage groups CIViC records by gene, molecular profile, cancer type and indexed therapy. It shows separate counts and source links for sensitivity, resistance, contradictions and other evidence, with an optional accepted level A/B and trust ≥4/5 filter. New snapshots also show listed variants; complex profiles are marked explicitly, and their evidence cannot be assigned to one member variant. Older snapshots display profile names with an explicit "variant members unavailable" label.
 
 A [20-question review queue](data/benchmarks/variant_review_queue.json) and [independent evaluation protocol](docs/VARIANT_COMPARISON_EVALUATION.md) accompany the feature. These questions have **no gold answers yet**: source verification and independent domain review must occur before they can be scored or used to claim biomedical accuracy.
 
