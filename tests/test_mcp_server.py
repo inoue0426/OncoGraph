@@ -28,6 +28,7 @@ EXPECTED_TOOL_NAMES = {
     "find_mechanism_paths",
     "find_combination_treatments",
     "find_contextual_response_evidence",
+    "get_evidence_tree",
     "get_graph_stats",
 }
 
