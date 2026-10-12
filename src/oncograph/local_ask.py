@@ -13,7 +13,8 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
 
-from fastapi import FastAPI, HTTPException, Request as WebRequest
+from fastapi import FastAPI, HTTPException
+from fastapi import Request as WebRequest
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
