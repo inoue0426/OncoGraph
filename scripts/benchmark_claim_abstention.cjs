@@ -169,7 +169,7 @@ function metrics(results, strategy) {
 
 function evaluate(entities, relations, count = 100) {
   const { rows: source, byId, inspected } = readSourceRecords(entities, relations);
-  if (!source.length) throw Error(`No eligible source records: ${JSON.stringify(inspected)}`);
+  if (!source.length) throw Error(`No eligible source records: civic=${inspected.civic_items} accepted=${inspected.accepted_items} predictive=${inspected.predictive_items} effect=${inspected.valid_effect_items} members=${inspected.variant_member_items} clinical=${inspected.clinical_relations}`);
   const questions = makeQuestions(source, count);
   const results = questions.map((q) => {
     const tree = buildEvidenceTree(entities, relations, { gene: q.gene,
