@@ -25,24 +25,34 @@ function key(q) {
 function readSourceRecords(entities, relations) {
   const byId = new Map(entities.map((entity) => [String(entity.id), entity]));
   const rows = [];
+  const inspected = { clinical_relations: 0, drug_disease_relations: 0, civic_items: 0,
+    accepted_items: 0, predictive_items: 0, valid_effect_items: 0, variant_member_items: 0 };
   for (const relation of relations) {
     if (relation.predicate !== "clinically_evidenced_for") continue;
+    inspected.clinical_relations++;
     const drug = byId.get(String(relation.subject_id));
     const cancer = byId.get(String(relation.object_id));
     if (normal(drug?.type) !== "drug" || normal(cancer?.type) !== "disease") continue;
+    inspected.drug_disease_relations++;
     for (const item of relation.evidence || []) {
       const ctx = context(item);
-      if (normal(item.source) !== "civic" || ctx.civic_review_status !== "ACCEPTED" ||
-          normal(ctx.civic_evidence_type) !== "predictive" ||
-          !["sensitivity", "resistance"].includes(normal(ctx.significance)) ||
-          !ctx.civic_evidence_id || !ctx.gene_name || !Array.isArray(ctx.profile_variants)) continue;
+      if (normal(item.source) !== "civic") continue;
+      inspected.civic_items++;
+      if (ctx.civic_review_status !== "ACCEPTED") continue;
+      inspected.accepted_items++;
+      if (normal(ctx.civic_evidence_type) !== "predictive") continue;
+      inspected.predictive_items++;
+      if (!["sensitivity", "resistance"].includes(normal(ctx.significance))) continue;
+      inspected.valid_effect_items++;
+      if (!ctx.civic_evidence_id || !ctx.gene_name || !Array.isArray(ctx.profile_variants)) continue;
+      inspected.variant_member_items++;
       rows.push({ id: String(ctx.civic_evidence_id), gene: String(ctx.gene_name),
         members: ctx.profile_variants.map((member) => memberName(member, ctx.gene_name)),
         disease: cancer.name, therapy: drug.name, effect: normal(ctx.significance),
         direction: normal(item.claim_state) });
     }
   }
-  return { rows, byId };
+  return { rows, byId, inspected };
 }
 
 function referenceIndex(records) {
@@ -158,7 +168,8 @@ function metrics(results, strategy) {
 }
 
 function evaluate(entities, relations, count = 100) {
-  const { rows: source, byId } = readSourceRecords(entities, relations);
+  const { rows: source, byId, inspected } = readSourceRecords(entities, relations);
+  if (!source.length) throw Error(`No eligible source records: ${JSON.stringify(inspected)}`);
   const questions = makeQuestions(source, count);
   const results = questions.map((q) => {
     const tree = buildEvidenceTree(entities, relations, { gene: q.gene,
