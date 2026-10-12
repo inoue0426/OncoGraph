@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 
-import oncograph.local_ask as local_ask
+from oncograph import local_ask
 
 
 def _payload():
