@@ -2,6 +2,8 @@
 
 The local stdio MCP server also exposes `get_evidence_tree(gene, variant, disease, jurisdiction="US", limit=50)`. It returns accepted CIViC evidence with source links, preserves contradictory claims, and marks US regulatory labels and CIViC Assertions as not integrated. See [Evidence Tree v1](EVIDENCE_TREE.md) for exact inputs and response fields. GitHub Pages does not serve MCP.
 
+`check_variant_claim(gene, variant, disease, therapy, effect, limit=20)` classifies accepted CIViC predictive items for exact stored therapy and a reported `sensitivity` or `resistance` effect. It returns separate supporting, opposing, disputing and context-only records and abstains on incomplete profile membership or truncated input. See [claim check contract](CLAIM_EVIDENCE.md). It never converts a drug–target–disease path into a therapeutic claim.
+
 **Research use only.** OncoGraph's MCP server exposes structured oncology
 knowledge-graph data -- entities, relations, and their evidence -- to MCP
 clients (agents, LLMs, notebooks). It is not a medical-advice layer: every
@@ -112,7 +114,7 @@ Or, running from a source checkout without installing the console script:
 
 ## Tools
 
-All 12 tools are registered under these exact names. Every tool validates
+All 14 tools are registered under these exact names. Every tool validates
 its own arguments and raises a clear MCP `ToolError` (visible to the
 caller as `is_error=True` with the message, never a raw traceback) for an
 unknown entity, an invalid `entity_type`, or an invalid

@@ -71,24 +71,48 @@ function renderEvidenceTree(entities, relations) {
     form.append(label);
     return field;
   });
+  const therapyLabel = document.createElement("label");
+  const therapy = document.createElement("input");
+  therapy.name = "therapy"; therapy.placeholder = "e.g. osimertinib (optional)";
+  therapyLabel.append("Therapy ", therapy);
+  form.append(therapyLabel);
+  const effectLabel = document.createElement("label");
+  const effect = document.createElement("select");
+  for (const value of ["sensitivity", "resistance"]) {
+    const option = document.createElement("option"); option.value = value;
+    option.textContent = value === "sensitivity" ? "Sensitivity" : "Resistance";
+    effect.append(option);
+  }
+  effectLabel.append("Check report of ", effect);
+  form.append(effectLabel);
   const button = document.createElement("button");
   button.textContent = "Find evidence";
   form.append(button);
   const result = document.createElement("div");
   function show() {
     const tree = buildEvidenceTree(entities, relations,
-      { gene: inputs[0].value, variant: inputs[1].value, disease: inputs[2].value });
+      { gene: inputs[0].value, variant: inputs[1].value, disease: inputs[2].value,
+        limit: therapy.value.trim() ? 200 : 50 });
     result.replaceChildren();
+    const claim = therapy.value.trim() ? evaluateEvidenceClaim(tree, { therapy: therapy.value, effect: effect.value }) : null;
     const summary = document.createElement("p");
-    summary.textContent = `${tree.total_evidence_items} accepted CIViC evidence item(s) in this snapshot. FDA labels and CIViC assertions: not integrated. No match does not mean no evidence exists.`;
+    summary.textContent = claim
+      ? `Snapshot check: ${claim.status.replaceAll("_", " ")}. ${claim.counts.supporting} supporting; ${claim.counts.opposing} opposing reports; ${claim.counts.disputed} disputing the stated effect; ${claim.counts.context_only} context only. ${claim.incomplete ? "Results are incomplete. " : ""}This is not a treatment recommendation. Exact therapy name or ID required.`
+      : `${tree.total_evidence_items} accepted CIViC evidence item(s) in this snapshot. FDA labels and CIViC assertions: not integrated. No match does not mean no evidence exists.`;
     result.append(summary);
-    for (const item of tree.evidence) {
+    const rows = claim ? Object.entries(claim.evidence).flatMap(([group, items]) => items.map((item) => ({ group, item })))
+      : tree.evidence.map((item) => ({ group: "", item }));
+    for (const { group, item } of rows) {
       const card = document.createElement("article");
       const title = document.createElement("h3");
-      title.textContent = `${item.profile.name || item.profile.id} → ${item.disease.name} · CIViC EID ${item.evidence_id}`;
+      title.textContent = `${group ? `${group.replaceAll("_", " ")} · ` : ""}${item.profile.name || item.profile.id} → ${item.disease.name} · CIViC EID ${item.evidence_id}`;
       const detail = document.createElement("p");
       detail.textContent = `${item.profile.match_type === "profile_only" ? "Profile name match; variant membership unverified" : "Variant belongs to this profile"}${item.profile.complex_profile ? " (complex profile; not attributable to one variant)" : ""} · ${item.claim_state} · ${item.evidence_type || "type unreported"} · ${item.significance || "significance unreported"} · level ${item.level || "unreported"} · rating ${item.rating ?? "unreported"}. Therapies: ${item.therapies.map((drug) => drug.name).join(", ") || "none recorded"}.`;
       card.append(title, detail);
+      if (item.reason) {
+        const reason = document.createElement("p"); reason.textContent = item.reason;
+        card.append(reason);
+      }
       for (const [label, href] of [["CIViC record", item.source_url], ["Cited source", item.citation_url]]) {
         if (!href || !/^https:\/\//i.test(href)) continue;
         const a = document.createElement("a");
@@ -100,7 +124,7 @@ function renderEvidenceTree(entities, relations) {
     const exportButton = document.createElement("button");
     exportButton.type = "button"; exportButton.textContent = "Download JSON";
     exportButton.addEventListener("click", () => {
-      const href = URL.createObjectURL(new Blob([JSON.stringify(tree, null, 2)], { type: "application/json" }));
+      const href = URL.createObjectURL(new Blob([JSON.stringify(claim || tree, null, 2)], { type: "application/json" }));
       const link = document.createElement("a"); link.href = href; link.download = "evidence-tree.json"; link.click();
       setTimeout(() => URL.revokeObjectURL(href), 1000);
     });

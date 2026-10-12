@@ -29,6 +29,7 @@ EXPECTED_TOOL_NAMES = {
     "find_combination_treatments",
     "find_contextual_response_evidence",
     "get_evidence_tree",
+    "check_variant_claim",
     "get_graph_stats",
 }
 
