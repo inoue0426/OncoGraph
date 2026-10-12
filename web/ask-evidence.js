@@ -1,6 +1,16 @@
 // Browser-only retrieval. Returned records are graph facts, not an LLM answer.
 const ONCOGRAPH_AI_WORKER = "https://oncograph-ask.inoue-yoshitaka-iv1.workers.dev";
 
+function asksForBestTreatment(question) {
+  return /\b(best|most effective|optimal)\b.*\b(drug|medicine|medication|treatment|therap(?:y|ies))s?\b|\b(drug|medicine|medication|treatment|therap(?:y|ies))s?\b.*\b(best|most effective|optimal)\b|(?:最良|最適|一番|ベスト).*(?:薬|治療)|(?:薬|治療).*(?:最良|最適|一番|ベスト)/iu.test(question);
+}
+
+function treatmentLimitAnswer(question) {
+  return /[\u3040-\u30ff\u3400-\u9fff]/u.test(question)
+    ? "抽出された記録だけでは最良の治療薬を判断できません。がんの種類、病期、バイオマーカー、これまでの治療などが必要です。以下の記録は研究上の関連を示すもので、治療の推奨ではありません。"
+    : "These sampled records cannot establish a best drug. The choice depends on cancer subtype, stage, biomarkers, and prior treatment. The links below are research records, not treatment recommendations.";
+}
+
 // Relevance is based on the question and the *kind* of stored link, not on a
 // model's guess about clinical strength. Keep categories separate.
 function questionTopics(question, matches) {
@@ -101,9 +111,14 @@ function findQuestionEvidence(question, entities, relations, maxRecords = 12) {
       const index = query.indexOf(candidate);
       return index !== -1 && boundary(query[index - 1]) && boundary(query[index + candidate.length]);
     });
-  }).sort((a, b) => b.name.length - a.name.length).slice(0, 8);
+  }).sort((a, b) => b.name.length - a.name.length);
+  // A specific disease name should not bring in generic 'Cancer' links.
+  const specificCancer = matches.some((entity) => entity.type === "disease" &&
+    entity.name.toLocaleLowerCase() !== "cancer" && /\bcancer\b/i.test(entity.name));
+  const focusedMatches = matches.filter((entity) => !specificCancer ||
+    entity.type !== "disease" || entity.name.toLocaleLowerCase() !== "cancer").slice(0, 8);
   const byId = new Map(entities.map((entity) => [String(entity.id), entity]));
-  const { chosen, aiCount, total } = selectQuestionRelations(question, matches, relations, byId, maxRecords);
+  const { chosen, aiCount, total } = selectQuestionRelations(question, focusedMatches, relations, byId, maxRecords);
   const records = chosen.map((relation, index) => ({
     id: `R${index + 1}`,
     subject: byId.get(String(relation.subject_id))?.name || "Unresolved entity",
@@ -118,7 +133,7 @@ function findQuestionEvidence(question, entities, relations, maxRecords = 12) {
       molecular_profile: typeof item.context === "object" ? item.context?.molecular_profile || null : null,
     })),
   }));
-  return { question: question.trim(), matches: matches.map((e) => ({ name: e.name, type: e.type })),
+  return { question: question.trim(), matches: focusedMatches.map((e) => ({ name: e.name, type: e.type })),
     records, aiCount, omitted: total > maxRecords,
     scope: "Published snapshot; literal entity-name matching with heuristic relevance ranking" };
 }
@@ -173,9 +188,10 @@ function renderAskEvidence(entities, relations) {
     let bundle;
     try { bundle = findQuestionEvidence(input.value, entities, relations); }
     catch (error) { status.textContent = error.message; return; }
-    const matchedNames = [...new Set(bundle.matches.map((m) => m.name))];
+    const matchedNames = [...new Map(bundle.matches.map((m) => [m.name.toLocaleLowerCase(), m.name])).values()];
+    const bestTreatment = asksForBestTreatment(bundle.question);
     status.textContent = bundle.records.length
-      ? `Found ${bundle.records.length}${bundle.omitted ? "+" : ""} records for ${matchedNames.join(", ")}. AI uses ${bundle.aiCount} prioritized records.`
+      ? `Found ${bundle.records.length}${bundle.omitted ? "+" : ""} records for ${matchedNames.join(", ")}. ${bestTreatment ? "These records cannot rank treatments." : `AI uses ${bundle.aiCount} prioritized records.`}`
       : "No matching records found here. Try the exact name of a gene, medicine, or cancer.";
     if (bundle.records.length) {
       const heading = document.createElement("h3"); heading.className = "ask-sources-title";
@@ -215,6 +231,12 @@ function renderAskEvidence(entities, relations) {
       catch { status.textContent = "Clipboard access unavailable in this browser."; }
     });
     output.append(copy);
+    if (bestTreatment) {
+      const limit = document.createElement("p"); limit.className = "ask-generated";
+      limit.textContent = treatmentLimitAnswer(bundle.question);
+      output.prepend(limit);
+      return;
+    }
     Promise.all([bridge, cloud]).then(([available, hosted]) => {
       if (!output.contains(copy)) return;
       const explain = document.createElement("button"); explain.type = "button";
@@ -274,4 +296,4 @@ function renderAskEvidence(entities, relations) {
   }
 }
 
-if (typeof module !== "undefined") module.exports = { findQuestionEvidence };
+if (typeof module !== "undefined") module.exports = { findQuestionEvidence, asksForBestTreatment };

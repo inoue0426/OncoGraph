@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { findQuestionEvidence } = require("../web/ask-evidence.js");
+const { findQuestionEvidence, asksForBestTreatment } = require("../web/ask-evidence.js");
 
 const entities = [
   { id: "g", type: "gene", name: "EGFR", canonical_id: "hgnc:3236" },
@@ -81,4 +81,23 @@ test("a topic question prefers the requested relationship and a named pair", () 
     "targets");
   const pair = findQuestionEvidence("How is EGFR linked to lung cancer?", items, related);
   assert.equal(pair.records[0].object, "Lung cancer");
+});
+
+test("specific cancer queries do not pull generic cancer drugs into the evidence", () => {
+  const items = [
+    { id: "breast", type: "disease", name: "Breast Cancer" },
+    { id: "cancer", type: "disease", name: "Cancer" },
+    { id: "specific", type: "drug", name: "Drug A" },
+    { id: "generic", type: "drug", name: "Drug B" },
+  ];
+  const links = [
+    { subject_id: "specific", object_id: "breast", predicate: "indicated_for", evidence: [{ source: "dataset" }] },
+    { subject_id: "generic", object_id: "cancer", predicate: "indicated_for", evidence: [{ source: "dataset" }] },
+  ];
+  const result = findQuestionEvidence("What is the best drug for Breast Cancer?", items, links);
+  assert.deepEqual(result.matches.map((item) => item.name), ["Breast Cancer"]);
+  assert.deepEqual(result.records.map((record) => record.subject), ["Drug A"]);
+  assert(asksForBestTreatment(result.question));
+  assert(asksForBestTreatment("乳がんに最適な薬は？"));
+  assert(!asksForBestTreatment("What drugs target EGFR?"));
 });

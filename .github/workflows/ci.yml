@@ -18,3 +18,5 @@ jobs:
       - run: node tests/test_variant_comparison.cjs
       - run: node tests/test_evidence_tree.cjs
       - run: node tests/test_ask_evidence.cjs
+      - run: node tests/test_cloudflare_ask.cjs
+      - run: node tests/test_remote_llm_entry.cjs
