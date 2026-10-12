@@ -1,0 +1,79 @@
+name: Claim abstention benchmark
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/benchmark_claim_abstention.cjs'
+      - 'tests/test_claim_benchmark.cjs'
+      - 'web/claim-evidence.js'
+      - '.github/workflows/claim-abstention-benchmark.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/benchmark_claim_abstention.cjs'
+      - 'web/claim-evidence.js'
+      - '.github/workflows/claim-abstention-benchmark.yml'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Refresh data']
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  benchmark:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download the published-snapshot refresh artifact
+        id: refresh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow refresh-data.yml \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
+            echo '::error::No successful refresh with a search-index artifact exists.'
+            exit 1
+          fi
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v4
+        with:
+          name: search-index
+          path: _data-refresh
+          run-id: ${{ steps.refresh.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Run 100 source-consistency questions and three methods
+        run: |
+          node tests/test_claim_benchmark.cjs
+          node scripts/benchmark_claim_abstention.cjs \
+            --snapshot _data-refresh --questions 100 --out _claim-benchmark
+      - name: Summarize method and limitations
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const r = JSON.parse(fs.readFileSync("_claim-benchmark/report.json", "utf8"));
+            if (r.question_count !== 100) process.exit(1);
+            const pct = (x) => x == null ? "n/a" : (100 * x).toFixed(1) + "%";
+            const lines = ["## 100 source-derived claim questions", "",
+              "**Not independent biomedical gold or an LLM experiment.** Labels are derived from accepted CIViC fields in this same frozen snapshot; the result tests source consistency only.", "",
+              "Snapshot hashes: `" + JSON.stringify(r.snapshot_sha256) + "`", "",
+              "Question types: `" + JSON.stringify(r.categories) + "`; truncated: " + r.truncated_count, "",
+              "| Method | Answered | Answer rate on source-answerable | False answers on source-unanswerable | Error among answered |",
+              "| --- | ---: | ---: | ---: | ---: |"];
+            for (const [key, m] of Object.entries(r.metrics)) lines.push(`| ${key} | ${m.answered_count}/${m.evaluated_count} | ${pct(m.answer_rate_on_answerable)} | ${pct(m.false_answer_rate_on_unanswerable)} | ${pct(m.selective_error_among_answers)} |`);
+            fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join("\n") + "\n");
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: claim-abstention-benchmark-report
+          path: _claim-benchmark/report.json
+          retention-days: 30

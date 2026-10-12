@@ -53,6 +53,12 @@ produce `context_only` for profile-name matches.
 
 ## Evaluation before publication claims
 
+An automated [100-question benchmark](CLAIM_BENCHMARK.md) runs in GitHub
+Actions after a data refresh or on a change to the benchmark. It compares
+context-blind, variant-only and claim-scoped retrieval on the **same** frozen
+snapshot. Its source-derived labels test internal consistency, not medical
+accuracy, model-written answers or independent expert agreement.
+
 This is a **rule-based baseline**, not a demonstrated improvement or a
 validated algorithm. The current [variant retrieval experiment](VARIANT_RETRIEVAL_EXPERIMENT.md)
 evaluates Evidence Item retrieval, not this claim classifier or LLM responses.
