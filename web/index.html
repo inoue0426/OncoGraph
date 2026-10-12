@@ -10,33 +10,103 @@
     <link rel="stylesheet" href="dashboard.css" />
     <link rel="stylesheet" href="variant-comparison.css" />
     <link rel="stylesheet" href="evidence-tree.css" />
+    <link rel="stylesheet" href="home-guide.css" />
   </head>
   <body>
     <main>
-      <h1>OncoGraph</h1>
-      <p>Explore oncology evidence by disease, drug, gene, and source.</p>
-      <label class="search-label" for="search">Search the graph</label>
-      <input
-        id="search"
-        type="search"
-        placeholder="e.g. gefitinib, EGFR, ovarian cancer drugs, osimertinib trials"
-      />
-      <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
-      <p class="examples-label">Try:</p>
-      <div id="examples"></div>
-      <section id="variant-comparison" class="variant-comparison" aria-label="Compare variant evidence"><p>Loading variant evidence…</p></section>
-      <section aria-label="US evidence tree"><h2>US evidence tree</h2><p>Search accepted CIViC literature by exact gene, variant or profile name, and disease name or DOID. US FDA labels and CIViC assertions are not integrated. Research use only.</p><div id="evidence-tree">Loading evidence…</div></section>
-      <section id="trail-highlights" class="trail-highlights" aria-label="Guided evidence trails" hidden></section>
-      <details class="coverage"><summary>Dataset coverage</summary>
-        <section id="stats" class="stats" aria-label="Knowledge graph coverage" hidden></section>
-      </details>
-      <details id="data-sources" class="source-guide"><summary>Data sources: 11 scoped inputs · snapshot, not live queries</summary>
-        <div id="source-inventory"><p>Loading source summary…</p></div>
-      </details>
-      <p id="status">Loading…</p>
-      <section id="results"></section>
-      <section id="detail" hidden></section>
-      <section id="evidence-panel" class="evidence-panel" hidden></section>
+      <header class="site-intro">
+        <h1>OncoGraph</h1>
+        <p>Explore recorded cancer research relationships and the evidence behind them.</p>
+        <p class="scope-note">Public snapshot · Research use only · No patient-specific treatment recommendations</p>
+      </header>
+      <nav class="section-nav" aria-label="OncoGraph sections">
+        <a href="#use-cases">Start with a question</a>
+        <a href="#explore">Search the graph</a>
+        <a href="#molecular">Variant evidence</a>
+        <a href="#coverage-and-access">Data and access</a>
+      </nav>
+
+      <section id="use-cases" class="home-section" aria-labelledby="use-cases-title">
+        <h2 id="use-cases-title">What can I use this for?</h2>
+        <div class="use-case-grid">
+          <article class="use-case-card">
+            <h3>1. Start with a cancer type</h3>
+            <p>Find a disease, then inspect recorded drug indications, CIViC profiles, genes, and two-step drug–gene–disease paths separately.</p>
+            <p class="case-example"><strong>Example question:</strong> Which different kinds of evidence are recorded for a lung cancer subtype?</p>
+            <a href="#explore">Search diseases →</a>
+          </article>
+          <article class="use-case-card">
+            <h3>2. Follow a drug's connections</h3>
+            <p>Open a drug and trace each recorded link to a disease, including the target gene and original source when available.</p>
+            <p class="case-example"><strong>Example question:</strong> How is osimertinib linked to diseases in this snapshot?</p>
+            <a href="#drug-paths">Open drug examples →</a>
+          </article>
+          <article class="use-case-card">
+            <h3>3. Review molecular evidence</h3>
+            <p>Compare accepted CIViC evidence by gene, molecular profile, and cancer type; inspect the literature record and export an Evidence Tree.</p>
+            <p class="case-example"><strong>Example question:</strong> What evidence is recorded for an EGFR T790M profile in a selected cancer type?</p>
+            <a href="#compare-tool">Compare profiles →</a>
+          </article>
+        </div>
+        <p class="interpretation-note">These are research questions about recorded sources. An approved-stage record is not a US FDA label; a trial is not evidence of benefit; a path through a gene is not an indication.</p>
+      </section>
+
+      <section id="explore" class="home-section" aria-labelledby="explore-title">
+        <h2 id="explore-title">Search the graph</h2>
+        <p>Search a drug, gene, disease, or trial. Open a result to see why it appears and inspect each source record.</p>
+        <label class="search-label" for="search">Name, identifier, or example query</label>
+        <input id="search" type="search" placeholder="e.g. EGFR, gefitinib, ovarian cancer drugs" />
+        <p class="examples-label">Try:</p>
+        <div id="examples"></div>
+        <p id="status">Loading…</p>
+        <section id="results" aria-label="Search results"></section>
+        <section id="detail" hidden></section>
+        <section id="evidence-panel" class="evidence-panel" hidden></section>
+        <details class="tool-panel" id="browse-diseases"><summary>Browse disease names in the snapshot</summary>
+          <section id="disease-guide" class="disease-guide" aria-label="Browse cancer disease names" hidden></section>
+        </details>
+      </section>
+
+      <section id="drug-paths" class="home-section" aria-labelledby="drug-paths-title">
+        <h2 id="drug-paths-title">Follow a drug evidence path</h2>
+        <p>Pick a drug below, then use “Trace an evidence path” on its detail page. Direct drug–disease records and paths through genes remain separate.</p>
+        <section id="trail-highlights" class="trail-highlights" aria-label="Guided evidence trails" hidden></section>
+      </section>
+
+      <section id="molecular" class="home-section" aria-labelledby="molecular-title">
+        <h2 id="molecular-title">Review variant evidence</h2>
+        <p>Choose the tool that matches your question. Both use accepted CIViC records in the published snapshot.</p>
+        <details id="compare-tool" class="tool-panel"><summary>Compare profiles across cancer types and therapies</summary>
+          <p>See sensitivity, resistance, contradictory and other evidence separately. Counts are evidence items, not patients or independent studies.</p>
+          <section id="variant-comparison" class="variant-comparison" aria-label="Compare variant evidence"><p>Loading variant evidence…</p></section>
+        </details>
+        <details id="evidence-tool" class="tool-panel"><summary>Inspect or export one Evidence Tree</summary>
+          <p>Enter an exact CIViC gene, variant or profile name, and disease name or DOID. The result links to individual sources; FDA labels and CIViC Assertions are not integrated.</p>
+          <div id="evidence-tree">Loading evidence…</div>
+        </details>
+      </section>
+
+      <section id="coverage-and-access" class="home-section" aria-labelledby="coverage-title">
+        <h2 id="coverage-title">What's available, and where?</h2>
+        <div class="capability-scroll"><table class="capability-table">
+          <thead><tr><th scope="col">Capability</th><th scope="col">GitHub Pages</th><th scope="col">Local database</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Search entities and inspect source-backed relationships</th><td>Yes, published snapshot</td><td>Yes, Python and HTTP API</td></tr>
+            <tr><th scope="row">Compare accepted CIViC molecular profiles</th><td>Yes, published snapshot</td><td>Source records available after import</td></tr>
+            <tr><th scope="row">Evidence Tree by gene, variant/profile, disease</th><td>Browser search and JSON export</td><td>Python, HTTP API, local MCP</td></tr>
+            <tr><th scope="row">Live query endpoint or remote MCP hosted on Pages</th><td>No</td><td>Run and host separately</td></tr>
+            <tr><th scope="row">US FDA label and CIViC Assertion grading</th><td>Not integrated</td><td>Not integrated</td></tr>
+          </tbody>
+        </table></div>
+        <p class="interpretation-note">The public snapshot is bounded and can be older than upstream sources or a local import. Missing results do not prove that evidence does not exist. OncoKB and COSMIC are outbound lookups only, not imported data.</p>
+        <p>For agent integration, see the <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/EVIDENCE_TREE.md">Evidence Tree contract</a>, <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/QUERY_API.md">query API</a>, and <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/MCP.md">local MCP tools</a>.</p>
+        <details class="coverage"><summary>Dataset size and snapshot statistics</summary>
+          <section id="stats" class="stats" aria-label="Knowledge graph coverage" hidden></section>
+        </details>
+        <details id="data-sources" class="source-guide"><summary>Imported sources and snapshot dates</summary>
+          <div id="source-inventory"><p>Loading source summary…</p></div>
+        </details>
+      </section>
       <footer>
         <p>Research use only. Verify source evidence before drawing conclusions.</p>
         <p id="attribution"></p>
@@ -50,6 +120,7 @@
     <script src="source-inventory.js" defer></script>
     <script src="variant-comparison.js" defer></script>
     <script src="evidence-tree.js" defer></script>
+    <script src="home-guide.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

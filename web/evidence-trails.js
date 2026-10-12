@@ -173,6 +173,6 @@ function renderTrailHighlights() {
     renderDetail(drug.id);
     detail.scrollIntoView({ behavior: "smooth", block: "start" });
   });
-  holder.replaceChildren(trailText("h2", "Follow the evidence"), trailText("p", "Pick a drug at random or open an example, then follow its recorded links to diseases, one source at a time."), surprise, ...buttons);
+  holder.replaceChildren(trailText("h3", "Choose a drug"), trailText("p", "Pick a drug at random or open an example, then follow its recorded links to diseases, one source at a time."), surprise, ...buttons);
   holder.hidden = false;
 }

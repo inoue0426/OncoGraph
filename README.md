@@ -1,16 +1,32 @@
 # OncoGraph
 
-Try the [browser Evidence Tree demo](https://inoue0426.github.io/OncoGraph/) or read the [Evidence Tree v1 function, API and MCP contract](docs/EVIDENCE_TREE.md). The browser runs on static GitHub Pages data; the HTTP API and MCP tool run locally with an imported database. US FDA labels and CIViC Assertions are not yet integrated.
-
 **An evidence-first, provenance-aware knowledge graph for oncology research**
 
-[**Explore OncoGraph**](https://inoue0426.github.io/OncoGraph/) · [**Data sources**](#data-sources-and-refresh) · [**Quick start**](#quick-start) · [**Documentation**](#documentation) · [**Benchmarks**](#retrieval-and-benchmarks)
+[**Open the browser explorer**](https://inoue0426.github.io/OncoGraph/) · [**Use cases**](#what-can-i-do) · [**Data sources**](#data-sources-and-refresh) · [**Quick start**](#quick-start) · [**Documentation**](#documentation)
 
 OncoGraph connects drugs, targets, diseases, publications, and clinical trials to the evidence supporting their relationships. Its central principle is **provenance first**: an edge is more than a link between entities. Each relationship can retain its source, original identifier, biological or clinical context, extraction method, confidence, and verification state.
 
 The project includes a public, searchable explorer, a Python API and graph-query layer, source adapters, and a Model Context Protocol (MCP) interface for research agents.
 
 > **Research use only.** OncoGraph is not intended for diagnosis, treatment selection, or other clinical decision-making.
+
+## What can I do?
+
+| Research question | Where to start | What the result actually shows |
+| --- | --- | --- |
+| What is recorded for a cancer subtype? | Search a disease or browse disease names in the [explorer](https://inoue0426.github.io/OncoGraph/#explore). | Separate Open Targets approved-stage indications, CIViC molecular profiles, gene associations, and paths through genes. The approved-stage data is not a US FDA label. |
+| Why is a drug linked to a disease? | Open a drug, then **Trace an evidence path**. | Source-backed direct relations and distinct drug → gene → disease paths; a path is not an indication. |
+| What published evidence mentions a variant/profile in a cancer type? | [Compare CIViC profiles](https://inoue0426.github.io/OncoGraph/#compare-tool), then [inspect one Evidence Tree](https://inoue0426.github.io/OncoGraph/#evidence-tool). | Accepted CIViC evidence IDs with source links, claim direction, molecular-profile scope and optional therapies. Complex-profile membership is not variant-specific proof. |
+| How can an agent retrieve the same tree? | Use the [Python function, local HTTP endpoint, or local stdio MCP tool](docs/EVIDENCE_TREE.md). | Structured v1 response from an imported local database; its contents can differ from the published snapshot. |
+
+| Interface | Browser on GitHub Pages | Database-backed local process |
+| --- | --- | --- |
+| Search and provenance | Published static snapshot | Python / HTTP queries |
+| CIViC Evidence Tree | Browser calculation and JSON download | Python, `GET /evidence-tree`, local MCP `get_evidence_tree` |
+| Live HTTP query service or remote MCP on Pages | Unavailable | Requires separate hosting |
+| US FDA labels or CIViC Assertions | Not integrated | Not integrated |
+
+**Coverage:** The site uses a bounded, refreshed snapshot, not a live upstream query. No match does not prove no evidence exists. OncoKB and COSMIC are outbound lookups; their data is not imported. See [source inventory](#data-sources-and-refresh) and the [Evidence Tree contract](docs/EVIDENCE_TREE.md) for exact matching and response fields.
 
 ## Explore the graph
 
