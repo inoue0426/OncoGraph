@@ -38,3 +38,16 @@ def test_claim_classifies_predictive_items_only():
     assert evaluate_evidence_claim({**tree, "truncated": True}, therapy="ncit:1", effect="sensitivity")["status"] == "incomplete_review"
     with pytest.raises(ValueError):
         evaluate_evidence_claim(tree, therapy="ncit:1", effect="efficacy")
+
+
+def test_whole_profile_is_distinct_from_unverified_single_variant():
+    tree = {"query": {"gene": "EGFR", "variant": "EGFR T790M", "disease": "Lung cancer"},
+            "truncated": False, "evidence": [
+                {"evidence_id": "9", "profile": {"name": "EGFR T790M", "match_type": "profile_only",
+                                                  "complex_profile": False},
+                 "evidence_type": "PREDICTIVE", "significance": "SENSITIVITY",
+                 "claim_state": "supports", "therapies": [{"name": "Osimertinib"}]},
+            ]}
+    assert evaluate_evidence_claim(tree, therapy="Osimertinib", effect="sensitivity")["status"] == "insufficient_variant_context"
+    assert evaluate_evidence_claim(tree, therapy="Osimertinib", effect="sensitivity",
+                                   scope="profile")["status"] == "supporting_records"

@@ -10,19 +10,24 @@ disease and therapy?" It is **not** a test of clinical truth, independent
 expert adjudication, recommendation quality, or LLM-generated answer quality.
 
 The script deterministically constructs exactly **100 distinct questions**
-from accepted predictive CIViC records with exported variant membership. It
+from accepted predictive CIViC records. When the snapshot exports variant
+membership, questions target **one recorded variant**. When membership is
+unavailable, questions target the **exact complete molecular profile name**
+instead; the program must not treat that name as proof about a single variant.
+The mode and membership count are recorded in the report. It
 adds counterfactual conditions (another variant, therapy, disease, opposite
 effect) and, where available, complex molecular profiles. It checks every
 counterfactual against all eligible source records before assigning its
 source-derived label, so a swapped condition with genuine matching evidence
 is not mistakenly treated as empty. Target quotas are 25 direct, 20 other
 variant, 20 other therapy, 15 other cancer, 10 opposite effect and 10 complex
-profile questions. If a category has insufficient records, other categories
+profile questions **when membership is available**. If a category has insufficient records, other categories
 fill the set; the **actual** mixture appears in the report. If fewer than 100
 unique questions exist, CI fails rather than duplicating questions.
 
 The source reference enumerates raw accepted predictive CIViC records by exact
-gene, single-variant membership, disease and therapy; a record has a matching
+gene, disease, therapy and either verified single-variant membership or complete
+profile name, depending on the available snapshot; a record has a matching
 reported effect only when the direction is `SUPPORTS`. A reference question
 is marked source-answerable if it has matching support and no supporting
 report for the opposite effect or `DOES_NOT_SUPPORT` report of that effect.
@@ -36,7 +41,7 @@ mean abstain **within this snapshot**, not absence of clinical benefit.
 | --- | --- | --- |
 | `context_blind` | Any accepted CIViC record for the gene, drug and disease | Ignores variant, direction and significance |
 | `variant_only` | Any accepted CIViC record for the gene, variant/profile, drug and disease | Ignores predictive significance, direction and complex membership |
-| `claim_scoped` | The structured claim check returns `supporting_records` | Requires exact reported effect and single-variant profile; abstains on opposing/disputing reports and incomplete input |
+| `claim_scoped` | The structured claim check returns `supporting_records` | Requires exact reported effect and the mode's matching scope; abstains on opposing/disputing reports and incomplete input |
 
 The baselines are **ablations of OncoGraph's own retrieval**, not standalone
 CIViC MCP, an external clinical service or an LLM. The source reference is
@@ -44,6 +49,12 @@ field-defined, so the rules of the proposed method align with it by design:
 high scores only show consistency with the frozen source fields. In particular,
 they cannot demonstrate a novel clinical conclusion or a performance gain on
 an independently labeled question set.
+
+**Profile-mode results cannot establish variant-specific accuracy.** The
+profile-name lookup is permitted only when the question explicitly asks about
+the whole profile. For a single-variant question without membership, the claim
+checker continues to abstain. The workflow cannot silently substitute one
+meaning for the other.
 
 Metrics on the 100 questions: answer rate among source-answerable items;
 false-answer rate among source-unanswerable items; answered count/coverage;

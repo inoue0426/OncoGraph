@@ -44,10 +44,12 @@ function readSourceRecords(entities, relations) {
       inspected.predictive_items++;
       if (!["sensitivity", "resistance"].includes(normal(ctx.significance))) continue;
       inspected.valid_effect_items++;
-      if (!ctx.civic_evidence_id || !ctx.gene_name || !Array.isArray(ctx.profile_variants)) continue;
-      inspected.variant_member_items++;
+      if (!ctx.civic_evidence_id || !ctx.gene_name || !ctx.molecular_profile) continue;
+      if (Array.isArray(ctx.profile_variants) && ctx.profile_variants.length) inspected.variant_member_items++;
       rows.push({ id: String(ctx.civic_evidence_id), gene: String(ctx.gene_name),
-        members: ctx.profile_variants.map((member) => memberName(member, ctx.gene_name)),
+        profile_name: String(ctx.molecular_profile),
+        members: Array.isArray(ctx.profile_variants) ? ctx.profile_variants.map((member) =>
+          memberName(member, ctx.gene_name)) : [],
         disease: cancer.name, therapy: drug.name, effect: normal(ctx.significance),
         direction: normal(item.claim_state) });
     }
@@ -55,11 +57,12 @@ function readSourceRecords(entities, relations) {
   return { rows, byId, inspected };
 }
 
-function referenceIndex(records) {
+function referenceIndex(records, scope = "variant") {
   const index = new Map();
   for (const row of records) {
-    if (row.members.length !== 1) continue;
-    const base = [row.gene, row.members[0], row.disease, row.therapy].map(normal).join("|");
+    if (scope === "variant" && row.members.length !== 1) continue;
+    const name = scope === "profile" ? row.profile_name : row.members[0];
+    const base = [row.gene, name, row.disease, row.therapy].map(normal).join("|");
     if (!index.has(base)) index.set(base, []);
     index.get(base).push(row);
   }
@@ -67,7 +70,7 @@ function referenceIndex(records) {
 }
 function sourceReference(q, recordsOrIndex) {
   const supporting = new Set(), opposing = new Set(), disputed = new Set();
-  const index = recordsOrIndex instanceof Map ? recordsOrIndex : referenceIndex(recordsOrIndex);
+  const index = recordsOrIndex instanceof Map ? recordsOrIndex : referenceIndex(recordsOrIndex, q.scope);
   const base = [q.gene, q.variant, q.disease, q.therapy].map(normal).join("|");
   for (const row of index.get(base) || []) {
     if (row.direction === "supports" && row.effect === q.effect) supporting.add(row.id);
@@ -78,9 +81,11 @@ function sourceReference(q, recordsOrIndex) {
     supporting_eids: [...supporting].sort(), opposing_count: opposing.size, disputed_count: disputed.size };
 }
 
-function makeQuestions(records, count = 100) {
+function makeQuestions(records, count = 100, scope = "variant") {
   if (!Number.isInteger(count) || count < 1 || count > 1000) throw Error("Invalid question count");
-  const ordered = records.filter((row) => row.members.length === 1 && row.direction === "supports")
+  if (!["variant", "profile"].includes(scope)) throw Error("Invalid scope");
+  const ordered = records.filter((row) => (scope === "profile" || row.members.length === 1) &&
+    row.direction === "supports")
     .sort((a, b) => [a.gene, a.disease, a.therapy, a.members[0], a.effect, a.id].join("|")
       .localeCompare([b.gene, b.disease, b.therapy, b.members[0], b.effect, b.id].join("|")));
   if (!ordered.length) throw Error("No eligible accepted CIViC predictive records in snapshot");
@@ -93,9 +98,9 @@ function makeQuestions(records, count = 100) {
   while (seed.length < 300 && [...genes.values()].some((list) => list.length)) {
     for (const list of genes.values()) if (list.length && seed.length < 300) seed.push(list.shift());
   }
-  const index = referenceIndex(records);
+  const index = referenceIndex(records, scope);
   const variantsByGene = new Map();
-  for (const row of records) for (const member of row.members) {
+  for (const row of records) for (const member of scope === "profile" ? [row.profile_name] : row.members) {
     if (!variantsByGene.has(row.gene)) variantsByGene.set(row.gene, new Set());
     variantsByGene.get(row.gene).add(member);
   }
@@ -113,8 +118,8 @@ function makeQuestions(records, count = 100) {
   // These are perturbations of real source rows. Negatives are checked
   // against the full available source record set, never presumed absent.
   for (const row of seed) {
-    const base = { gene: row.gene, variant: row.members[0], disease: row.disease,
-      therapy: row.therapy, effect: row.effect };
+    const base = { gene: row.gene, variant: scope === "profile" ? row.profile_name : row.members[0],
+      disease: row.disease, therapy: row.therapy, effect: row.effect, scope };
     add("direct", base, true);
     add("opposite_effect", { ...base, effect: row.effect === "sensitivity" ? "resistance" : "sensitivity" }, false);
     for (const variant of [...(variantsByGene.get(row.gene) || [])].slice(0, 15)) {
@@ -127,10 +132,10 @@ function makeQuestions(records, count = 100) {
       if (normal(disease) !== normal(base.disease)) add("other_cancer", { ...base, disease }, false);
     }
   }
-  for (const row of records.filter((item) => item.members.length > 1)) {
+  for (const row of scope === "variant" ? records.filter((item) => item.members.length > 1) : []) {
     for (const variant of row.members) {
       add("complex_profile", { gene: row.gene, variant, disease: row.disease,
-        therapy: row.therapy, effect: row.effect }, false);
+        therapy: row.therapy, effect: row.effect, scope }, false);
     }
   }
   const quotas = { direct: 25, other_variant: 20, other_therapy: 20,
@@ -149,7 +154,7 @@ function makeQuestions(records, count = 100) {
   }
   if (selected.size < count) throw Error(`Only ${selected.size} unique eligible questions; need ${count}`);
   return [...selected.values()].slice(0, count).map((q, i) => ({ id: `claim-${String(i + 1).padStart(3, "0")}`,
-    question: `In ${q.disease}, do accepted CIViC records report ${q.effect} for ${q.gene} ${q.variant} with ${q.therapy}?`, ...q }));
+    question: `In ${q.disease}, do accepted CIViC records report ${q.effect} for ${scope === "profile" ? "the complete molecular profile" : "the single variant"} ${q.gene} ${q.variant} with ${q.therapy}?`, ...q }));
 }
 
 function metrics(results, strategy) {
@@ -170,17 +175,19 @@ function metrics(results, strategy) {
 function evaluate(entities, relations, count = 100) {
   const { rows: source, byId, inspected } = readSourceRecords(entities, relations);
   if (!source.length) throw Error(`Missing eligible CIViC: c${inspected.civic_items}a${inspected.accepted_items}p${inspected.predictive_items}e${inspected.valid_effect_items}m${inspected.variant_member_items}`);
-  const questions = makeQuestions(source, count);
+  const scope = inspected.variant_member_items ? "variant" : "profile";
+  const questions = makeQuestions(source, count, scope);
   const results = questions.map((q) => {
     const tree = buildEvidenceTree(entities, relations, { gene: q.gene,
       variant: q.variant, disease: q.disease, limit: 200 });
-    const claim = evaluateEvidenceClaim(tree, { therapy: q.therapy, effect: q.effect, limit: 200 });
+    const claim = evaluateEvidenceClaim(tree, { therapy: q.therapy, effect: q.effect,
+      scope, limit: 200 });
     const blindIds = contextBlindIds(q, relations, byId);
     const scopedIds = tree.evidence.filter((item) => item.therapies.some((drug) =>
       normal(drug.name) === normal(q.therapy))).map((item) => item.evidence_id);
     return { id: q.id, category: q.category, question: q.question,
       query: { gene: q.gene, variant: q.variant, disease: q.disease,
-        therapy: q.therapy, effect: q.effect },
+        therapy: q.therapy, effect: q.effect, scope },
       reference: q.reference, tree_truncated: tree.truncated,
       predictions: { context_blind: { answers: blindIds.length > 0, evidence_ids: blindIds },
         variant_only: { answers: scopedIds.length > 0 && !tree.truncated, evidence_ids: scopedIds },
@@ -188,6 +195,10 @@ function evaluate(entities, relations, count = 100) {
           evidence_ids: claim.evidence.supporting.map((item) => item.evidence_id) } } };
   });
   return { methodology: "source-derived controlled perturbation; not independent clinical gold or LLM evaluation",
+    scope, scope_note: scope === "profile"
+      ? "No exported variant membership: all 100 questions concern exact whole molecular profiles, not single variants."
+      : "Single-variant membership exported; whole-profile-name-only records are never treated as single-variant proof.",
+    source_coverage: inspected,
     question_count: results.length,
     categories: Object.fromEntries(Object.keys({ direct: 1, other_variant: 1, other_therapy: 1,
       other_cancer: 1, opposite_effect: 1, complex_profile: 1 }).map((category) =>
@@ -211,6 +222,7 @@ if (require.main === module) {
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, "report.json"), JSON.stringify(report, null, 2) + "\n");
   process.stdout.write(JSON.stringify({ question_count: report.question_count,
+    scope: report.scope, source_coverage: report.source_coverage,
     categories: report.categories, truncated_count: report.truncated_count,
     metrics: report.metrics, snapshot_sha256: report.snapshot_sha256 }, null, 2) + "\n");
 }

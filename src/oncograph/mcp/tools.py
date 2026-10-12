@@ -73,12 +73,13 @@ def get_evidence_tree(gene: str, variant: str, disease: str, jurisdiction: str =
 
 
 def check_variant_claim(gene: str, variant: str, disease: str, therapy: str,
-                        effect: str, limit: int = 20) -> dict[str, Any]:
+                        effect: str, limit: int = 20, scope: str = "variant") -> dict[str, Any]:
     """Separate supporting, opposing and inconclusive CIViC records for one research claim."""
     try:
         with session_scope() as session:
             return _check_claim_from_db(session, gene=gene, variant=variant,
-                                        disease=disease, therapy=therapy, effect=effect, limit=limit)
+                                        disease=disease, therapy=therapy, effect=effect,
+                                        scope=scope, limit=limit)
     except ValueError as exc:
         raise OncoGraphMCPError(str(exc)) from exc
 

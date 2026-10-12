@@ -10,7 +10,7 @@ from .evidence_tree import get_evidence_tree
 
 
 def evaluate_evidence_claim(tree: dict[str, Any], *, therapy: str, effect: str,
-                            limit: int = 20) -> dict[str, Any]:
+                            scope: str = "variant", limit: int = 20) -> dict[str, Any]:
     """Classify accepted records without promoting graph paths to clinical claims.
 
     Only predictive evidence with an exact named therapy and a single-variant
@@ -18,7 +18,7 @@ def evaluate_evidence_claim(tree: dict[str, Any], *, therapy: str, effect: str,
     An opposing significance is context, not necessarily a logical negation.
     """
     if (not isinstance(therapy, str) or not therapy.strip()
-            or effect not in {"sensitivity", "resistance"}
+            or effect not in {"sensitivity", "resistance"} or scope not in {"variant", "profile"}
             or type(limit) is not int or not 1 <= limit <= 200):
         raise ValueError("Invalid claim query")
     if not isinstance(tree, dict) or not isinstance(tree.get("evidence"), list) or "query" not in tree:
@@ -44,7 +44,9 @@ def evaluate_evidence_claim(tree: dict[str, Any], *, therapy: str, effect: str,
             excluded["unrelated_effect"] += 1
             continue
         profile = item.get("profile") or {}
-        if profile.get("match_type") != "variant_member" or profile.get("complex_profile"):
+        exact_profile = (scope == "profile" and profile.get("match_type") == "profile_only"
+                         and normal(profile.get("name")) == normal(tree["query"].get("variant")))
+        if not exact_profile and (profile.get("match_type") != "variant_member" or profile.get("complex_profile")):
             groups["context_only"].append({**item, "reason":
                 "Variant-specific effect unverified for this molecular profile"})
             excluded["incomplete_profile"] += 1
@@ -85,7 +87,7 @@ def evaluate_evidence_claim(tree: dict[str, Any], *, therapy: str, effect: str,
     else:
         status = "not_found_in_snapshot"
     return {"schema_version": "1.0", "query": {**tree["query"], "therapy": therapy.strip(),
-                                                "effect": effect},
+                                                "effect": effect, "scope": scope},
             "status": status, "counts": totals, "excluded": excluded, "incomplete": incomplete,
             "evidence": selected,
             "limitations": ["This checks a bounded CIViC snapshot, not treatment efficacy, FDA status or patient suitability.",
@@ -94,8 +96,9 @@ def evaluate_evidence_claim(tree: dict[str, Any], *, therapy: str, effect: str,
 
 
 def get_claim_evidence(session: Session, *, gene: str, variant: str, disease: str,
-                       therapy: str, effect: str, limit: int = 20) -> dict[str, Any]:
+                       therapy: str, effect: str, scope: str = "variant",
+                       limit: int = 20) -> dict[str, Any]:
     """Use the same capped Evidence Tree as the browser; flag incomplete input."""
     return evaluate_evidence_claim(get_evidence_tree(session, gene=gene, variant=variant,
                                                      disease=disease, limit=200),
-                                   therapy=therapy, effect=effect, limit=limit)
+                                   therapy=therapy, effect=effect, scope=scope, limit=limit)

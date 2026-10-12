@@ -61,7 +61,7 @@ The [variant-conditioned retrieval experiment](docs/VARIANT_RETRIEVAL_EXPERIMENT
 
 The [variant claim check](docs/CLAIM_EVIDENCE.md) additionally filters those records by exact therapy and reported sensitivity or resistance. It keeps supporting, opposing, disputing and insufficient-context records separate in the browser, local API and MCP. This research-only rule set does not validate LLM prose or establish treatment efficacy.
 
-The [100-question CI benchmark](docs/CLAIM_BENCHMARK.md) runs three retrieval strategies on the same frozen Pages artifact and publishes a detailed report. Its automatically generated labels test source consistency, **not** independently established biomedical accuracy.
+The [100-question CI benchmark](docs/CLAIM_BENCHMARK.md) runs three retrieval strategies on the same frozen Pages artifact and publishes a detailed report. A snapshot lacking variant-member exports is evaluated at **whole-profile scope only**, not as a single-variant study. Its automatically generated labels test source consistency, **not** independently established biomedical accuracy.
 
 **Explore by cancer name** groups disease entities currently in the public index using explicit matches on their names. Open a subtype to inspect its direct relations and, when available, accepted CIViC molecular-profile evidence. The groups are a browsing shortcut, not a complete ontology or a claim that all matching diseases are equivalent.
 

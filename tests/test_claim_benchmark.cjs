@@ -59,3 +59,17 @@ test("fails rather than reporting 100 questions if there are too few unique sour
   const { entities, relations } = fixture();
   assert.throws(() => evaluate(entities, relations, 1000), /unique eligible questions/);
 });
+
+test("legacy snapshot runs 100 profile-level questions without inventing variant membership", () => {
+  const { entities, relations } = fixture();
+  for (const relation of relations) for (const item of relation.evidence) {
+    delete item.context.profile_variants;
+  }
+  const report = evaluate(entities, relations);
+  assert.equal(report.scope, "profile");
+  assert.equal(report.source_coverage.variant_member_items, 0);
+  assert.equal(report.question_count, 100);
+  assert(report.questions.every((row) => row.query.scope === "profile"));
+  assert.equal(report.metrics.claim_scoped.false_answer_rate_on_unanswerable, 0);
+  assert.equal(report.metrics.claim_scoped.answer_rate_on_answerable, 1);
+});
