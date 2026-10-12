@@ -1,5 +1,7 @@
 # OncoGraph
 
+Try the [browser Evidence Tree demo](https://inoue0426.github.io/OncoGraph/) or read the [Evidence Tree v1 function, API and MCP contract](docs/EVIDENCE_TREE.md). The browser runs on static GitHub Pages data; the HTTP API and MCP tool run locally with an imported database. US FDA labels and CIViC Assertions are not yet integrated.
+
 **An evidence-first, provenance-aware knowledge graph for oncology research**
 
 [**Explore OncoGraph**](https://inoue0426.github.io/OncoGraph/) · [**Data sources**](#data-sources-and-refresh) · [**Quick start**](#quick-start) · [**Documentation**](#documentation) · [**Benchmarks**](#retrieval-and-benchmarks)

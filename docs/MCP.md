@@ -1,5 +1,7 @@
 # MCP server (Issue #13)
 
+The local stdio MCP server also exposes `get_evidence_tree(gene, variant, disease, jurisdiction="US", limit=50)`. It returns accepted CIViC evidence with source links, preserves contradictory claims, and marks US regulatory labels and CIViC Assertions as not integrated. See [Evidence Tree v1](EVIDENCE_TREE.md) for exact inputs and response fields. GitHub Pages does not serve MCP.
+
 **Research use only.** OncoGraph's MCP server exposes structured oncology
 knowledge-graph data -- entities, relations, and their evidence -- to MCP
 clients (agents, LLMs, notebooks). It is not a medical-advice layer: every

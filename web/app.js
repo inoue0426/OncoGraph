@@ -1319,12 +1319,15 @@ Promise.all([
     renderStats(statsData || computeClientSideStats());
     renderDataSources(statsData);
     renderVariantComparison(relationRows, entityById);
+    renderEvidenceTree(entityRows, relationRows);
     restoreShareUrl();
   })
   .catch(() => {
     status.textContent = "Search index unavailable";
     const comparison = document.querySelector("#variant-comparison");
     if (comparison) comparison.textContent = "Variant comparison unavailable: search index could not be loaded.";
+    const tree = document.querySelector("#evidence-tree");
+    if (tree) tree.textContent = "Evidence tree unavailable: search index could not be loaded.";
   });
 
 search.addEventListener("input", debouncedRender);

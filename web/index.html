@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="guide.css" />
     <link rel="stylesheet" href="dashboard.css" />
     <link rel="stylesheet" href="variant-comparison.css" />
+    <link rel="stylesheet" href="evidence-tree.css" />
   </head>
   <body>
     <main>
@@ -24,6 +25,7 @@
       <p class="examples-label">Try:</p>
       <div id="examples"></div>
       <section id="variant-comparison" class="variant-comparison" aria-label="Compare variant evidence"><p>Loading variant evidence…</p></section>
+      <section aria-label="US evidence tree"><h2>US evidence tree</h2><p>Search accepted CIViC literature by exact gene, variant or profile name, and disease name or DOID. US FDA labels and CIViC assertions are not integrated. Research use only.</p><div id="evidence-tree">Loading evidence…</div></section>
       <section id="trail-highlights" class="trail-highlights" aria-label="Guided evidence trails" hidden></section>
       <details class="coverage"><summary>Dataset coverage</summary>
         <section id="stats" class="stats" aria-label="Knowledge graph coverage" hidden></section>
@@ -47,6 +49,7 @@
     <script src="disease-dashboard.js" defer></script>
     <script src="source-inventory.js" defer></script>
     <script src="variant-comparison.js" defer></script>
+    <script src="evidence-tree.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

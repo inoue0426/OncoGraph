@@ -22,6 +22,7 @@ from uuid import UUID
 from sqlmodel import Session, func, or_, select
 
 from .. import stats as stats_module
+from ..evidence_tree import get_evidence_tree as _build_evidence_tree_from_db
 from ..models import Entity, Evidence, Relation
 from ..query import (
     RetrievalQuery,
@@ -58,6 +59,16 @@ _MECHANISM_EVIDENCE_TYPES = frozenset(
         "drug_gene_interaction_aggregated",
     }
 )
+
+
+def get_evidence_tree(gene: str, variant: str, disease: str, jurisdiction: str = "US", limit: int = 50) -> dict[str, Any]:
+    """Return accepted CIViC evidence and explicit US regulatory coverage gaps; research use only."""
+    try:
+        with session_scope() as session:
+            return _build_evidence_tree_from_db(session, gene=gene, variant=variant, disease=disease,
+                                                jurisdiction=jurisdiction, limit=limit)
+    except ValueError as exc:
+        raise OncoGraphMCPError(str(exc)) from exc
 
 
 def _is_mechanism_relation(relation: dict) -> bool:

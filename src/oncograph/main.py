@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 
 from . import query as graph_query
 from .db import create_db_and_tables, get_session
+from .evidence_tree import get_evidence_tree as build_evidence_tree_from_db
 from .models import Entity, EntityType, Evidence, Relation
 from .schemas import EntityCreate, EvidenceCreate, RelationCreate
 
@@ -30,6 +31,17 @@ app = FastAPI(
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/evidence-tree")
+def evidence_tree(session: SessionDep, gene: str, variant: str, disease: str,
+                  jurisdiction: str = "US", limit: Annotated[int, Query(ge=1, le=200)] = 50):
+    """Accepted CIViC literature records with explicit US coverage gaps."""
+    try:
+        return build_evidence_tree_from_db(session, gene=gene, variant=variant, disease=disease,
+                                           jurisdiction=jurisdiction, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @app.get("/entities", response_model=list[Entity])

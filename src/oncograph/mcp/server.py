@@ -51,6 +51,7 @@ _TOOLS = (
     tools.find_mechanism_paths,
     tools.find_combination_treatments,
     tools.find_contextual_response_evidence,
+    tools.get_evidence_tree,
     tools.get_graph_stats,
 )
 

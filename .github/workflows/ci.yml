@@ -16,3 +16,4 @@ jobs:
       - run: ruff check .
       - run: pytest
       - run: node tests/test_variant_comparison.cjs
+      - run: node tests/test_evidence_tree.cjs
