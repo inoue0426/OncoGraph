@@ -55,9 +55,15 @@
 
       <section id="ask" class="home-section" aria-labelledby="ask-title">
         <h2 id="ask-title">Ask a question about this snapshot</h2>
-        <p>Find matching entities and inspect their source-backed relationships. Name matching is literal, and a list of records is not a clinical answer. You can copy the evidence into your own LLM. If you run the site locally with Ollama, you can request an optional model-generated explanation here without an API key.</p>
+        <p>Find matching entities and inspect their source-backed relationships. Name matching is literal, and a list of records is not a clinical answer. You can copy the evidence into your own LLM. A separate Windows-hosted instance can provide optional Ollama explanations without an API key.</p>
         <div id="ask-evidence"><p>Loading evidence index…</p></div>
-        <p class="interpretation-note">Model text can be wrong or follow misleading source text. Check the original links below every answer. Your question and selected records reach Ollama only when you press “Explain with local Ollama” on your own local site.</p>
+        <div id="remote-llm-entry" class="remote-llm-entry">
+          <h3>Open a Windows-hosted instance</h3>
+          <p>If the owner shared a temporary Cloudflare URL, paste it here to open the hosted question interface. This public page does not connect to that server directly. <a href="https://github.com/inoue0426/OncoGraph/blob/main/docs/ASK.md#temporary-public-demo-from-a-windows-machine">Windows setup</a></p>
+          <form><label for="remote-llm-url">Hosted URL</label><input id="remote-llm-url" type="url" placeholder="https://example.trycloudflare.com" required /><button type="submit">Open hosted Q&amp;A →</button></form>
+          <p id="remote-llm-error" role="status"></p>
+        </div>
+        <p class="interpretation-note">Model text can be wrong or follow misleading source text. Check the original links below every answer. A question reaches the Windows model only after you open that instance and press its explanation button. Do not enter patient-identifying information.</p>
       </section>
 
       <section id="explore" class="home-section" aria-labelledby="explore-title">
@@ -103,7 +109,7 @@
             <tr><th scope="row">Search entities and inspect source-backed relationships</th><td>Yes, published snapshot</td><td>Yes, Python and HTTP API</td></tr>
             <tr><th scope="row">Compare accepted CIViC molecular profiles</th><td>Yes, published snapshot</td><td>Source records available after import</td></tr>
             <tr><th scope="row">Evidence Tree by gene, variant/profile, disease</th><td>Browser search and JSON export</td><td>Python, HTTP API, local MCP</td></tr>
-            <tr><th scope="row">Ask questions about recorded relationships</th><td>Source-backed record matching and prompt copy</td><td>Optional local Ollama explanation</td></tr>
+            <tr><th scope="row">Ask questions about recorded relationships</th><td>Source-backed record matching and prompt copy</td><td>Optional Windows-hosted Ollama explanation via a separate HTTPS URL</td></tr>
             <tr><th scope="row">Live query endpoint or remote MCP hosted on Pages</th><td>No</td><td>Run and host separately</td></tr>
             <tr><th scope="row">US FDA label and CIViC Assertion grading</th><td>Not integrated</td><td>Not integrated</td></tr>
           </tbody>
@@ -132,6 +138,7 @@
     <script src="evidence-tree.js" defer></script>
     <script src="home-guide.js" defer></script>
     <script src="ask-evidence.js" defer></script>
+    <script src="remote-llm-entry.js" defer></script>
     <script src="app.js" defer></script>
   </body>
 </html>

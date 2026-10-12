@@ -54,6 +54,10 @@ function renderAskEvidence(entities, relations) {
   const status = document.createElement("p"); status.setAttribute("role", "status");
   const output = document.createElement("div");
   holder.replaceChildren(form, status, output);
+  const bridge = fetch("/api/local-answer/status")
+    .then((response) => response.ok && response.headers.get("content-type")?.includes("application/json")
+      ? response.json() : null)
+    .then((value) => value?.available === true).catch(() => false);
 
   form.addEventListener("submit", (event) => {
     event.preventDefault(); output.replaceChildren();
@@ -89,26 +93,28 @@ function renderAskEvidence(entities, relations) {
       catch { status.textContent = "Clipboard access unavailable in this browser."; }
     });
     output.append(copy);
-    if (!["localhost", "127.0.0.1"].includes(location.hostname)) return;
-    const explain = document.createElement("button"); explain.type = "button";
-    explain.textContent = "Explain with local Ollama";
-    const llmResult = document.createElement("p"); llmResult.className = "ask-generated";
-    explain.addEventListener("click", async () => {
-      explain.disabled = true; llmResult.textContent = "Waiting for your local model…";
-      try {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 120000);
-        let response;
-        try { response = await fetch("/api/local-answer", { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: bundle.question, records: bundle.records }), signal: controller.signal }); }
-        finally { clearTimeout(timer); }
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.detail || "Local model unavailable");
-        llmResult.textContent = `Model-generated explanation (verify against the records above): ${data.answer}`;
-      } catch (error) { llmResult.textContent = `Local model unavailable: ${error.message}. See the local setup instructions.`; }
-      finally { explain.disabled = false; }
+    bridge.then((available) => {
+      if (!available || !output.contains(copy)) return;
+      const explain = document.createElement("button"); explain.type = "button";
+      explain.textContent = "Explain with Ollama on this server";
+      const llmResult = document.createElement("p"); llmResult.className = "ask-generated";
+      explain.addEventListener("click", async () => {
+        explain.disabled = true; llmResult.textContent = "Waiting for the model…";
+        try {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 120000);
+          let response;
+          try { response = await fetch("/api/local-answer", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question: bundle.question, records: bundle.records }), signal: controller.signal }); }
+          finally { clearTimeout(timer); }
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "Server model unavailable");
+          llmResult.textContent = `Model-generated explanation (verify against the records above): ${data.answer}`;
+        } catch (error) { llmResult.textContent = `Model unavailable: ${error.message}. See the server setup instructions.`; }
+        finally { explain.disabled = false; }
+      });
+      output.append(explain, llmResult);
     });
-    output.append(explain, llmResult);
   });
 }
 
