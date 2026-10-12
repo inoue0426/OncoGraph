@@ -17,6 +17,7 @@ jobs:
       - run: pytest
       - run: node tests/test_variant_comparison.cjs
       - run: node tests/test_evidence_tree.cjs
+      - run: node tests/test_claim_evidence.cjs
       - run: node tests/test_ask_evidence.cjs
       - run: node tests/test_cloudflare_ask.cjs
       - run: node tests/test_variant_question_evaluation.cjs

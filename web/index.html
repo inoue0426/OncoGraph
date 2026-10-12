@@ -93,8 +93,8 @@
           <p>See sensitivity, resistance, contradictory and other evidence separately. Counts are evidence items, not patients or independent studies.</p>
           <section id="variant-comparison" class="variant-comparison" aria-label="Compare variant evidence"><p>Loading variant evidence…</p></section>
         </details>
-        <details id="evidence-tool" class="tool-panel"><summary>Inspect or export one Evidence Tree</summary>
-          <p>Enter an exact CIViC gene, variant or profile name, and disease name or DOID. The result links to individual sources; FDA labels and CIViC Assertions are not integrated.</p>
+        <details id="evidence-tool" class="tool-panel"><summary>Check a variant claim or inspect an Evidence Tree</summary>
+          <p>Enter an exact CIViC gene, variant and cancer name or DOID. Optionally add a therapy to separate supporting, opposing and inconclusive reports of sensitivity or resistance. This checks recorded evidence, not treatment efficacy. FDA labels and CIViC Assertions are not integrated.</p>
           <div id="evidence-tree">Loading evidence…</div>
         </details>
       </section>
@@ -107,6 +107,7 @@
             <tr><th scope="row">Search entities and inspect source-backed relationships</th><td>Yes, published snapshot</td><td>Yes, Python and HTTP API</td></tr>
             <tr><th scope="row">Compare accepted CIViC molecular profiles</th><td>Yes, published snapshot</td><td>Source records available after import</td></tr>
             <tr><th scope="row">Evidence Tree by gene, variant/profile, disease</th><td>Browser search and JSON export</td><td>Python, HTTP API, local MCP</td></tr>
+            <tr><th scope="row">Check a variant–therapy evidence claim</th><td>Rule-based snapshot check and JSON export</td><td>Python, HTTP API, local MCP</td></tr>
             <tr><th scope="row">Ask questions about recorded relationships</th><td>Source-backed matching, prompt copy, and optional Cloudflare AI explanation</td><td>Optional connection to your own Ollama on localhost</td></tr>
             <tr><th scope="row">Live query endpoint or remote MCP hosted on Pages</th><td>No</td><td>Run and host separately</td></tr>
             <tr><th scope="row">US FDA label and CIViC Assertion grading</th><td>Not integrated</td><td>Not integrated</td></tr>
@@ -135,6 +136,7 @@
     <script src="source-inventory.js" defer></script>
     <script src="variant-comparison.js" defer></script>
     <script src="evidence-tree.js" defer></script>
+    <script src="claim-evidence.js" defer></script>
     <script src="home-guide.js" defer></script>
     <script src="ask-evidence.js" defer></script>
     <script src="app.js" defer></script>

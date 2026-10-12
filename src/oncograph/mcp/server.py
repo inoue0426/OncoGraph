@@ -52,6 +52,7 @@ _TOOLS = (
     tools.find_combination_treatments,
     tools.find_contextual_response_evidence,
     tools.get_evidence_tree,
+    tools.check_variant_claim,
     tools.get_graph_stats,
 )
 

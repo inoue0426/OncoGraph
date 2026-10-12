@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlmodel import Session, select
 
 from . import query as graph_query
+from .claim_evidence import get_claim_evidence as check_claim_from_db
 from .db import create_db_and_tables, get_session
 from .evidence_tree import get_evidence_tree as build_evidence_tree_from_db
 from .models import Entity, EntityType, Evidence, Relation
@@ -40,6 +41,17 @@ def evidence_tree(session: SessionDep, gene: str, variant: str, disease: str,
     try:
         return build_evidence_tree_from_db(session, gene=gene, variant=variant, disease=disease,
                                            jurisdiction=jurisdiction, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/claim-evidence")
+def claim_evidence(session: SessionDep, gene: str, variant: str, disease: str,
+                   therapy: str, effect: str, limit: Annotated[int, Query(ge=1, le=200)] = 20):
+    """Classify scoped CIViC records; never assert patient benefit or FDA approval."""
+    try:
+        return check_claim_from_db(session, gene=gene, variant=variant, disease=disease,
+                                   therapy=therapy, effect=effect, limit=limit)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 

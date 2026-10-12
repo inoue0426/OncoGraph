@@ -22,6 +22,7 @@ from uuid import UUID
 from sqlmodel import Session, func, or_, select
 
 from .. import stats as stats_module
+from ..claim_evidence import get_claim_evidence as _check_claim_from_db
 from ..evidence_tree import get_evidence_tree as _build_evidence_tree_from_db
 from ..models import Entity, Evidence, Relation
 from ..query import (
@@ -67,6 +68,17 @@ def get_evidence_tree(gene: str, variant: str, disease: str, jurisdiction: str =
         with session_scope() as session:
             return _build_evidence_tree_from_db(session, gene=gene, variant=variant, disease=disease,
                                                 jurisdiction=jurisdiction, limit=limit)
+    except ValueError as exc:
+        raise OncoGraphMCPError(str(exc)) from exc
+
+
+def check_variant_claim(gene: str, variant: str, disease: str, therapy: str,
+                        effect: str, limit: int = 20) -> dict[str, Any]:
+    """Separate supporting, opposing and inconclusive CIViC records for one research claim."""
+    try:
+        with session_scope() as session:
+            return _check_claim_from_db(session, gene=gene, variant=variant,
+                                        disease=disease, therapy=therapy, effect=effect, limit=limit)
     except ValueError as exc:
         raise OncoGraphMCPError(str(exc)) from exc
 
