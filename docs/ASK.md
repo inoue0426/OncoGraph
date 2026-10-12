@@ -16,16 +16,31 @@ The model receives the question and the **displayed** source records only after 
 
 This is an **anonymous, temporary test URL**. No router port or Windows inbound firewall rule is needed: Cloudflare Tunnel makes an outbound connection and forwards only the OncoGraph app. **Never tunnel port 11434 or bind Ollama to `0.0.0.0`.** Quick Tunnels have no uptime guarantee and the URL changes each time. Anyone with the URL can use the app; this is not an authenticated production service.
 
-1. On Windows, install Python 3.11+ and [Ollama for Windows](https://ollama.com/download/windows). Run `ollama pull gemma3:4b`. Install the official [cloudflared Windows download](https://developers.cloudflare.com/tunnel/downloads/). Clone this repository and open PowerShell **in the OncoGraph repository**.
-2. Run `python -m pip install -e .` and `python scripts/download_public_snapshot.py` once. Confirm `web/data/search-index.json` and `web/data/relations.json` exist. Repeat the download when you want to refresh the local copy; the public site can itself lag upstream data.
-3. In PowerShell window A, start the bounded server:
+1. On Windows, install Python 3.11+ and [Ollama for Windows](https://ollama.com/download/windows). Run `ollama pull gemma3:4b`. Install the official [cloudflared Windows download](https://developers.cloudflare.com/tunnel/downloads/). Check `python --version`, `git --version`, and `cloudflared --version` in a new terminal window. Clone this repository into your user directory; do not run the repository commands from `C:\Windows\System32`:
+
+   ```bat
+   cd /d "%USERPROFILE%"
+   git clone https://github.com/inoue0426/OncoGraph.git
+   cd OncoGraph
+   ```
+
+   If you already cloned the repository, go to that existing directory and run `git pull` instead.
+2. Run `python -m pip install -e .` and `python scripts\download_public_snapshot.py` once. Confirm `web\data\search-index.json` and `web\data\relations.json` exist. Repeat the download when you want to refresh the local copy; the public site can itself lag upstream data.
+3. In terminal window A, start the bounded server. Use the commands for your shell:
 
    ```powershell
    $env:ONCOGRAPH_PUBLIC_MODE = "1"
    python -m uvicorn oncograph.local_ask:app --host 127.0.0.1 --port 8765 --workers 1 --no-access-log
    ```
 
-4. In PowerShell window B, start the tunnel:
+   Command Prompt (`cmd.exe`):
+
+   ```bat
+   set "ONCOGRAPH_PUBLIC_MODE=1"
+   python -m uvicorn oncograph.local_ask:app --host 127.0.0.1 --port 8765 --workers 1 --no-access-log
+   ```
+
+4. In terminal window B, start the tunnel (same command in PowerShell or Command Prompt):
 
    ```powershell
    cloudflared tunnel --url http://127.0.0.1:8765
