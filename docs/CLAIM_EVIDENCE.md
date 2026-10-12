@@ -8,15 +8,18 @@ or patient suitability. It does not yet verify free-text LLM answers.
 
 Open **More tools → Review variant evidence → Check a variant claim** and enter
 an exact gene, variant, disease, therapy, and whether to check a report of
-`sensitivity` or `resistance`. Download the structured JSON and follow the
+`sensitivity` or `resistance`. If using the whole molecular profile name,
+explicitly choose **profile** scope; `variant` remains the conservative default.
+An exact whole-profile match does not prove a finding for an individual member
+variant. Download the structured JSON and follow the
 CIViC source URLs to verify the records. Therapy may be an exact name or NCIt
 ID **as stored in this snapshot**. No cross-source alias mapping is performed.
 
 Against a locally imported database, the same algorithm is exposed through:
 
 ```text
-GET /claim-evidence?gene=EGFR&variant=T790M&disease=<exact name or DOID>&therapy=<exact name or NCIt ID>&effect=resistance
-MCP check_variant_claim(gene, variant, disease, therapy, effect, limit=20)
+GET /claim-evidence?gene=EGFR&variant=T790M&disease=<exact name or DOID>&therapy=<exact name or NCIt ID>&effect=resistance&scope=variant
+MCP check_variant_claim(gene, variant, disease, therapy, effect, limit=20, scope="variant")
 ```
 
 The browser reads GitHub Pages JSON. The Python API and local MCP read their
@@ -28,7 +31,10 @@ First use `buildEvidenceTree` / `get_evidence_tree` with a 200-Evidence-Item
 cap. This already requires the exact gene and disease, a matching variant
 member (or flagged legacy profile-name match), accepted CIViC status, and
 preserves the original evidence ID and claim direction. Then require a therapy
-matched by exact stored name or ID and `PREDICTIVE` evidence. Other relation
+matched by exact stored name or ID and `PREDICTIVE` evidence. With explicit
+`scope=profile`, an exact whole-profile-name match can support a claim about
+that **whole profile** even when member variants were not exported; it never
+establishes a claim about an individual variant. Other relation
 types, including drug `targets` gene, trial registrations, pathway membership,
 and target–disease associations, **cannot** support a variant–therapy effect.
 
@@ -52,6 +58,12 @@ the upstream literature. Legacy snapshots without exported variant members
 produce `context_only` for profile-name matches.
 
 ## Evaluation before publication claims
+
+An automated [100-question benchmark](CLAIM_BENCHMARK.md) runs in GitHub
+Actions after a data refresh or on a change to the benchmark. It compares
+context-blind, variant-only and claim-scoped retrieval on the **same** frozen
+snapshot. Its source-derived labels test internal consistency, not medical
+accuracy, model-written answers or independent expert agreement.
 
 This is a **rule-based baseline**, not a demonstrated improvement or a
 validated algorithm. The current [variant retrieval experiment](VARIANT_RETRIEVAL_EXPERIMENT.md)

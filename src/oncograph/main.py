@@ -47,11 +47,12 @@ def evidence_tree(session: SessionDep, gene: str, variant: str, disease: str,
 
 @app.get("/claim-evidence")
 def claim_evidence(session: SessionDep, gene: str, variant: str, disease: str,
-                   therapy: str, effect: str, limit: Annotated[int, Query(ge=1, le=200)] = 20):
+                   therapy: str, effect: str, scope: str = "variant",
+                   limit: Annotated[int, Query(ge=1, le=200)] = 20):
     """Classify scoped CIViC records; never assert patient benefit or FDA approval."""
     try:
         return check_claim_from_db(session, gene=gene, variant=variant, disease=disease,
-                                   therapy=therapy, effect=effect, limit=limit)
+                                   therapy=therapy, effect=effect, scope=scope, limit=limit)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 

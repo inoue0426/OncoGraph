@@ -1,7 +1,8 @@
 // A conservative, deterministic classifier of *retrieved CIViC records*.
 // Statuses describe the snapshot only; none are treatment recommendations.
-function evaluateEvidenceClaim(tree, { therapy, effect, limit = 20 }) {
+function evaluateEvidenceClaim(tree, { therapy, effect, scope = "variant", limit = 20 }) {
   if (typeof therapy !== "string" || !therapy.trim() || !["sensitivity", "resistance"].includes(effect)
+      || !["variant", "profile"].includes(scope)
       || !Number.isInteger(limit) || limit < 1 || limit > 200) throw new Error("Invalid claim query");
   if (!tree || !Array.isArray(tree.evidence) || !tree.query) throw new Error("Invalid evidence tree");
   const normal = (value) => String(value || "").trim().toLowerCase();
@@ -16,8 +17,11 @@ function evaluateEvidenceClaim(tree, { therapy, effect, limit = 20 }) {
     if (!["sensitivity", "resistance"].includes(significance)) { counts.unrelated_effect++; continue; }
     // An item with incomplete membership or a multi-variant profile cannot
     // prove that this single variant has the reported effect.
-    if (item.profile?.match_type !== "variant_member" || item.profile?.complex_profile) {
-      groups.context_only.push({ ...item, reason: "Variant-specific effect unverified for this molecular profile" });
+    const exactProfile = scope === "profile" && item.profile?.match_type === "profile_only" &&
+      normal(item.profile.name) === normal(tree.query.variant);
+    if ((scope === "profile" && !exactProfile) ||
+        (scope === "variant" && (item.profile?.match_type !== "variant_member" || item.profile?.complex_profile))) {
+      groups.context_only.push({ ...item, reason: "Requested variant or molecular profile is not verified by this record" });
       counts.incomplete_profile++; continue;
     }
     const direction = normal(item.claim_state);
@@ -45,7 +49,7 @@ function evaluateEvidenceClaim(tree, { therapy, effect, limit = 20 }) {
   else if (totals.supporting) status = "supporting_records";
   else if (totals.opposing || totals.disputed) status = "opposing_or_disputed_records";
   else if (totals.context_only) status = "insufficient_variant_context";
-  return { schema_version: "1.0", query: { ...tree.query, therapy: therapy.trim(), effect },
+  return { schema_version: "1.0", query: { ...tree.query, therapy: therapy.trim(), effect, scope },
     status, counts: totals, excluded: counts, incomplete,
     evidence: selected, limitations: ["This checks a bounded CIViC snapshot, not treatment efficacy, FDA status or patient suitability.",
       "An opposing report is not necessarily a direct contradiction; study contexts may differ.",

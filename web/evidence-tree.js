@@ -76,6 +76,15 @@ function renderEvidenceTree(entities, relations) {
   therapy.name = "therapy"; therapy.placeholder = "e.g. osimertinib (optional)";
   therapyLabel.append("Therapy ", therapy);
   form.append(therapyLabel);
+  const scopeLabel = document.createElement("label");
+  const scope = document.createElement("select");
+  for (const [value, label] of [["variant", "Single variant (verified membership)"],
+    ["profile", "Exact complete CIViC molecular profile name"]]) {
+    const option = document.createElement("option"); option.value = value; option.textContent = label;
+    scope.append(option);
+  }
+  scopeLabel.append("Interpret input as ", scope);
+  form.append(scopeLabel);
   const effectLabel = document.createElement("label");
   const effect = document.createElement("select");
   for (const value of ["sensitivity", "resistance"]) {
@@ -94,10 +103,11 @@ function renderEvidenceTree(entities, relations) {
       { gene: inputs[0].value, variant: inputs[1].value, disease: inputs[2].value,
         limit: therapy.value.trim() ? 200 : 50 });
     result.replaceChildren();
-    const claim = therapy.value.trim() ? evaluateEvidenceClaim(tree, { therapy: therapy.value, effect: effect.value }) : null;
+    const claim = therapy.value.trim() ? evaluateEvidenceClaim(tree,
+      { therapy: therapy.value, effect: effect.value, scope: scope.value }) : null;
     const summary = document.createElement("p");
     summary.textContent = claim
-      ? `Snapshot check: ${claim.status.replaceAll("_", " ")}. ${claim.counts.supporting} supporting; ${claim.counts.opposing} opposing reports; ${claim.counts.disputed} disputing the stated effect; ${claim.counts.context_only} context only. ${claim.incomplete ? "Results are incomplete. " : ""}This is not a treatment recommendation. Exact therapy name or ID required.`
+      ? `Snapshot check (${claim.query.scope === "profile" ? "whole molecular profile" : "single variant"}): ${claim.status.replaceAll("_", " ")}. ${claim.counts.supporting} supporting; ${claim.counts.opposing} opposing reports; ${claim.counts.disputed} disputing the stated effect; ${claim.counts.context_only} context only. ${claim.incomplete ? "Results are incomplete. " : ""}This is not a treatment recommendation. Exact therapy name or ID required.`
       : `${tree.total_evidence_items} accepted CIViC evidence item(s) in this snapshot. FDA labels and CIViC assertions: not integrated. No match does not mean no evidence exists.`;
     result.append(summary);
     const rows = claim ? Object.entries(claim.evidence).flatMap(([group, items]) => items.map((item) => ({ group, item })))

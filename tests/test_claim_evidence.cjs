@@ -58,3 +58,17 @@ test("truncation and display caps force incomplete review; invalid claims are re
   assert.throws(() => evaluateEvidenceClaim(tree, { therapy: "", effect: "sensitivity" }));
   assert.throws(() => evaluateEvidenceClaim(tree, { therapy: "Osimertinib", effect: "response" }));
 });
+
+test("legacy snapshot can answer exact whole-profile question while single variant still abstains", () => {
+  const tree = buildEvidenceTree(entities, [relation("t", 9, "SENSITIVITY", "SUPPORTS", [])],
+    { gene: "EGFR", variant: "EGFR T790M", disease: "Lung cancer" });
+  assert.equal(evaluateEvidenceClaim(tree, { therapy: "Osimertinib", effect: "sensitivity" }).status,
+    "insufficient_variant_context");
+  const profile = evaluateEvidenceClaim(tree, { therapy: "Osimertinib", effect: "sensitivity", scope: "profile" });
+  assert.equal(profile.status, "supporting_records");
+  assert.equal(profile.query.scope, "profile");
+  const other = { ...tree, evidence: [{ ...tree.evidence[0], profile: {
+    ...tree.evidence[0].profile, name: "EGFR C797S" } }] };
+  assert.equal(evaluateEvidenceClaim(other, { therapy: "Osimertinib", effect: "sensitivity", scope: "profile" }).status,
+    "insufficient_variant_context");
+});
