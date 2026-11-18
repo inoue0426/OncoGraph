@@ -523,8 +523,8 @@ class LewisZhaoAdapter(LewisDelimitedAdapter):
         record_id_column="interaction_name",
         ligand_kind_column="ligand_type",
         interaction_type_column="interaction_type",
-        evidence_type="inferred_ligand_receptor",
-        interaction_mode="inferred_cell_communication",
+        evidence_type="source_derived_ligand_receptor",
+        interaction_mode="source_derived",
     )
 
 
@@ -589,8 +589,8 @@ class LewisPavlicevAdapter(LewisDelimitedAdapter):
         sheet_name="Sheet1",
         ligand_column="Ligand",
         receptor_column="Receptor",
-        evidence_type="inferred_ligand_receptor",
-        interaction_mode="inferred_cell_communication",
+        evidence_type="source_derived_ligand_receptor",
+        interaction_mode="source_derived",
     )
 
 
@@ -611,8 +611,8 @@ class LewisHouAdapter(LewisDelimitedAdapter):
         receptor_column="Receptor gene symbol",
         evidence_column="Ligand location",
         citation_column="PMID support",
-        evidence_type="inferred_ligand_receptor",
-        interaction_mode="inferred_cell_communication",
+        evidence_type="source_derived_ligand_receptor",
+        interaction_mode="source_derived",
     )
 
 
@@ -633,8 +633,8 @@ class LewisWangAdapter(LewisDelimitedAdapter):
         receptor_name_column="Receptor.Name",
         record_id_column="Pair.Name",
         evidence_column="Classification",
-        evidence_type="inferred_ligand_receptor",
-        interaction_mode="inferred_cell_communication",
+        evidence_type="source_derived_ligand_receptor",
+        interaction_mode="source_derived",
     )
 
 
@@ -655,8 +655,8 @@ class LewisJinAdapter(LewisDelimitedAdapter):
         evidence_column="evidence",
         interaction_type_column="pathway_name",
         complex_separator="&",
-        evidence_type="inferred_ligand_receptor",
-        interaction_mode="inferred_cell_communication",
+        evidence_type="source_derived_ligand_receptor",
+        interaction_mode="source_derived",
     )
 
 

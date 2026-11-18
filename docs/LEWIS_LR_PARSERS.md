@@ -78,9 +78,13 @@ or production migration is performed.
   `metabolite_target_association` predicate. Duplicate source rows are
   collapsed by a stable source fingerprint.
 - Provenance distinguishes `curated_literature`, `curated_database`,
-  `curated_network`, `curated_complex`, `inferred_cell_communication`,
+  `curated_network`, `curated_complex`, `source_derived`,
   `compiled_prior`, and `metabolic_association` in `context.interaction_mode`.
-  An inferred CCC edge is never labeled as experimentally demonstrated binding.
+  A tool's use for CCC inference does not make its reference list an inferred
+  cell-cell communication result. Pavlicev, NATMI, iTalk, and CellChat exports
+  therefore use `source_derived` unless row-level evidence establishes a more
+  specific classification. These labels describe source provenance, not a
+  verified experimental evidence grade; source evidence text remains attached.
 - Complex sides remain opaque `molecular_complex` entities. The parser emits
   explicit `has_subunit` membership edges and never invents component-wise
   ligand-receptor bindings.

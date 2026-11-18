@@ -342,6 +342,9 @@ def test_verified_human_xlsx_profiles_use_explicit_headers(tmp_path):
         edges = list(adapter.iter_edges())
         assert len(edges) == 1
         assert edges[0].context["taxon_id"] == HUMAN_TAXON
+        if adapter_class in (LewisPavlicevAdapter, LewisHouAdapter):
+            assert edges[0].evidence_type == "source_derived_ligand_receptor"
+            assert edges[0].context["interaction_mode"] == "source_derived"
 
 
 def test_verified_human_delimited_profiles_preserve_complex_and_source_columns(tmp_path):
@@ -395,6 +398,9 @@ def test_verified_human_delimited_profiles_preserve_complex_and_source_columns(t
         interaction_edges = [edge for edge in edges if edge.predicate == "ligand_receptor_interaction"]
         assert len(interaction_edges) == 1
         assert interaction_edges[0].context["taxon_id"] == HUMAN_TAXON
+        if adapter_class in (LewisWangAdapter, LewisJinAdapter):
+            assert interaction_edges[0].evidence_type == "source_derived_ligand_receptor"
+            assert interaction_edges[0].context["interaction_mode"] == "source_derived"
         if adapter_class is LewisJinAdapter:
             assert sum(edge.predicate == "has_subunit" for edge in edges) == 2
             assert adapter.validation_report().emitted_membership_edges == 2
