@@ -1,5 +1,7 @@
 """Focused tests for the permission-gated, human Lewis Lab adapters."""
 
+import zipfile
+
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
@@ -8,12 +10,14 @@ from oncograph.models import Entity, Evidence, Relation
 from oncograph.sources.base import ExternalIdentifier
 from oncograph.sources.lewis_lab import (
     HUMAN_TAXON,
+    LewisBrowaeysAdapter,
     LewisCabelloAguilarAdapter,
     LewisDelimitedAdapter,
     LewisDimitrovAdapter,
     LewisHouAdapter,
     LewisJinAdapter,
     LewisMetSensorAdapter,
+    LewisNoelAdapter,
     LewisPavlicevAdapter,
     LewisQiaoAdapter,
     LewisRamilowskiAdapter,
@@ -228,6 +232,58 @@ def test_verified_human_delimited_profiles_preserve_complex_and_source_columns(t
         if adapter_class is LewisJinAdapter:
             assert sum(edge.predicate == "has_subunit" for edge in edges) == 2
             assert adapter.validation_report().emitted_membership_edges == 2
+
+
+def test_noel_xlsx_preserves_multi_subunit_sides(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    path = tmp_path / "Human-2020-Noël-LR-pairs.xlsx"
+    workbook = openpyxl.Workbook()
+    worksheet = workbook.active
+    worksheet.title = "All"
+    worksheet.append([
+        "Ligand 1", "Ligand 2", "Receptor 1", "Receptor 2", "Receptor 3",
+        "Source for interaction", "PubMed ID", "Classifications",
+    ])
+    worksheet.append([
+        "HLA-A", None, "LILRB1", "LILRB2", None,
+        "curated", "9285411", "Antigen binding",
+    ])
+    workbook.save(path)
+    adapter = LewisNoelAdapter(
+        path,
+        _map(
+            ("HLA-A", ExternalIdentifier("hgnc", "HGNC:4931"), "gene"),
+            ("LILRB1", ExternalIdentifier("hgnc", "HGNC:6606"), "gene"),
+            ("LILRB2", ExternalIdentifier("hgnc", "HGNC:6607"), "gene"),
+        ),
+    )
+    edges = list(adapter.iter_edges())
+    assert sum(edge.predicate == "ligand_receptor_interaction" for edge in edges) == 1
+    assert adapter.validation_report().emitted_membership_edges == 2
+
+
+def test_browaeys_zip_selects_only_lr_member(tmp_path):
+    path = tmp_path / "Human-2019-Browaeys-LR-pairs.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(
+            "NicheNet-LR-pairs.csv",
+            '",","from","to","source","database"\n'
+            '"1","CXCL1","CXCR2","kegg_cytokines","kegg"\n',
+        )
+        archive.writestr(
+            "NicheNet-Sig-Network.csv",
+            '",","from","to"\n"1","IL6","SH3GL2"\n',
+        )
+    adapter = LewisBrowaeysAdapter(
+        path,
+        _map(
+            ("CXCL1", ExternalIdentifier("hgnc", "HGNC:4601"), "gene"),
+            ("CXCR2", ExternalIdentifier("hgnc", "HGNC:6027"), "gene"),
+        ),
+    )
+    edges = list(adapter.iter_edges())
+    assert len(edges) == 1
+    assert edges[0].context["interaction_type"] == "kegg"
 
 
 def test_complex_and_metabolite_rows_are_not_split_or_inferred(tmp_path):

@@ -16,6 +16,8 @@ source-specific, local-only adapters. The supported adapters are:
 | `lewis_jin_2020` | `Human-2020-Jin-LR-pairs.csv` | 9606 | yes |
 | `lewis_shao_2020` | `Human-2020-Shao-LR-pairs.txt` | 9606 | yes |
 | `lewis_dimitrov_2022` | `Human-2022-Dimitrov-LR-pairs.csv` | 9606 | yes |
+| `lewis_noel_2020` | `Human-2020-Noël-LR-pairs.xlsx` | 9606 | yes |
+| `lewis_browaeys_2019` | LR member of `Human-2019-Browaeys-LR-pairs.zip` | 9606 | yes |
 
 The upstream compendium is heterogeneous and its repository-level README is
 not a redistribution license. No upstream files are stored here, and these
@@ -38,6 +40,10 @@ provided.
 XLSX parsing is optional and requires the project's `lewis` extra (which adds
 `openpyxl`). Workbooks are read in memory and are never copied into the
 repository.
+
+For NicheNet, only the explicitly named `NicheNet-LR-pairs.csv` archive member
+is eligible. The separate signaling-network member is downstream regulation,
+not a ligand-receptor interaction, and is not imported.
 
 ## Biological safeguards
 

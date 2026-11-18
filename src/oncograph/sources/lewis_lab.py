@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import io
+import zipfile
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -51,6 +53,9 @@ class LewisSourceProfile:
     receptor_column: str
     file_format: str = "delimited"
     sheet_name: str | None = None
+    archive_member: str | None = None
+    ligand_component_columns: tuple[str, ...] = ()
+    receptor_component_columns: tuple[str, ...] = ()
     ligand_name_column: str | None = None
     receptor_name_column: str | None = None
     record_id_column: str | None = None
@@ -149,6 +154,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 f"Expected {self.profile.filename!r} for {self.profile.source_key}; "
                 f"got {self.path.name!r}"
             )
+        rows: list[dict[str, str]]
         if self.profile.file_format == "xlsx":
             try:
                 from openpyxl import load_workbook
@@ -165,7 +171,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 )
                 rows = worksheet.iter_rows(values_only=True)
                 headers = [str(value).strip() if value is not None else "" for value in next(rows, ())]
-                return [
+                rows = [
                     {
                         header: value
                         for header, value in zip(headers, row, strict=False)
@@ -176,22 +182,52 @@ class LewisDelimitedAdapter(SourceAdapter):
                 ]
             finally:
                 workbook.close()
-        with self.path.open(encoding="utf-8-sig", newline="") as handle:
-            reader = csv.DictReader(handle, delimiter=self.profile.delimiter)
-            required = {
-                self.profile.ligand_column,
-                self.profile.receptor_column,
-                *(column for column in (
-                    self.profile.ligand_kind_column,
-                    self.profile.receptor_kind_column,
-                ) if column),
-            }
-            missing = required - set(reader.fieldnames or ())
+        elif self.profile.file_format == "zip_delimited":
+            if not self.profile.archive_member:
+                raise ValueError(f"{self.profile.source_key} requires an archive member")
+            with zipfile.ZipFile(self.path) as archive:
+                try:
+                    data = archive.read(self.profile.archive_member)
+                except KeyError as exc:
+                    raise ValueError(
+                        f"Archive member not found: {self.profile.archive_member}"
+                    ) from exc
+            reader = csv.DictReader(
+                io.StringIO(data.decode("utf-8-sig")), delimiter=self.profile.delimiter
+            )
+            rows = list(reader)
+        else:
+            with self.path.open(encoding="utf-8-sig", newline="") as handle:
+                rows = list(csv.DictReader(handle, delimiter=self.profile.delimiter))
+
+        for row in rows:
+            if self.profile.ligand_component_columns:
+                row[self.profile.ligand_column] = "|".join(
+                    str(row.get(column)).strip()
+                    for column in self.profile.ligand_component_columns
+                    if row.get(column) not in (None, "")
+                )
+            if self.profile.receptor_component_columns:
+                row[self.profile.receptor_column] = "|".join(
+                    str(row.get(column)).strip()
+                    for column in self.profile.receptor_component_columns
+                    if row.get(column) not in (None, "")
+                )
+        required = {
+            self.profile.ligand_column,
+            self.profile.receptor_column,
+            *(column for column in (
+                self.profile.ligand_kind_column,
+                self.profile.receptor_kind_column,
+            ) if column),
+        }
+        if rows:
+            missing = required - set(rows[0])
             if missing:
                 raise ValueError(
                     f"{self.profile.source_key} missing required columns: {sorted(missing)}"
                 )
-            return list(reader)
+        return rows
 
     def _resolve(self, symbol: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
         candidates = self.identifier_map.get((self.profile.taxon_id, symbol.strip().upper()), ())
@@ -575,4 +611,48 @@ class LewisDimitrovAdapter(LewisDelimitedAdapter):
         ligand_column="source_genesymbol",
         receptor_column="target_genesymbol",
         evidence_column="resource",
+    )
+
+
+@registry.register
+class LewisNoelAdapter(LewisDelimitedAdapter):
+    """Parser for the human ICELLNET 2020 XLSX list with complexes."""
+
+    descriptor = _profile_descriptor("lewis_noel_2020", "Lewis Lab: Noël ICELLNET 2020")
+    profile = LewisSourceProfile(
+        source_key="lewis_noel_2020",
+        filename="Human-2020-Noël-LR-pairs.xlsx",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="",
+        file_format="xlsx",
+        sheet_name="All",
+        ligand_column="__ligand__",
+        receptor_column="__receptor__",
+        ligand_component_columns=("Ligand 1", "Ligand 2"),
+        receptor_component_columns=("Receptor 1", "Receptor 2", "Receptor 3"),
+        evidence_column="Source for interaction",
+        citation_column="PubMed ID",
+        interaction_type_column="Classifications",
+        complex_separator="|",
+    )
+
+
+@registry.register
+class LewisBrowaeysAdapter(LewisDelimitedAdapter):
+    """Parser for the LR member of the human NicheNet 2019 archive."""
+
+    descriptor = _profile_descriptor("lewis_browaeys_2019", "Lewis Lab: Browaeys NicheNet 2019")
+    profile = LewisSourceProfile(
+        source_key="lewis_browaeys_2019",
+        filename="Human-2019-Browaeys-LR-pairs.zip",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter=",",
+        file_format="zip_delimited",
+        archive_member="NicheNet-LR-pairs.csv",
+        ligand_column="from",
+        receptor_column="to",
+        evidence_column="source",
+        interaction_type_column="database",
     )
