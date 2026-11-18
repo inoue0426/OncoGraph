@@ -108,6 +108,27 @@ def test_alternate_uniprot_id_does_not_resolve_gene_entity():
     assert not session.exec(select(Relation)).all()
 
 
+def test_secondary_alias_cannot_merge_entity_with_conflicting_species():
+    """An inconsistent crosswalk must not overwrite an existing organism's entity."""
+    with _session() as session:
+        mouse = Entity(type="gene", name="SharedName", canonical_id="mgi:MGI:1",
+                       entity_metadata='{"taxon_id": 10090}')
+        session.add(mouse)
+        session.flush()
+        session.add(EntityIdentifier(entity_id=mouse.id, namespace="ncbigene", value="1", taxon_id=9606))
+        session.commit()
+        mouse_id = mouse.id
+        report = import_entities(session, [EntityRecord(
+            entity_type="gene", name="SharedName",
+            identifiers=(_identifier("hgnc", "HGNC:1"), _identifier("ncbigene", "1")),
+            metadata={"taxon_id": 9606},
+        )])
+        assert report.entities_updated == 0
+        assert report.entities_created == 1
+        assert session.get(Entity, mouse_id).entity_metadata == '{"taxon_id": 10090}'
+        assert len(session.exec(select(Entity)).all()) == 2
+
+
 def test_explicit_species_does_not_cross_resolve_unknown_species_claim():
     with _session() as session:
         import_entities(

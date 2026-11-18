@@ -154,7 +154,14 @@ def _identifier_owners(
             if row.taxon_id == taxon
             or (row.taxon_id is None and normalized.namespace not in _SPECIES_SENSITIVE_NAMESPACES)
         ]
-    return _compatible_alternate_entity_ids(session, normalized.namespace, rows)
+    owners = _compatible_alternate_entity_ids(session, normalized.namespace, rows)
+    if normalized.namespace in _SPECIES_SENSITIVE_NAMESPACES:
+        owners = {
+            owner_id for owner_id in owners
+            if (owner := session.get(Entity, owner_id)) is not None
+            and _entity_matches_taxon(session, owner, taxon)
+        }
+    return owners
 
 
 def _entity_matches_taxon(session: Session, entity: Entity, taxon: int | None) -> bool:
