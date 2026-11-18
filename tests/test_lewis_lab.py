@@ -508,6 +508,26 @@ def test_complex_and_metabolite_rows_are_not_split_or_inferred(tmp_path):
     assert all(edge.predicate != "ligand_receptor_interaction" or "COL1A1" not in edge.subject.value for edge in edges)
 
 
+@pytest.mark.parametrize("receptor", ["&B", "B&", "B&&C", "B& &C"])
+def test_missing_complex_components_are_not_silently_removed(tmp_path, receptor):
+    """Malformed complex syntax must never become a smaller supported complex."""
+    path = tmp_path / LewisJinAdapter.profile.filename
+    path.write_text(
+        f"ligand_symbol,receptor_symbol\nA,{receptor}\n", encoding="utf-8",
+    )
+    mapping = _map(*[
+        (symbol, ExternalIdentifier("hgnc", f"HGNC:{index}"), "gene")
+        for index, symbol in enumerate(("A", "B", "C"), start=1)
+    ])
+    adapter = LewisJinAdapter(path, mapping)
+    assert list(adapter.iter_entities()) == []
+    assert list(adapter.iter_edges()) == []
+    report = adapter.validation_report()
+    assert report.skipped_rows == 1
+    assert report.valid is False
+    assert any("empty component" in error for error in report.errors)
+
+
 def test_import_is_idempotent_and_preserves_each_source_evidence(tmp_path):
     path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
     path.write_text(

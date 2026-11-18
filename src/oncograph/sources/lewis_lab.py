@@ -278,7 +278,10 @@ class LewisDelimitedAdapter(SourceAdapter):
     def _resolve_side(self, value: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
         if not self.profile.complex_separator or self.profile.complex_separator not in value:
             return self._resolve(value, kind)
-        components = [part.strip() for part in value.split(self.profile.complex_separator) if part.strip()]
+        components = [part.strip() for part in value.split(self.profile.complex_separator)]
+        if any(not component for component in components):
+            self._report.errors.append(f"complex has an empty component: {value}")
+            return ()
         resolved: list[LewisResolvedIdentifier] = []
         for component in components:
             resolved.extend(self._resolve(component, kind))
