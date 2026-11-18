@@ -142,8 +142,27 @@ class LewisDelimitedAdapter(SourceAdapter):
         return self._report
 
     def _read_rows(self) -> list[dict[str, str]]:
+        if self.path.name != self.profile.filename:
+            raise ValueError(
+                f"Expected {self.profile.filename!r} for {self.profile.source_key}; "
+                f"got {self.path.name!r}"
+            )
         with self.path.open(encoding="utf-8-sig", newline="") as handle:
-            return list(csv.DictReader(handle, delimiter=self.profile.delimiter))
+            reader = csv.DictReader(handle, delimiter=self.profile.delimiter)
+            required = {
+                self.profile.ligand_column,
+                self.profile.receptor_column,
+                *(column for column in (
+                    self.profile.ligand_kind_column,
+                    self.profile.receptor_kind_column,
+                ) if column),
+            }
+            missing = required - set(reader.fieldnames or ())
+            if missing:
+                raise ValueError(
+                    f"{self.profile.source_key} missing required columns: {sorted(missing)}"
+                )
+            return list(reader)
 
     def _resolve(self, symbol: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
         candidates = self.identifier_map.get((self.profile.taxon_id, symbol.strip().upper()), ())

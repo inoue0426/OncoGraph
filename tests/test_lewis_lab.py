@@ -51,6 +51,18 @@ def test_ramilowski_parser_requires_explicit_human_symbol_map(tmp_path):
     assert edges[0].context["taxon_id"] == HUMAN_TAXON
 
 
+def test_source_profile_rejects_wrong_file_name(tmp_path):
+    path = tmp_path / "renamed.txt"
+    path.write_text("ligand\treceptor\nA\tB\n", encoding="utf-8")
+    adapter = LewisRamilowskiAdapter(path, {})
+    try:
+        list(adapter.iter_edges())
+    except ValueError as exc:
+        assert "Human-2015-Ramilowski-LR-pairs.txt" in str(exc)
+    else:
+        raise AssertionError("wrong source file name was accepted")
+
+
 def test_cabello_parser_preserves_source_evidence(tmp_path):
     path = tmp_path / "Human-2020-Cabello-Aguilar-LR-pairs.csv"
     path.write_text(
