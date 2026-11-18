@@ -14,10 +14,24 @@ clean source validation.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 from oncograph.sources import registry
+
+
+def file_sha256(path: Path) -> str:
+    """Hash a local input without loading the entire file into memory.
+
+    Args:
+        path: Input file to fingerprint.
+
+    Returns:
+        Hexadecimal SHA-256 digest of the file bytes.
+    """
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
 def main() -> None:
@@ -30,12 +44,30 @@ def main() -> None:
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
 
+    inputs = (args.path, args.identifier_map)
+    for input_path in inputs:
+        if args.out.resolve() == input_path.resolve() or (
+            args.out.exists() and args.out.samefile(input_path)
+        ):
+            parser.error("--out must not overwrite a source or identifier-map input")
+    fingerprints = {
+        "source_sha256": file_sha256(args.path),
+        "identifier_map_sha256": file_sha256(args.identifier_map),
+    }
+
     adapter_class = registry.get(args.source)
     adapter = adapter_class(args.path, args.identifier_map, release=args.release)
     entities = list(adapter.iter_entities())
     edges = list(adapter.iter_edges())
     report = adapter.validation_report()
+    if fingerprints != {
+        "source_sha256": file_sha256(args.path),
+        "identifier_map_sha256": file_sha256(args.identifier_map),
+    }:
+        raise RuntimeError("Input files changed during validation; retry with stable inputs")
     payload = report.to_dict()
+    payload.update(fingerprints)
+    payload.update({"release": args.release, "taxon_id": adapter.profile.taxon_id})
     payload.update({"entities_emitted": len(entities), "edges_emitted": len(edges)})
     args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(

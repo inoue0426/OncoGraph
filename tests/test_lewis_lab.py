@@ -1,5 +1,6 @@
 """Focused tests for the permission-gated, human Lewis Lab adapters."""
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -109,6 +110,19 @@ def test_validation_command_writes_source_report_without_database(tmp_path, monk
     assert report["input_rows"] == 1
     assert report["entities_emitted"] == 2
     assert report["edges_emitted"] == 1
+    assert report["source_sha256"] == hashlib.sha256(source_path.read_bytes()).hexdigest()
+    assert report["identifier_map_sha256"] == hashlib.sha256(map_path.read_bytes()).hexdigest()
+    assert report["taxon_id"] == HUMAN_TAXON
+
+    monkeypatch.setattr(sys, "argv", [
+        "validate_lewis_source.py", "lewis_ramilowski_2015", str(source_path),
+        "--identifier-map", str(map_path), "--out", str(source_path),
+    ])
+    original = source_path.read_bytes()
+    with pytest.raises(SystemExit) as error:
+        validator.main()
+    assert error.value.code == 2
+    assert source_path.read_bytes() == original
 
 
 def test_distinct_evidence_survives_reused_pair_ids_and_row_reordering(tmp_path):

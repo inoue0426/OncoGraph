@@ -59,6 +59,9 @@ uv run python scripts/validate_lewis_source.py \
 The JSON report includes input rows, emitted entities/edges, duplicate rows,
 membership edges, skipped rows, unresolved and ambiguous values, errors, and a
 `valid` flag. The command exits nonzero unless the parse is clean.
+Reports also record SHA-256 hashes of the source and identifier map, the release,
+and taxon. Inputs are checked again after parsing to detect changes during a run.
+The output path cannot overwrite either input file.
 
 ## Biological safeguards
 
