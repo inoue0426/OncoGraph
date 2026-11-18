@@ -165,3 +165,20 @@ LIANA underscore-delimited partners are parsed as complexes, following the
 This resolves 4,674 candidate interactions and emits 2,230 source-specific
 membership edges in the local audit. Components must all resolve; no
 component-wise binding interactions are inferred.
+
+### Metabolite identity-preservation audit
+
+A separate MEBOCOST pass retained the 158 distinct source-provided HMDB IDs
+verbatim as metabolite identities (all match `HMDB` plus seven digits), alongside
+the same approved-symbol HGNC map. This produced 439 candidate associations
+from 440 rows, with one unresolved gene occurrence, `TFR1`. Syntax validation
+does not verify HMDB accession currency, molecular identity, or reuse rights.
+The HGNC snapshot lists `TFR1` as an alias of `TFRC` (`HGNC:11763`); the
+approved-symbol-only audit deliberately did not apply that alias automatically.
+
+The source annotates 234 transporter, 155 receptor, and 51 nuclear-receptor
+rows. They remain metabolite-target associations. These classes do not on
+their own demonstrate extracellular signaling or cell-cell communication.
+This second pass is not directly comparable with the HGNC-only table above:
+it explicitly adds source-declared metabolite identities. Neither pass writes
+graph data or clears redistribution permission.
