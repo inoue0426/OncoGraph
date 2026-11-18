@@ -1,9 +1,10 @@
 """Species, type, and duplicate safeguards for identifier resolution."""
 
+import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from oncograph.importing import import_edges, import_entities
-from oncograph.models import Entity, EntityIdentifier, Relation
+from oncograph.models import Entity, EntityIdentifier, Evidence, Relation
 from oncograph.sources.base import EdgeRecord, EntityRecord, ExternalIdentifier
 
 
@@ -37,6 +38,41 @@ def test_unique_alternate_id_change_is_reported_as_possible_duplicate():
         entities = session.exec(select(Entity)).all()
 
     assert len(entities) == 2
+
+
+@pytest.mark.parametrize("marked_as_self", [False, True])
+def test_alternate_identifiers_cannot_create_implicit_self_relation(marked_as_self):
+    """Two distinct endpoint identifiers may resolve to the same database entity."""
+    with _session() as session:
+        import_entities(session, [EntityRecord(
+            entity_type="gene", name="EGFR",
+            identifiers=(_identifier("hgnc", "HGNC:3236"), _identifier("ncbigene", "1956")),
+        )])
+        edge = EdgeRecord(
+            subject=_identifier("hgnc", "HGNC:3236"),
+            object=_identifier("ncbigene", "1956"),
+            predicate="ligand_receptor_interaction",
+            context={"source_reported_self_interaction": marked_as_self,
+                     "source_ligand": "EGFR", "source_receptor": "EGFR"},
+        )
+        report = import_edges(session, [edge], source_key="audit")
+        assert report.edges_skipped == 1
+        assert report.edges_created == report.evidence_created == 0
+        assert "same entity" in report.errors[0]
+        assert session.exec(select(Relation)).all() == []
+        assert session.exec(select(Evidence)).all() == []
+
+
+def test_invalid_self_edge_is_counted_as_skipped():
+    """Validation rejections contribute to import skip counts."""
+    with _session() as session:
+        identifier = _identifier("hgnc", "HGNC:3236")
+        report = import_edges(session, [EdgeRecord(
+            subject=identifier, object=identifier, predicate="binds",
+        )], source_key="audit")
+        assert report.edges_skipped == 1
+        assert report.edges_created == report.evidence_created == 0
+        assert len(report.errors) == 1
 
 
 def test_alternate_uniprot_id_does_not_resolve_gene_entity():

@@ -485,6 +485,7 @@ def import_edges(
             validate_edge(record)
         except ValueError as exc:
             report.errors.append(f"edge[{i}]: {exc}")
+            report.edges_skipped += 1
             continue
 
         edge_taxon = int(record.metadata["taxon_id"]) if record.metadata.get("taxon_id") is not None else None
@@ -501,6 +502,11 @@ def import_edges(
                 )
             report.edges_skipped += 1
             report.errors.append(f"edge[{i}]: unresolved endpoint")
+            continue
+
+        if subject_id == object_id and normalize_identifier(record.subject) != normalize_identifier(record.object):
+            report.edges_skipped += 1
+            report.errors.append(f"edge[{i}]: distinct endpoint identifiers resolve to the same entity")
             continue
 
         publication_id = _lookup_entity_id(session, record.publication) if record.publication else None

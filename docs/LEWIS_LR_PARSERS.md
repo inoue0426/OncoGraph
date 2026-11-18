@@ -248,3 +248,11 @@ relations and 3,751 evidence records without import errors; a second pass
 created none. It preceded the species quarantine and is not biological
 validation or permission to ingest that export. No persistent database was
 modified.
+
+The shared ingestion layer also rejects distinct endpoint identifiers that
+resolve through alternate-ID mappings to the same database entity. The
+source-reported self-interaction flag does not override this collision guard;
+an explicitly supported self interaction must already use matching normalized
+endpoint identifiers. Validation failures and resolution collisions both count
+as skipped edges. Existing persisted self relations are not deleted or
+retroactively reclassified by this change and require separate review.
