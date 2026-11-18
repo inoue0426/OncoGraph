@@ -142,7 +142,7 @@
     "gtopdb": "2026.3.1 published 2026-10-12",
     "hetionet": "v1.0",
     "hgnc": "download snapshot 2026-11-18",
-    "lincs": "Upstream export version absent; original processing notebook states last_updated 2023-10-27; not asserted as export date",
+    "lincs": "Dataset page and processing notebook last_updated 2023-10-27; no export-specific version; downloaded 2026-11-18",
     "lincs_identity_mapping": "GSE92742 perturbagen metadata snapshot 2026-11-18"
   },
   "sources": {
@@ -214,13 +214,13 @@
     }
   },
   "validation": {
-    "base_main": "993b033",
+    "base_main": "efacd3621447db994fbe8d7c8d96500a9677cff4",
     "evidence_count": 28585,
     "javascript_failures": 0,
     "javascript_scripts": 7,
     "javascript_tests": 20,
     "new_targeted_tests": 27,
-    "python": "418 passed",
+    "python": "449 passed",
     "relation_count": 27598,
     "ruff": "passed",
     "sign_disagreements_hetionet": 0,

@@ -8,14 +8,11 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from oncograph.models import Entity, EntityIdentifier, Evidence, Relation
 from oncograph.signed_molecular import (
-    SIGNED_RELATIONS,
-    SignedImportReport,
     TypedCrosswalk,
     import_signed_observations,
 )
-from oncograph.sources.base import EdgeRecord, EntityRecord, ExternalIdentifier
+from oncograph.sources.base import EntityRecord, ExternalIdentifier
 from oncograph.sources.sigma_sources import (
-    LINCS_DESCRIPTOR,
     GtoPdbSignedAdapter,
     LincsConsensusAdapter,
     lincs_compound_mapping,
@@ -55,40 +52,6 @@ def identities(session):
     return crosswalk
 
 
-def observation(predicate="upregulates", context=None):
-    spec = SIGNED_RELATIONS[predicate]
-    endpoints = {
-        "drug": eid("pubchem", "1"),
-        "gene": eid("ncbigene", "2"),
-        "protein": eid("uniprot", "P00002"),
-        "disease": eid("mondo", "0000001"),
-    }
-    return EdgeRecord(
-        endpoints[spec[0]],
-        predicate,
-        endpoints[spec[1]],
-        source_record_id="row-1",
-        context={
-            "original_source_dataset": "synthetic test",
-            "release": "test-v1",
-            "file_sha256": "test-digest",
-            "original_predicate": predicate,
-            "effect_sign": spec[2],
-            "biological_relationship": spec[3],
-            "observation_status": "transformed",
-            "model_generated": False,
-            "taxon_id": 9606,
-            **(context or {}),
-        },
-    )
-
-
-def ingest(session, crosswalk, records):
-    return import_signed_observations(
-        session, records, LINCS_DESCRIPTOR, crosswalk, SignedImportReport()
-    )
-
-
 def test_lincs_parser_preserves_original_row_sign_and_scope(tmp_path):
     path = tmp_path / "edges.tsv"
     path.write_text(
@@ -109,6 +72,7 @@ def test_lincs_parser_preserves_original_row_sign_and_scope(tmp_path):
         gene_ids={"2"},
     )
     edges = list(adapter.iter_edges())
+    assert list(adapter.iter_edges()) == edges
     assert [e.predicate for e in edges] == ["upregulates", "downregulates"]
     assert edges[0].subject == eid("pubchem", "1")
     assert edges[0].object == eid("ncbigene", "2")
@@ -169,6 +133,7 @@ def test_gtopdb_function_binding_and_complex_are_distinct(tmp_path):
         writer.writerows(rows)
     adapter = GtoPdbSignedAdapter(path)
     edges = list(adapter.iter_edges())
+    assert list(adapter.iter_edges()) == edges
     assert [e.predicate for e in edges] == ["inhibits", "activates"]
     assert edges[0].context["original_row"]["Affinity Median"] == "6.5"
     assert edges[0].context["source_native_record_id"] is None

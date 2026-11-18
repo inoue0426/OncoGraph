@@ -3,6 +3,7 @@
 ## Status and scope
 
 This integration imports available **original-source exports used by SIGMA-KG**.
+The typed contract is documented separately in [SIGNED_MOLECULAR.md](SIGNED_MOLECULAR.md).
 It does **not** import the complete, harmonized or structurally pruned SIGMA-KG,
 reconstruct its missing edges, implement FLASH, or publish a new Pages snapshot.
 All three source adapters write to an explicit local SQLite database through the
@@ -35,6 +36,10 @@ The paper's CC BY-NC license likewise does not establish a license for its KG.
 | Compound-Protein, other input | [STITCH](http://stitch.embl.de/) | Not imported. Access/terms and action-level evidence not verified during this investigation; a combined association score cannot establish activation/inhibition. |
 | Gene-Protein / 19,337 | HGNC cross-references / UniProt | HGNC mapping reused; UniProt products are kept separate from gene identity. Product cross-references are retained as metadata, not imported as an `encodes` evidence layer. |
 | Protein-Protein / 251,762 | STRING | Not imported; generic interaction is not positive regulation. |
+
+The LINCS dataset page and bundled processing notebook both give a last-updated
+date of 2023-10-27; the edge download itself has no export-specific version.
+Checksums and the downloaded snapshot label identify the actual imported bytes.
 
 Source counts are not expected to reproduce SIGMA-KG's summary counts. In
 particular, the paper harmonizes identifiers, thresholds scores, removes
