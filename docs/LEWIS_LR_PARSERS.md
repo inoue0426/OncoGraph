@@ -37,9 +37,9 @@ reported and skipped; symbols are never used as graph identity keys. For this
 project's primary scope, only human mappings (`taxon_id=9606`) should be
 provided.
 
-XLSX parsing is optional and requires the project's `lewis` extra (which adds
-`openpyxl`). Workbooks are read in memory and are never copied into the
-repository.
+XLSX parsing requires the project's `lewis` extra (which adds `openpyxl`). The
+CI workflow installs this extra so workbook parser tests are not silently
+skipped. Workbooks are read in memory and are never copied into the repository.
 
 For NicheNet, only the explicitly named `NicheNet-LR-pairs.csv` archive member
 is eligible. The separate signaling-network member is downstream regulation,

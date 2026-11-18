@@ -24,7 +24,7 @@ attribution with owners first. Local audit ≠ authorization to redistribute.
 Obtain the upstream repository separately under its applicable terms, then:
 
 ```bash
-pip install openpyxl
+pip install -e '.[dev,lewis]'
 python scripts/audit_lewis_lr.py ../Ligand-Receptor-Pairs --out /tmp/lewis-lr-audit.json
 ```
 
