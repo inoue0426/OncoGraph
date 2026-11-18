@@ -110,6 +110,12 @@ def main() -> None:
     target_cache: dict[str, tuple[str | None, str | None]] = {}
 
     for i, name in enumerate(names):
+        if i % 25 == 0:
+            print(
+                f"...{i}/{len(names)} processed, "
+                f"{len(records)} with a resolved mechanism so far",
+                flush=True,
+            )
         chembl_id = _resolve_chembl_id(name)
         if not chembl_id:
             no_match += 1
@@ -142,14 +148,13 @@ def main() -> None:
             )
         if resolved_mechanisms:
             records.append({"drug_name": name, "chembl_id": chembl_id, "mechanisms": resolved_mechanisms})
-        if (i + 1) % 25 == 0:
-            print(f"...{i + 1}/{len(names)} processed, {len(records)} with a resolved mechanism so far")
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps(records, indent=2), encoding="utf-8")
     print(
         f"Wrote {OUTPUT_PATH}: {len(records)}/{len(names)} drugs with a resolved mechanism "
-        f"({no_match} no ChEMBL match, {no_mechanism} matched but no mechanism record)"
+        f"({no_match} no ChEMBL match, {no_mechanism} matched but no mechanism record)",
+        flush=True,
     )
 
 

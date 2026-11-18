@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
 
+from sqlalchemy import Index
 from sqlmodel import Field, SQLModel
 
 
@@ -136,6 +137,10 @@ class EntityIdentifier(SQLModel, table=True):
     identifier during dirty imports; a lookup must reject ambiguous matches
     rather than arbitrarily choosing one.
     """
+
+    __table_args__ = (
+        Index("ix_entityidentifier_namespace_value", "namespace", "value"),
+    )
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     entity_id: UUID = Field(foreign_key="entity.id", index=True)
