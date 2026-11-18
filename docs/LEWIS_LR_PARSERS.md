@@ -36,6 +36,10 @@ reported and skipped; symbols are never used as graph identity keys. For this
 project's primary scope, only human mappings (`taxon_id=9606`) should be
 provided.
 
+All five columns and their row values are required. In particular, absent or
+blank `entity_type` is rejected rather than defaulted to `gene`. Older local
+maps relying on that default must explicitly declare their molecular types.
+
 XLSX parsing requires the project's `lewis` extra (which adds `openpyxl`). The
 CI workflow installs this extra so workbook parser tests are not silently
 skipped. Workbooks are read in memory and are never copied into the repository.

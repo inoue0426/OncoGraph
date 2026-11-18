@@ -111,16 +111,18 @@ def load_identifier_map(path: str | Path) -> dict[tuple[int, str], tuple[LewisRe
     result: dict[tuple[int, str], list[LewisResolvedIdentifier]] = {}
     with Path(path).open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
-        required = {"taxon_id", "symbol", "namespace", "identifier"}
+        required = {"taxon_id", "symbol", "namespace", "identifier", "entity_type"}
         missing = required - set(reader.fieldnames or ())
         if missing:
             raise ValueError(f"Identifier map missing columns: {sorted(missing)}")
-        for row in reader:
+        for line_number, row in enumerate(reader, start=2):
+            if any(not (row.get(column) or "").strip() for column in required):
+                raise ValueError(f"Identifier map row {line_number} has an empty required field")
             key = (int(row["taxon_id"]), row["symbol"].strip().upper())
             result.setdefault(key, []).append(
                 LewisResolvedIdentifier(
                     ExternalIdentifier(row["namespace"].strip(), row["identifier"].strip()),
-                    row.get("entity_type", "gene").strip() or "gene",
+                    row["entity_type"].strip(),
                 )
             )
     return {key: tuple(values) for key, values in result.items()}

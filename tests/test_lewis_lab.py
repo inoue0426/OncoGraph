@@ -31,6 +31,7 @@ from oncograph.sources.lewis_lab import (
     LewisSourceProfile,
     LewisWangAdapter,
     LewisZhaoAdapter,
+    load_identifier_map,
 )
 
 VALIDATOR = Path(__file__).resolve().parents[1] / "scripts" / "validate_lewis_source.py"
@@ -177,6 +178,19 @@ def test_nonhuman_profile_is_rejected():
 
     with pytest.raises(ValueError, match="human taxon 9606"):
         MouseProfileAdapter("mouse.tsv", {})
+
+
+@pytest.mark.parametrize("content", [
+    "taxon_id\tsymbol\tnamespace\tidentifier\n9606\tA\tuniprot\tP00001\n",
+    "taxon_id\tsymbol\tnamespace\tidentifier\tentity_type\n9606\tA\tuniprot\tP00001\t\n",
+    "taxon_id\tsymbol\tnamespace\tidentifier\tentity_type\n9606\tA\tuniprot\tP00001\n",
+])
+def test_identifier_map_never_infers_gene_type_for_incomplete_rows(tmp_path, content):
+    """A missing molecular type must not silently turn a protein into a gene."""
+    path = tmp_path / "map.tsv"
+    path.write_text(content, encoding="utf-8")
+    with pytest.raises(ValueError, match="missing columns|empty required field"):
+        load_identifier_map(path)
 
 
 @pytest.mark.parametrize("reverse", [False, True])
