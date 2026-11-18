@@ -75,6 +75,14 @@ zero usable emitted records; absent row counts mean parsing did not finish,
 not that the source contains zero rows. An unwritable output remains a command
 failure: consumers must check the exit status as well as the JSON.
 
+`oncograph import-source` also exits with status 1 for incomplete Lewis imports,
+including source validation failures or database resolution errors. This command
+can persist accepted records before reporting failure; it is not an all-or-nothing
+transaction. Its output explicitly states that partial persistence occurred.
+The database-free validator catches source issues before import, but cannot
+predict conflicts with an existing graph. Use a disposable database copy when
+partial writes are not acceptable. Reimporting accepted records remains idempotent.
+
 ## Biological safeguards
 
 Evidence IDs use a versioned SHA-256 fingerprint of endpoints, kinds, original

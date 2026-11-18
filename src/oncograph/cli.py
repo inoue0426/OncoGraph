@@ -101,3 +101,11 @@ def import_source(
             f"{source_report.unresolved_identifiers} unresolved, "
             f"{source_report.ambiguous_identifiers} ambiguous"
         )
+        if source.startswith("lewis_"):
+            for error in source_report.errors[:20]:
+                typer.echo(f"  source: {error}")
+            if len(source_report.errors) > 20:
+                typer.echo(f"  ... and {len(source_report.errors) - 20} more source errors")
+            if report.errors or not source_report.valid:
+                typer.echo("Import incomplete: only accepted records were persisted.")
+                raise typer.Exit(code=1)
