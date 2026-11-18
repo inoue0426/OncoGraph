@@ -68,6 +68,11 @@ Evidence IDs use a versioned SHA-256 fingerprint of endpoints, kinds, original
 record ID, citation, source evidence, interaction type, and release. Identical
 rows deduplicate independently of row order; distinct provenance is retained.
 The original source ID is preserved in `context.upstream_record_id`.
+Each new evidence record also retains `source_sha256`, `source_ligand`, and
+`source_receptor` to trace resolved endpoints to the input file and original
+partner expressions. The file hash is checked before and after reading.
+Reimporting an identical observation keeps the first evidence record and its
+original file hash; reordering input rows does not create duplicate evidence.
 Earlier experimental imports used unversioned IDs. Reimporting those databases
 can retain both old and new evidence; rebuild a disposable local database or
 review those records explicitly before comparing counts. No automatic deletion

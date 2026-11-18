@@ -74,6 +74,9 @@ def test_ramilowski_parser_requires_explicit_human_symbol_map(tmp_path):
     assert edges[0].source_record_id.startswith("lewis_ramilowski_2015:v2:")
     assert edges[0].context["upstream_record_id"] == "A2M_LRP1"
     assert edges[0].context["taxon_id"] == HUMAN_TAXON
+    assert edges[0].context["source_ligand"] == "A2M"
+    assert edges[0].context["source_receptor"] == "LRP1"
+    assert edges[0].context["source_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_validation_command_writes_source_report_without_database(tmp_path, monkeypatch):

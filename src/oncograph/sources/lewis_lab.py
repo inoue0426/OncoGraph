@@ -196,6 +196,8 @@ class LewisDelimitedAdapter(SourceAdapter):
                 f"Expected {self.profile.filename!r} for {self.profile.source_key}; "
                 f"got {self.path.name!r}"
             )
+        with self.path.open("rb") as handle:
+            source_sha256 = hashlib.file_digest(handle, "sha256").hexdigest()
         rows: list[dict[str, str]]
         if self.profile.file_format == "xlsx":
             try:
@@ -277,6 +279,10 @@ class LewisDelimitedAdapter(SourceAdapter):
                     for column in self.profile.receptor_component_columns
                     if row.get(column) not in (None, "")
                 )
+        with self.path.open("rb") as handle:
+            if hashlib.file_digest(handle, "sha256").hexdigest() != source_sha256:
+                raise ValueError("Source file changed during parsing")
+        self._source_sha256 = source_sha256
         return rows
 
     def _resolve(self, symbol: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
@@ -382,6 +388,9 @@ class LewisDelimitedAdapter(SourceAdapter):
             context = {
                 "source_key": self.profile.source_key,
                 "source_file": self.profile.filename,
+                "source_sha256": self._source_sha256,
+                "source_ligand": ligand,
+                "source_receptor": receptor,
                 "release": self.release,
                 "upstream_record_id": upstream_record_id,
                 "species": self.profile.species,
