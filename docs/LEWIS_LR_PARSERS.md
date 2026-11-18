@@ -65,6 +65,15 @@ membership edges, skipped rows, unresolved and ambiguous values, errors, and a
 Reports also record SHA-256 hashes of the source and identifier map, the release,
 and taxon. Inputs are checked again after parsing to detect changes during a run.
 The output path cannot overwrite either input file.
+The command also applies the ingestion layer's entity and edge validation
+without opening a database. Reports distinguish `valid`, `invalid` (completed
+validation with rejected rows or records), and `validation_failed` (for example,
+quarantined input, malformed schema, missing file, or input changes). Failures
+exit with status 1 and atomically replace any old report with `valid: false`,
+an error type and message, and available input hashes. Fatal failures expose
+zero usable emitted records; absent row counts mean parsing did not finish,
+not that the source contains zero rows. An unwritable output remains a command
+failure: consumers must check the exit status as well as the JSON.
 
 ## Biological safeguards
 

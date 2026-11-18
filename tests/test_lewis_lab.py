@@ -129,6 +129,81 @@ def test_validation_command_writes_source_report_without_database(tmp_path, monk
     assert source_path.read_bytes() == original
 
 
+@pytest.mark.parametrize("failure", ["quarantined", "schema", "mapping", "missing", "changed"])
+def test_validation_failure_replaces_stale_success_report(tmp_path, monkeypatch, failure):
+    """Failed validation must leave an explicit current report, never stale success."""
+    source_path = tmp_path / LewisJinAdapter.profile.filename
+    source_path.write_text("ligand_symbol,receptor_symbol,evidence\nA,A,fixture\n")
+    map_path = tmp_path / "map.tsv"
+    map_path.write_text(
+        "taxon_id\tsymbol\tnamespace\tidentifier\tentity_type\n9606\tA\thgnc\tHGNC:1\tgene\n"
+    )
+    report_path = tmp_path / "report.json"
+    report_path.write_text('{"valid": true, "obsolete": true}\n')
+    if failure == "quarantined":
+        source_path.write_text("ligand_symbol,receptor_symbol\nA,H2-T23\n")
+    elif failure == "schema":
+        source_path.write_text("wrong,columns\nA,A\n")
+    elif failure == "mapping":
+        map_path.write_text("wrong\nvalue\n")
+    elif failure == "missing":
+        source_path.unlink()
+    elif failure == "changed":
+        original_hash = validator.file_sha256
+        calls = 0
+
+        def changing_hash(path):
+            nonlocal calls
+            calls += 1
+            return "changed" if calls > 2 else original_hash(path)
+
+        monkeypatch.setattr(validator, "file_sha256", changing_hash)
+    monkeypatch.setattr(sys, "argv", [
+        "validate_lewis_source.py", "lewis_jin_2020", str(source_path),
+        "--identifier-map", str(map_path), "--out", str(report_path),
+    ])
+    with pytest.raises(SystemExit) as error:
+        validator.main()
+    assert error.value.code == 1
+    payload = json.loads(report_path.read_text())
+    assert payload["valid"] is False
+    assert payload["status"] == "validation_failed"
+    assert payload["errors"]
+    assert payload["entities_emitted"] == payload["edges_emitted"] == 0
+    assert "obsolete" not in payload
+    if failure != "missing":
+        assert payload["source_sha256"] == hashlib.sha256(source_path.read_bytes()).hexdigest()
+
+
+def test_validation_runs_ingestion_record_checks(tmp_path, monkeypatch):
+    """Record validation must catch a parser emitting an invalid self association."""
+    source_path = tmp_path / LewisMetSensorAdapter.profile.filename
+    source_path.write_text("HMDB_ID\tGene_name\nHMDB0000001\tA\n")
+    map_path = tmp_path / "map.tsv"
+    map_path.write_text(
+        "taxon_id\tsymbol\tnamespace\tidentifier\tentity_type\n"
+        "9606\tHMDB0000001\thmdb\tHMDB0000001\tmetabolite\n"
+        "9606\tA\thgnc\tHGNC:1\tgene\n"
+    )
+    report_path = tmp_path / "report.json"
+    # Inject an invalid emitted edge to exercise the command's importer contract.
+    invalid_edge = EdgeRecord(
+        subject=ExternalIdentifier("hgnc", "HGNC:1"),
+        object=ExternalIdentifier("hgnc", "HGNC:1"), predicate="metabolite_target_association",
+    )
+    monkeypatch.setattr(LewisMetSensorAdapter, "iter_edges", lambda self: iter([invalid_edge]))
+    monkeypatch.setattr(sys, "argv", [
+        "validate_lewis_source.py", "lewis_zheng_2022", str(source_path),
+        "--identifier-map", str(map_path), "--out", str(report_path),
+    ])
+    with pytest.raises(SystemExit) as error:
+        validator.main()
+    assert error.value.code == 1
+    payload = json.loads(report_path.read_text())
+    assert payload["valid"] is False
+    assert any("Self edges" in message for message in payload["errors"])
+
+
 def test_distinct_evidence_survives_reused_pair_ids_and_row_reordering(tmp_path):
     """Preserve separate citations and source evidence on the same relation."""
     path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"

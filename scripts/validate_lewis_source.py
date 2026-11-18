@@ -16,9 +16,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import tempfile
 from pathlib import Path
 
+from oncograph.importing import validate_adapter
 from oncograph.sources import registry
+from oncograph.sources.lewis_lab import LewisDelimitedAdapter
 
 
 def file_sha256(path: Path) -> str:
@@ -47,35 +51,60 @@ def main() -> None:
     inputs = (args.path, args.identifier_map)
     for input_path in inputs:
         if args.out.resolve() == input_path.resolve() or (
-            args.out.exists() and args.out.samefile(input_path)
+            args.out.exists() and input_path.exists() and args.out.samefile(input_path)
         ):
             parser.error("--out must not overwrite a source or identifier-map input")
-    fingerprints = {
-        "source_sha256": file_sha256(args.path),
-        "identifier_map_sha256": file_sha256(args.identifier_map),
+    payload = {
+        "source_key": args.source,
+        "source_file": args.path.name,
+        "release": args.release,
+        "taxon_id": None,
+        "valid": False,
+        "status": "validation_failed",
+        "source_sha256": None,
+        "identifier_map_sha256": None,
+        "entities_emitted": 0,
+        "edges_emitted": 0,
     }
+    try:
+        payload["source_sha256"] = file_sha256(args.path)
+        payload["identifier_map_sha256"] = file_sha256(args.identifier_map)
+        adapter_class = registry.get(args.source)
+        if not issubclass(adapter_class, LewisDelimitedAdapter):
+            raise TypeError("Only Lewis source adapters can be validated by this command")
+        payload["taxon_id"] = adapter_class.profile.taxon_id
+        adapter = adapter_class(args.path, args.identifier_map, release=args.release)
+        report = adapter.validation_report()
+        records = validate_adapter(adapter)
+        if (payload["source_sha256"] != file_sha256(args.path)
+                or payload["identifier_map_sha256"] != file_sha256(args.identifier_map)):
+            raise RuntimeError("Input files changed during validation; retry with stable inputs")
+        payload.update(report.to_dict())
+        payload["errors"] = report.errors + records.errors
+        payload["valid"] = report.valid and records.valid
+        payload["status"] = "valid" if payload["valid"] else "invalid"
+        payload["entities_emitted"] = len(list(adapter.iter_entities()))
+        payload["edges_emitted"] = len(list(adapter.iter_edges()))
+    except Exception as exc:  # noqa: BLE001 - every parser failure must invalidate the report
+        # Parser/library failures must replace any stale successful report.
+        payload.update(
+            valid=False, status="validation_failed", entities_emitted=0, edges_emitted=0,
+            errors=[str(exc)], error_type=type(exc).__name__,
+        )
 
-    adapter_class = registry.get(args.source)
-    adapter = adapter_class(args.path, args.identifier_map, release=args.release)
-    entities = list(adapter.iter_entities())
-    edges = list(adapter.iter_edges())
-    report = adapter.validation_report()
-    if fingerprints != {
-        "source_sha256": file_sha256(args.path),
-        "identifier_map_sha256": file_sha256(args.identifier_map),
-    }:
-        raise RuntimeError("Input files changed during validation; retry with stable inputs")
-    payload = report.to_dict()
-    payload.update(fingerprints)
-    payload.update({"release": args.release, "taxon_id": adapter.profile.taxon_id})
-    payload.update({"entities_emitted": len(entities), "edges_emitted": len(edges)})
-    args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(
-        f"{args.source}: {report.input_rows} rows, {report.emitted_interactions} interactions, "
-        f"{report.skipped_rows} skipped, {report.unresolved_identifiers} unresolved, "
-        f"{report.ambiguous_identifiers} ambiguous"
-    )
-    if not report.valid:
+    temporary_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=args.out.parent, delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        os.replace(temporary_path, args.out)
+    finally:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+    print(f"{args.source}: {payload['status']}; report: {args.out}")
+    if not payload["valid"]:
         raise SystemExit(1)
 
 
