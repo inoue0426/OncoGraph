@@ -137,6 +137,8 @@ def _register_identifiers(
     for identifier in record.identifiers:
         normalized = normalize_identifier(identifier)
         taxon = _identifier_taxon(identifier, record.metadata)
+        if taxon is None and record.identifiers:
+            taxon = _identifier_taxon(record.identifiers[0], record.metadata)
         rows = session.exec(
             select(EntityIdentifier).where(
                 EntityIdentifier.namespace == normalized.namespace,
