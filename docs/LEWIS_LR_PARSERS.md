@@ -145,7 +145,7 @@ of redistribution permission. No database was populated. All sources have
 | Wang | 2649 | 2533 | 116 | 121 |
 | Jin | 2005 | 1862 | 143 | 150 |
 | Shao | 3398 | 3382 | 16 | 17 |
-| Dimitrov | 4701 | 3587 | 1114 | 1130 |
+| Dimitrov | 4701 | 4674 | 27 | 28 |
 | Noel | 380 | 368 | 12 | 11 |
 | Browaeys | 12659 | 12606 | 53 | 53 |
 
@@ -154,3 +154,9 @@ duplicate rows and Pavlicev had 5. No ambiguous mappings were observed with
 this restricted map. Zheng's metabolite endpoints intentionally remain
 unresolved because an HGNC-only map cannot resolve HMDB identifiers. Missing
 complex mappings and historical symbols still require source-specific review.
+
+LIANA underscore-delimited partners are parsed as complexes, following the
+[official resource implementation](https://github.com/saezlab/liana-py/blob/main/src/liana/resource/_resource_utils.py).
+This resolves 4,674 candidate interactions and emits 2,230 source-specific
+membership edges in the local audit. Components must all resolve; no
+component-wise binding interactions are inferred.

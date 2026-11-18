@@ -526,6 +526,29 @@ def test_missing_complex_components_are_not_silently_removed(tmp_path, receptor)
     assert any("empty component" in error for error in report.errors)
 
 
+def test_liana_complex_retains_all_subunits_without_pairwise_bindings(tmp_path):
+    """LIANA underscore partners identify one multi-subunit endpoint."""
+    path = tmp_path / LewisDimitrovAdapter.profile.filename
+    path.write_text(
+        "source_genesymbol,target_genesymbol,resource\nA,B_C,consensus\n",
+        encoding="utf-8",
+    )
+    mapping = _map(*[
+        (symbol, ExternalIdentifier("hgnc", f"HGNC:{index}"), "gene")
+        for index, symbol in enumerate(("A", "B", "C"), start=1)
+    ])
+    adapter = LewisDimitrovAdapter(path, mapping)
+    edges = list(adapter.iter_edges())
+    interactions = [edge for edge in edges if edge.predicate == "ligand_receptor_interaction"]
+    assert len(interactions) == 1
+    assert interactions[0].object.namespace == "lewis_complex"
+    assert sum(edge.predicate == "has_subunit" for edge in edges) == 2
+    del mapping[(HUMAN_TAXON, "C")]
+    unresolved = LewisDimitrovAdapter(path, mapping)
+    assert list(unresolved.iter_edges()) == []
+    assert unresolved.validation_report().unresolved_values == ["C"]
+
+
 def test_import_is_idempotent_and_preserves_each_source_evidence(tmp_path):
     path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
     path.write_text(

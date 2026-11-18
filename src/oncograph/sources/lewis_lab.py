@@ -690,6 +690,7 @@ class LewisDimitrovAdapter(LewisDelimitedAdapter):
         evidence_column="resource",
         evidence_type="compiled_ligand_receptor",
         interaction_mode="compiled_prior",
+        complex_separator="_",
     )
 
 
