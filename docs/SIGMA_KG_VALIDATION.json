@@ -1,0 +1,230 @@
+{
+  "identity_registration": {
+    "gtopdb_drugs": {
+      "ambiguous": 463,
+      "conflicting": 3,
+      "created": 9602,
+      "matched": 10507
+    },
+    "gtopdb_proteins": {
+      "created": 1925,
+      "matched": 1925
+    },
+    "hetionet_diseases": {
+      "created": 137,
+      "matched": 137
+    },
+    "hgnc": {
+      "ambiguous": 6,
+      "created": 45389,
+      "matched": 45389
+    },
+    "lincs_pubchem": {
+      "created": 19164,
+      "matched": 19164
+    }
+  },
+  "identity_registration_issue_count": 472,
+  "inputs": {
+    "gtopdb_interactions.csv": {
+      "sha256": "cdbd18c66cf99d1adba9a60c807e256204221ff74756b70344822fd6642b244b",
+      "url": "https://www.guidetopharmacology.org/DATA/interactions.csv"
+    },
+    "hetionet-v1.0.json.bz2": {
+      "sha256": "a342ab57e9073e6c02bb5e109d1f16917e6f933be4e5c77ebbaebfa26b984c19",
+      "url": "https://github.com/hetio/hetionet/raw/refs/heads/main/hetnet/json/hetionet-v1.0.json.bz2"
+    },
+    "hgnc.tsv": {
+      "sha256": "6df77ac3cbaeb86a6dce5e17d851ebb27b6b3cdcd2471a211a3d8464f00c54c4",
+      "url": "https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt"
+    },
+    "ligand_id_mapping.csv": {
+      "sha256": "f3c4f271d05e8778401c2a48d9bafa01229d9fad148593e6d934100d582817ce",
+      "url": "https://www.guidetopharmacology.org/DATA/ligand_id_mapping.csv"
+    },
+    "lincs_edges.tsv.gz": {
+      "sha256": "e2e4ddedafb1829bda695bed54571bb660440674afc8555faa9af7bc1283bfc6",
+      "url": "https://maayanlab.cloud/static/hdfs/harmonizome/data/l1000chempert/gene_attribute_edges.txt.gz"
+    },
+    "lincs_pert_info.txt.gz": {
+      "sha256": "b1945b3fde51021865b12269929cc78ccf2665be27f53a4da9336e4ddcf4b42f",
+      "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE92nnn/GSE92742/suppl/GSE92742_Broad_LINCS_pert_info.txt.gz"
+    }
+  },
+  "lincs_gene_scope": [
+    "1956",
+    "2064",
+    "207",
+    "238",
+    "3845",
+    "4893",
+    "5290",
+    "673",
+    "7157"
+  ],
+  "local_only": true,
+  "notes": [
+    "Aggregate validation only; no source observations or identifier diagnostics redistributed.",
+    "Scoped LINCS import, not full SIGMA-KG integration.",
+    "Original edge counts refer to downloaded source exports, not raw experimental measurements."
+  ],
+  "reimport": {
+    "gtopdb_signed_function": {
+      "duplicate_evidence": 13024,
+      "duplicate_relationships": 13024,
+      "evidence_created": 0,
+      "identifier_coverage": {
+        "conflicting": 325,
+        "matched": 8010
+      },
+      "input_records": 24968,
+      "license": "ODbL (database) / CC BY-SA 4.0 (content)",
+      "license_url": "https://www.guidetopharmacology.org/about.jsp#license",
+      "mapped_records": 13024,
+      "parsed_records": 24968,
+      "relations_created": 0,
+      "scoped_records": 13824,
+      "skipped": {
+        "complex_or_missing_protein": 161,
+        "non_human_or_unspecified_species": 4981,
+        "not_small_molecule": 3403,
+        "unresolved_or_conflicting_endpoint": 800,
+        "unsupported_or_unsigned_action": 2599
+      }
+    },
+    "harmonizome_lincs_consensus": {
+      "compound_mapping_coverage": {
+        "matched": 258,
+        "unmatched": 3607
+      },
+      "duplicate_evidence": 259,
+      "duplicate_relationships": 259,
+      "evidence_created": 0,
+      "identifier_coverage": {
+        "matched": 266
+      },
+      "input_records": 5086167,
+      "license": "CC BY-NC-SA 4.0",
+      "license_url": "https://maayanlab.cloud/Harmonizome/terms",
+      "mapped_records": 259,
+      "parsed_records": 5086167,
+      "relations_created": 0,
+      "scoped_records": 4435,
+      "skipped": {
+        "compound_unmatched": 4176,
+        "outside_gene_scope": 5081732
+      }
+    },
+    "hetionet_stargeo_expression": {
+      "duplicate_evidence": 15304,
+      "duplicate_relationships": 15304,
+      "evidence_created": 0,
+      "identifier_coverage": {
+        "matched": 9591,
+        "unmatched": 41
+      },
+      "input_records": 2250197,
+      "license": "CC0 1.0 (selected STARGEO edges)",
+      "license_url": "https://github.com/hetio/hetionet/blob/main/README.md#license",
+      "mapped_records": 15304,
+      "parsed_records": 2250197,
+      "relations_created": 0,
+      "scoped_records": 15354,
+      "skipped": {
+        "outside_disease_expression_scope": 2234843,
+        "unresolved_or_conflicting_endpoint": 50
+      }
+    }
+  },
+  "sigma_kg_imported": false,
+  "snapshot": "downloaded 2026-11-18; upstream LINCS export version not supplied",
+  "source_versions": {
+    "gtopdb": "2026.3.1 published 2026-10-12",
+    "hetionet": "v1.0",
+    "hgnc": "download snapshot 2026-11-18",
+    "lincs": "Upstream export version absent; original processing notebook states last_updated 2023-10-27; not asserted as export date",
+    "lincs_identity_mapping": "GSE92742 perturbagen metadata snapshot 2026-11-18"
+  },
+  "sources": {
+    "gtopdb_signed_function": {
+      "duplicate_evidence": 2,
+      "duplicate_relationships": 989,
+      "evidence_created": 13022,
+      "identifier_coverage": {
+        "conflicting": 325,
+        "matched": 8010
+      },
+      "input_records": 24968,
+      "license": "ODbL (database) / CC BY-SA 4.0 (content)",
+      "license_url": "https://www.guidetopharmacology.org/about.jsp#license",
+      "mapped_records": 13024,
+      "parsed_records": 24968,
+      "relations_created": 12035,
+      "scoped_records": 13824,
+      "skipped": {
+        "complex_or_missing_protein": 161,
+        "non_human_or_unspecified_species": 4981,
+        "not_small_molecule": 3403,
+        "unresolved_or_conflicting_endpoint": 800,
+        "unsupported_or_unsigned_action": 2599
+      }
+    },
+    "harmonizome_lincs_consensus": {
+      "compound_mapping_coverage": {
+        "matched": 258,
+        "unmatched": 3607
+      },
+      "duplicate_evidence": 0,
+      "duplicate_relationships": 0,
+      "evidence_created": 259,
+      "identifier_coverage": {
+        "matched": 266
+      },
+      "input_records": 5086167,
+      "license": "CC BY-NC-SA 4.0",
+      "license_url": "https://maayanlab.cloud/Harmonizome/terms",
+      "mapped_records": 259,
+      "parsed_records": 5086167,
+      "relations_created": 259,
+      "scoped_records": 4435,
+      "skipped": {
+        "compound_unmatched": 4176,
+        "outside_gene_scope": 5081732
+      }
+    },
+    "hetionet_stargeo_expression": {
+      "duplicate_evidence": 0,
+      "duplicate_relationships": 0,
+      "evidence_created": 15304,
+      "identifier_coverage": {
+        "matched": 9591,
+        "unmatched": 41
+      },
+      "input_records": 2250197,
+      "license": "CC0 1.0 (selected STARGEO edges)",
+      "license_url": "https://github.com/hetio/hetionet/blob/main/README.md#license",
+      "mapped_records": 15304,
+      "parsed_records": 2250197,
+      "relations_created": 15304,
+      "scoped_records": 15354,
+      "skipped": {
+        "outside_disease_expression_scope": 2234843,
+        "unresolved_or_conflicting_endpoint": 50
+      }
+    }
+  },
+  "validation": {
+    "base_main": "993b033",
+    "evidence_count": 28585,
+    "javascript_failures": 0,
+    "javascript_scripts": 7,
+    "javascript_tests": 20,
+    "new_targeted_tests": 27,
+    "python": "418 passed",
+    "relation_count": 27598,
+    "ruff": "passed",
+    "sign_disagreements_hetionet": 0,
+    "sign_disagreements_lincs": 0,
+    "upstream_flash_commit": "a426e056312b5f71e5298e26d95b1ff3b35e8faa"
+  }
+}

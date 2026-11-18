@@ -132,6 +132,13 @@ oncograph-mcp
 
 This serves graph tools via the [Model Context Protocol](https://modelcontextprotocol.io) using stdio. See [docs/MCP.md](docs/MCP.md) for tool definitions, retrieval strategies, and provenance semantics.
 
+## Local signed molecular imports
+
+The [SIGMA-KG source integration](docs/SIGMA_KG.md) imports original LINCS consensus,
+GtoPdb functional and Hetionet/STARGEO expression observations with explicit direction,
+typed identifiers and per-record provenance. It is local-only and does not include
+the unavailable pruned SIGMA-KG or change the public snapshot.
+
 ## Data sources and refresh
 
 **The public explorer uses a generated snapshot, not live database connections.** The scheduled/manual [`refresh-data.yml`](.github/workflows/refresh-data.yml) workflow imports the following eleven scoped inputs into temporary SQLite, exports the site index, and uploads it as a build artifact. [`pages.yml`](.github/workflows/pages.yml) publishes the latest successful artifact. The site shows the snapshot generation time and counts evidence rows by source under **Data sources**; those counts are neither unique upstream record counts nor the size of the original databases. Raw downloads and SQLite are not committed to Git. See [hosting documentation](docs/HOSTING.md).

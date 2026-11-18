@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e '.[dev,lewis]'
+      - run: pip install -e '.[dev,lewis,signed]'
       - run: ruff check .
       - run: pytest
       - run: node tests/test_variant_comparison.cjs

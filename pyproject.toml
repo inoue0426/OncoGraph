@@ -25,6 +25,7 @@ dev = [
 postgres = ["psycopg[binary]>=3.2,<4"]
 mcp = ["mcp[cli]>=2.2,<3"]
 lewis = ["openpyxl>=3.1,<4"]
+signed = ["ijson>=3.3,<4"]
 
 [project.scripts]
 oncograph = "oncograph.cli:app"
