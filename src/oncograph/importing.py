@@ -7,6 +7,7 @@ from sqlmodel import Session, select
 from .models import (
     ClaimState,
     Entity,
+    EntityIdentifier,
     EntityResolutionIssue,
     EntityType,
     Evidence,
@@ -97,10 +98,71 @@ def _canonical_id(identifier: ExternalIdentifier) -> str:
     return f"{normalized.namespace}:{normalized.value}"
 
 
+def _identifier_taxon(identifier: ExternalIdentifier, metadata: dict | None = None) -> int | None:
+    """Use explicit species, or the organism-specific identifier namespace."""
+    if metadata and metadata.get("taxon_id") is not None:
+        return int(metadata["taxon_id"])
+    namespace = normalize_identifier(identifier).namespace
+    return {"hgnc": 9606, "mgi": 10090}.get(namespace)
+
+
 def _lookup_entity_id(session: Session, identifier: ExternalIdentifier):
-    canonical_id = _canonical_id(identifier)
+    """Primary ID lookup first; uniquely indexed alternate ID second.
+
+    Never resolve a disputed alternate identifier to the first available row.
+    A canonical hit still wins so legacy graphs keep their original identity.
+    """
+    normalized = normalize_identifier(identifier)
+    canonical_id = f"{normalized.namespace}:{normalized.value}"
     entity = session.exec(select(Entity).where(Entity.canonical_id == canonical_id)).first()
-    return entity.id if entity else None
+    if entity is not None:
+        return entity.id
+    candidates = session.exec(
+        select(EntityIdentifier).where(
+            EntityIdentifier.namespace == normalized.namespace,
+            EntityIdentifier.value == normalized.value,
+        )
+    ).all()
+    taxon = _identifier_taxon(identifier)
+    if taxon is not None:
+        candidates = [x for x in candidates if x.taxon_id == taxon]
+    owner_ids = {x.entity_id for x in candidates}
+    return next(iter(owner_ids)) if len(owner_ids) == 1 else None
+
+
+def _register_identifiers(
+    session: Session, entity: Entity, record: EntityRecord, report: ImportReport
+) -> None:
+    """Attach alternate IDs while surfacing ambiguous cross-entity claims."""
+    for identifier in record.identifiers:
+        normalized = normalize_identifier(identifier)
+        taxon = _identifier_taxon(identifier, record.metadata)
+        rows = session.exec(
+            select(EntityIdentifier).where(
+                EntityIdentifier.namespace == normalized.namespace,
+                EntityIdentifier.value == normalized.value,
+            )
+        ).all()
+        if any(row.entity_id == entity.id and row.taxon_id == taxon for row in rows):
+            continue
+        if any(row.entity_id != entity.id and row.taxon_id == taxon for row in rows):
+            _log_resolution_issue(
+                session, ResolutionIssueType.CONFLICT, identifier,
+                detail="Alternate identifier already belongs to another entity",
+            )
+            report.entities_conflicted += 1
+            report.errors.append(f"ambiguous alternate identifier: {normalized.namespace}:{normalized.value}")
+            continue
+        session.add(
+            EntityIdentifier(
+                entity_id=entity.id,
+                namespace=normalized.namespace,
+                value=normalized.value,
+                taxon_id=taxon,
+                mapping_source=record.metadata.get("source") or normalized.namespace,
+            )
+        )
+        session.flush()
 
 
 def _log_resolution_issue(
@@ -180,17 +242,19 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
             existing.updated_at = utcnow()
             session.add(existing)
             report.entities_updated += 1
+            entity = existing
         else:
-            session.add(
-                Entity(
-                    type=entity_type,
-                    name=record.name,
-                    canonical_id=canonical_id,
-                    description=record.description,
-                    entity_metadata=_serialize_json(record.metadata),
-                )
+            entity = Entity(
+                type=entity_type,
+                name=record.name,
+                canonical_id=canonical_id,
+                description=record.description,
+                entity_metadata=_serialize_json(record.metadata),
             )
+            session.add(entity)
+            session.flush()
             report.entities_created += 1
+        _register_identifiers(session, entity, record, report)
     session.commit()
     return report
 
