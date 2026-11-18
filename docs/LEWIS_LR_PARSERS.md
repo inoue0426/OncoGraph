@@ -131,6 +131,18 @@ these are format counts, not validated interactions.
 
 ### Local identifier audit (2026-11-18)
 
+Reproduce approved-symbol-only coverage without creating a database:
+
+```bash
+uv run --extra lewis python scripts/audit_lewis_identifiers.py \
+  /path/to/Ligand-Receptor-Pairs/Human /path/to/hgnc_complete_set.txt \
+  --source lewis_ramilowski_2015 --source lewis_dimitrov_2022
+```
+
+The command prints JSON containing hashes, counts, unresolved values, and
+ambiguities. Repeat `--source` for additional sources. Exit status 1 denotes
+an incomplete, invalid, or quarantined source; partial coverage is not success.
+
 A database-free audit of the upstream commit above used only approved HGNC
 symbols (45,395 keys), without alias or former-symbol inference. The HGNC
 complete-set SHA-256 was
