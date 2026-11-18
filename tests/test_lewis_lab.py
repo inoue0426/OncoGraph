@@ -176,6 +176,19 @@ def test_nonhuman_profile_is_rejected():
         MouseProfileAdapter("mouse.tsv", {})
 
 
+@pytest.mark.parametrize("reverse", [False, True])
+def test_mapping_type_conflicts_across_symbols_fail_before_import(reverse):
+    """Normalized identity collisions must not depend on symbol insertion order."""
+    rows = [
+        ("A", ExternalIdentifier("uniprot", "P00001"), "gene"),
+        ("B", ExternalIdentifier("uniprotkb", "P00001"), "protein"),
+    ]
+    if reverse:
+        rows.reverse()
+    with pytest.raises(ValueError, match="Conflicting entity types"):
+        LewisRamilowskiAdapter("unused.txt", _map(*rows))
+
+
 @pytest.mark.parametrize("content, message", [
     ("", "missing required columns"),
     ("wrong\theader\n", "missing required columns"),

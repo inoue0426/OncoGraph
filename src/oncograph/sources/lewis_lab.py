@@ -155,6 +155,22 @@ class LewisDelimitedAdapter(SourceAdapter):
             if isinstance(identifier_map, (str, Path))
             else dict(identifier_map)
         )
+        # Identity types must agree across symbols before entities are deduplicated.
+        from ..normalization import normalize_identifier
+
+        identity_types: dict[tuple[str, str], str] = {}
+        for (taxon, _symbol), candidates in self.identifier_map.items():
+            if taxon != self.profile.taxon_id:
+                continue
+            for candidate in candidates:
+                identifier = normalize_identifier(candidate.identifier)
+                identity = (identifier.namespace, identifier.value)
+                existing_type = identity_types.setdefault(identity, candidate.entity_type)
+                if existing_type != candidate.entity_type:
+                    raise ValueError(
+                        f"Conflicting entity types for {identity}: "
+                        f"{existing_type} and {candidate.entity_type}"
+                    )
         self._prepared = False
         self._preparation_error: Exception | None = None
         self._entities: list[EntityRecord] = []
