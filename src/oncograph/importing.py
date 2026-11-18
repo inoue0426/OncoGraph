@@ -61,7 +61,13 @@ def validate_edge(record: EdgeRecord) -> None:
     normalize_identifier(record.object)
     if not record.predicate.strip():
         raise ValueError("Edge predicate is required")
-    if record.subject == record.object:
+    source_reported_self = (
+        record.predicate == "ligand_receptor_interaction"
+        and record.context.get("source_reported_self_interaction") is True
+        and bool(record.context.get("source_ligand"))
+        and record.context.get("source_ligand") == record.context.get("source_receptor")
+    )
+    if normalize_identifier(record.subject) == normalize_identifier(record.object) and not source_reported_self:
         raise ValueError("Self edges require explicit downstream handling")
     if record.confidence is not None and not 0.0 <= record.confidence <= 1.0:
         raise ValueError("Edge confidence must be between 0.0 and 1.0")

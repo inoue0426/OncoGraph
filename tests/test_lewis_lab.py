@@ -10,9 +10,9 @@ from pathlib import Path
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from oncograph.importing import import_adapter, import_edges, import_entities
+from oncograph.importing import import_adapter, import_edges, import_entities, validate_edge
 from oncograph.models import Entity, Evidence, Relation
-from oncograph.sources.base import EntityRecord, ExternalIdentifier
+from oncograph.sources.base import EdgeRecord, EntityRecord, ExternalIdentifier
 from oncograph.sources.lewis_lab import (
     HUMAN_TAXON,
     LewisBrowaeysAdapter,
@@ -701,6 +701,65 @@ def test_import_is_idempotent_and_preserves_each_source_evidence(tmp_path):
         assert len(session.exec(select(Entity)).all()) == 2
         assert len(session.exec(select(Relation)).all()) == 1
         assert len(session.exec(select(Evidence)).all()) == 1
+
+
+def test_source_reported_same_partner_import_is_idempotent(tmp_path):
+    """Retain explicitly reported same-partner contact without inferring autocrine signaling."""
+    path = tmp_path / LewisJinAdapter.profile.filename
+    path.write_text("ligand_symbol,receptor_symbol,evidence\nA,A,fixture\n")
+    adapter = LewisJinAdapter(path, _map(("A", ExternalIdentifier("hgnc", "HGNC:1"), "gene")))
+    edge = next(iter(adapter.iter_edges()))
+    assert edge.context["source_reported_self_interaction"] is True
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        first = import_adapter(session, adapter)
+        second = import_adapter(session, adapter)
+        assert first.errors == second.errors == []
+        assert first.edges_created == first.evidence_created == 1
+        assert second.edges_created == second.evidence_created == 0
+        relation = session.exec(select(Relation)).one()
+        assert relation.subject_id == relation.object_id
+        assert len(session.exec(select(Entity)).all()) == 1
+    engine.dispose()
+
+
+@pytest.mark.parametrize("mouse_symbol", ["H2-T23", "PIRA2", "A&H2-K1"])
+def test_cellchat_quarantines_entire_table_with_mouse_partners(tmp_path, mouse_symbol):
+    """Matching conserved human symbols cannot rescue an unverified-species table."""
+    path = tmp_path / LewisJinAdapter.profile.filename
+    path.write_text(f"ligand_symbol,receptor_symbol,evidence\nA,A,fixture\nA,{mouse_symbol},fixture\n")
+    adapter = LewisJinAdapter(path, _map(("A", ExternalIdentifier("hgnc", "HGNC:1"), "gene")))
+    for iterator in (adapter.iter_entities, adapter.iter_edges, adapter.iter_entities):
+        with pytest.raises(ValueError, match="human scope unverified"):
+            list(iterator())
+
+
+def test_alias_collapse_does_not_create_self_interaction(tmp_path):
+    """Different raw partners cannot silently become a self interaction."""
+    path = tmp_path / LewisJinAdapter.profile.filename
+    path.write_text("ligand_symbol,receptor_symbol,evidence\nA,ALIAS,fixture\n")
+    adapter = LewisJinAdapter(path, _map(*[
+        (symbol, ExternalIdentifier("hgnc", "HGNC:1"), "gene") for symbol in ("A", "ALIAS")
+    ]))
+    assert list(adapter.iter_edges()) == []
+    report = adapter.validation_report()
+    assert report.skipped_rows == 1
+    assert "distinct partners" in report.errors[0]
+
+
+@pytest.mark.parametrize("predicate,context", [
+    ("ligand_receptor_interaction", {}),
+    ("has_subunit", {"source_reported_self_interaction": True, "source_ligand": "A", "source_receptor": "A"}),
+    ("ligand_receptor_interaction", {"source_reported_self_interaction": True, "source_ligand": "A", "source_receptor": "B"}),
+])
+def test_self_edge_guard_requires_explicit_matching_lr_partners(predicate, context):
+    """Ordinary self edges and normalized aliases still fail validation."""
+    with pytest.raises(ValueError, match="Self edges"):
+        validate_edge(EdgeRecord(
+            subject=ExternalIdentifier("HGNC", "hgnc:1"), predicate=predicate,
+            object=ExternalIdentifier("hgnc", "HGNC:1"), context=context,
+        ))
 
 
 def test_lewis_mapping_rejects_gene_protein_collision(tmp_path):

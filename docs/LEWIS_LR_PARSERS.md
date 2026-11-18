@@ -12,7 +12,7 @@ source-specific, local-only adapters. The supported adapters are:
 | `lewis_pavlicev_2017` | `Human-2017-Pavlicev-LR-pairs.xlsx` | 9606 | yes |
 | `lewis_hou_2020` | `Human-2020-Hou-LR-pairs.xlsx` | 9606 | yes |
 | `lewis_wang_2019` | `Human-2019-Wang-LR-pairs.csv` | 9606 | yes |
-| `lewis_jin_2020` | `Human-2020-Jin-LR-pairs.csv` | 9606 | yes |
+| `lewis_jin_2020` | `Human-2020-Jin-LR-pairs.csv` (audited export quarantined) | unverified | yes |
 | `lewis_shao_2020` | `Human-2020-Shao-LR-pairs.txt` | 9606 | yes |
 | `lewis_dimitrov_2022` | `Human-2022-Dimitrov-LR-pairs.csv` | 9606 | yes |
 | `lewis_noel_2020` | `Human-2020-Noël-LR-pairs.xlsx` | 9606 | yes |
@@ -214,3 +214,28 @@ their own demonstrate extracellular signaling or cell-cell communication.
 This second pass is not directly comparable with the HGNC-only table above:
 it explicitly adds source-declared metabolite identities. Neither pass writes
 graph data or clears redistribution permission.
+
+### CellChat species quarantine and same-partner interactions
+
+The audited Jin export contains mouse-specific partners including `H2-T23`,
+`H2-K1`, and `PIRA2`, despite its Human directory. Its SHA-256 is
+`e65535e07106d201d1436dd7858cd5a568b7cdd3b079844208d52f8e1889a864`.
+The adapter now rejects the entire table if H2-prefixed or PIRA2 partner
+components occur. Conserved symbols resolving to HGNC do not prove that an
+interaction was reported for humans. This targeted guard is not a general
+species verifier: replacement files still require independent scope review.
+The historical Jin counts above are identifier-resolution candidates only;
+none of those 1,862 interactions is currently eligible for ingestion from
+the audited export. Excluding Jin, the audit has 33,068 candidates across
+11 profiles, with 1,056 skipped rows and 1,110 unresolved occurrences.
+
+A temporary in-memory SQLite diagnostic also found 23 source-reported
+same-partner contacts previously rejected as self edges. Explicit identical
+raw partners can now be retained with `source_reported_self_interaction` in
+evidence context for the ligand-receptor predicate. This does not assert
+autocrine signaling or validate experimental binding. Distinct raw partners
+collapsing to one identifier are rejected. The diagnostic created 2,167
+relations and 3,751 evidence records without import errors; a second pass
+created none. It preceded the species quarantine and is not biological
+validation or permission to ingest that export. No persistent database was
+modified.

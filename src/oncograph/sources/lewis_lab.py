@@ -381,6 +381,10 @@ class LewisDelimitedAdapter(SourceAdapter):
             seen.add(fingerprint)
             ligand_id = self._side_identifier(ligand_parts, ligand_kind)
             receptor_id = self._side_identifier(receptor_parts, receptor_kind)
+            if ligand_id == receptor_id and ligand != receptor:
+                self._report.skipped_rows += 1
+                self._report.errors.append(f"row {index}: distinct partners collapse to one identifier")
+                continue
             ligand_entity_type = self._side_entity_type(ligand_parts, ligand_kind)
             receptor_entity_type = self._side_entity_type(receptor_parts, receptor_kind)
             self._add_entity(entities, ligand_id, row.get(self.profile.ligand_name_column or "") or ligand, ligand_entity_type)
@@ -403,6 +407,10 @@ class LewisDelimitedAdapter(SourceAdapter):
                 "source_evidence": row.get(self.profile.evidence_column or "") or None,
                 "interaction_type": row.get(self.profile.interaction_type_column or "") or None,
                 "interaction_mode": self.profile.interaction_mode,
+                "source_reported_self_interaction": (
+                    ligand == receptor and ligand_id == receptor_id
+                    and self.profile.predicate == "ligand_receptor_interaction"
+                ),
             }
             self._edges.append(EdgeRecord(
                 subject=ligand_id,
@@ -676,6 +684,25 @@ class LewisWangAdapter(LewisDelimitedAdapter):
 @registry.register
 class LewisJinAdapter(LewisDelimitedAdapter):
     """Parser for the human CellChat 2020 CSV list with opaque complexes."""
+
+    def _read_rows(self) -> list[dict[str, str]]:
+        """Quarantine the whole table when mouse-specific partners are present.
+
+        Returns:
+            Parsed rows without the known mouse-symbol contamination markers.
+        """
+        rows = super()._read_rows()
+        for row in rows:
+            partners = (row["ligand_symbol"], row["receptor_symbol"])
+            for partner in partners:
+                for symbol in partner.split("&"):
+                    if symbol.strip().upper().startswith("H2-") or symbol.strip().upper() == "PIRA2":
+                        raise ValueError(
+                            "CellChat import is disabled for this table: mouse-specific "
+                            "partners make its human scope unverified. HGNC matches "
+                            "cannot establish interaction species."
+                        )
+        return rows
 
     descriptor = _profile_descriptor("lewis_jin_2020", "Lewis Lab: Jin CellChat 2020")
     profile = LewisSourceProfile(
