@@ -308,6 +308,19 @@ relation, and evidence IDs through repeated schema initialization and imports.
 This compatibility rule does not enable mouse Lewis sources or repair
 pre-existing duplicate identities automatically.
 
+Lewis interaction and membership edges carry explicit expected endpoint types.
+The importer checks these against resolved database entities before creating
+relations or evidence, including canonical-ID matches. A legacy protein node
+cannot receive an edge whose mapping requires a gene merely because its ID
+matches. Conflicts are logged and counted as skipped edges; existing nodes are
+not retyped. Sources without explicit endpoint-type metadata retain their
+existing resolution behavior.
+At the adapter-import boundary, any Lewis entity-registration error blocks
+all edges from that source, including otherwise resolvable complex interactions.
+This prevents a rejected subunit from leaving a partially represented complex
+interaction. Successfully registered entities may still remain; the command
+reports failure and does not automatically undo or retype existing records.
+
 Complex resolution applies the same conservative policy internally: distinct
 component names mapping to one normalized identifier reject the entire row.
 The parser must not silently deduplicate components or reinterpret aliases

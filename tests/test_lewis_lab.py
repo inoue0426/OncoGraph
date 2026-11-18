@@ -900,6 +900,59 @@ def test_lewis_mapping_rejects_gene_protein_collision(tmp_path):
     assert report.valid is False
 
 
+@pytest.mark.parametrize("conflicting_id", ["HGNC:1", "HGNC:2"])
+def test_existing_wrong_type_canonical_entity_cannot_receive_lewis_edges(tmp_path, conflicting_id):
+    """A canonical hit cannot override the explicit type in a Lewis mapping."""
+    path = tmp_path / LewisRamilowskiAdapter.profile.filename
+    path.write_text("Ligand.ApprovedSymbol\tReceptor.ApprovedSymbol\nA\tB\n")
+    adapter = LewisRamilowskiAdapter(path, _map(
+        ("A", ExternalIdentifier("hgnc", "HGNC:1"), "gene"),
+        ("B", ExternalIdentifier("hgnc", "HGNC:2"), "gene"),
+    ))
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        old_entity = Entity(type="protein", name="LegacyProtein", canonical_id=f"hgnc:{conflicting_id}",
+                            entity_metadata='{"taxon_id": 9606}')
+        session.add(old_entity)
+        session.commit()
+        old_id = old_entity.id
+        report = import_adapter(session, adapter)
+        assert report.entities_conflicted == 1
+        assert report.edges_skipped == 1
+        assert report.edges_created == report.evidence_created == 0
+        assert session.exec(select(Relation)).all() == []
+        assert session.exec(select(Evidence)).all() == []
+        assert session.get(Entity, old_id).type == "protein"
+        direct_report = import_edges(session, adapter.iter_edges(), source_key=adapter.descriptor.key)
+        assert direct_report.edges_created == direct_report.evidence_created == 0
+        assert direct_report.edges_skipped == 1
+        assert any("type conflict" in error for error in direct_report.errors)
+    engine.dispose()
+
+
+def test_rejected_subunit_cannot_leave_a_complex_interaction(tmp_path):
+    """A component registration failure blocks the entire source's edge import."""
+    path = tmp_path / LewisDimitrovAdapter.profile.filename
+    path.write_text("source_genesymbol,target_genesymbol,resource\nA,B_C,fixture\n")
+    adapter = LewisDimitrovAdapter(path, _map(*[
+        (symbol, ExternalIdentifier("hgnc", f"HGNC:{index}"), "gene")
+        for index, symbol in enumerate(("A", "B", "C"), start=1)
+    ]))
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(Entity(type="protein", name="ConflictingSubunit", canonical_id="hgnc:HGNC:2"))
+        session.commit()
+        report = import_adapter(session, adapter)
+        assert report.entities_conflicted == 1
+        assert report.edges_skipped == 3
+        assert report.edges_created == report.evidence_created == 0
+        assert session.exec(select(Relation)).all() == []
+        assert session.exec(select(Evidence)).all() == []
+    engine.dispose()
+
+
 def test_lewis_mapping_does_not_fall_back_to_another_species(tmp_path):
     path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
     path.write_text(

@@ -448,7 +448,9 @@ class LewisDelimitedAdapter(SourceAdapter):
                 source_record_id=f"{self.profile.source_key}:{record_id}",
                 source_url=self.descriptor.homepage,
                 context=context,
-                metadata={"taxon_id": self.profile.taxon_id},
+                metadata={"taxon_id": self.profile.taxon_id,
+                          "subject_entity_type": ligand_entity_type,
+                          "object_entity_type": receptor_entity_type},
                 evidence_type=self.profile.evidence_type,
             ))
             self._report.emitted_interactions += 1
@@ -505,7 +507,9 @@ class LewisDelimitedAdapter(SourceAdapter):
                 source_record_id=f"{self.profile.source_key}:{record_id}:member:{part.identifier.value}",
                 source_url=self.descriptor.homepage,
                 context={**context, "relationship": "complex_membership"},
-                metadata={"taxon_id": self.profile.taxon_id},
+                metadata={"taxon_id": self.profile.taxon_id,
+                          "subject_entity_type": "molecular_complex",
+                          "object_entity_type": part.entity_type},
                 evidence_type="curated_complex_membership",
             ))
             self._report.emitted_membership_edges += 1

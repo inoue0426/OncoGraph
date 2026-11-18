@@ -59,6 +59,9 @@ def validate_entity(record: EntityRecord) -> None:
 def validate_edge(record: EdgeRecord) -> None:
     normalize_identifier(record.subject)
     normalize_identifier(record.object)
+    for key in ("subject_entity_type", "object_entity_type"):
+        if record.metadata.get(key) is not None:
+            EntityType(record.metadata[key])
     if not record.predicate.strip():
         raise ValueError("Edge predicate is required")
     source_reported_self = (
@@ -525,6 +528,24 @@ def import_edges(
             report.errors.append(f"edge[{i}]: unresolved endpoint")
             continue
 
+        type_conflicts = []
+        for role, entity_id, identifier in (
+            ("subject", subject_id, record.subject), ("object", object_id, record.object),
+        ):
+            expected_type = record.metadata.get(f"{role}_entity_type")
+            if expected_type is None:
+                continue
+            entity = session.get(Entity, entity_id)
+            if entity.type != EntityType(expected_type):
+                detail = f"{role} type conflict: expected {expected_type}, found {entity.type}"
+                type_conflicts.append(detail)
+                _log_resolution_issue(session, ResolutionIssueType.CONFLICT, identifier,
+                                      source=source_key, detail=detail)
+        if type_conflicts:
+            report.edges_skipped += 1
+            report.errors.extend(f"edge[{i}]: {detail}" for detail in type_conflicts)
+            continue
+
         if subject_id == object_id and normalize_identifier(record.subject) != normalize_identifier(record.object):
             report.edges_skipped += 1
             report.errors.append(f"edge[{i}]: distinct endpoint identifiers resolve to the same entity")
@@ -571,6 +592,11 @@ def import_edges(
 def import_adapter(session: Session, adapter: SourceAdapter) -> ImportReport:
     """Import one adapter's entities, then edges, into the shared graph tables."""
     report = import_entities(session, adapter.iter_entities())
+    if adapter.descriptor.key.startswith("lewis_") and report.errors:
+        # A rejected subunit must not leave its complex's LR edge importable.
+        report.edges_skipped = sum(1 for _ in adapter.iter_edges())
+        report.errors.append("Lewis edges were not imported because entity registration failed")
+        return report
     edge_report = import_edges(
         session,
         adapter.iter_edges(),
