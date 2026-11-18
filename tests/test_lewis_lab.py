@@ -154,6 +154,7 @@ def test_cabello_parser_preserves_source_evidence(tmp_path):
     edge = next(adapter.iter_edges())
     assert edge.context["source_evidence"] == "HPRD"
     assert edge.context["citation"] == "12809600"
+    assert edge.context["interaction_mode"] == "inferred_cell_communication"
 
 
 def test_zhao_parser_preserves_interaction_type(tmp_path):
@@ -173,6 +174,8 @@ def test_zhao_parser_preserves_interaction_type(tmp_path):
     edge = next(adapter.iter_edges())
     assert edge.predicate == "ligand_receptor_interaction"
     assert edge.context["interaction_type"] == "ligand-receptor"
+    assert edge.evidence_type == "inferred_ligand_receptor"
+    assert edge.context["interaction_mode"] == "inferred_cell_communication"
 
 
 def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
@@ -194,6 +197,7 @@ def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
     assert edge.predicate == "metabolite_target_association"
     assert edge.evidence_type == "metabolite_source_association"
     assert edge.context["ligand_kind"] == "metabolite"
+    assert edge.context["interaction_mode"] == "metabolic_association"
 
 
 def test_verified_human_xlsx_profiles_use_explicit_headers(tmp_path):
