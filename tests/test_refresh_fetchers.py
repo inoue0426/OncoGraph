@@ -36,6 +36,7 @@ def test_civic_hgvs_failure_retries_complete_query(tmp_path: Path, monkeypatch) 
     """
     module = load_script("fetch_civic_evidence")
     module.OUTPUT_PATH = tmp_path / "civic.json"
+    module.GENES = ["BRAF"]
     queries = []
     item = {"id": 123, "status": "ACCEPTED", "evidenceType": "PREDICTIVE"}
     success = {
@@ -71,6 +72,7 @@ def test_civic_hgvs_failure_retries_complete_query(tmp_path: Path, monkeypatch) 
     variants = genes["nodes"][0]["variants"]
     profiles = variants["nodes"][0]["molecularProfiles"]
     evidence = profiles["nodes"][0]["evidenceItems"]
+    profiles["nodes"][0]["variants"] = [{"id": 12, "name": "V600E", "feature": {"name": "BRAF"}}]
     for connection in (genes, variants, profiles, evidence):
         connection["pageInfo"] = {"hasNextPage": False}
     responses = iter(({"errors": [{"message": module._HGVS_NULL_ERROR}]}, success))
@@ -120,6 +122,7 @@ def test_civic_other_errors_preserve_existing_snapshot(
     """
     module = load_script("fetch_civic_evidence")
     module.OUTPUT_PATH = tmp_path / "civic.json"
+    module.GENES = ["BRAF"]
     module.OUTPUT_PATH.write_text("existing snapshot")
     responses = [{"errors": [{"message": "different failure"}]}]
     if fallback:
@@ -186,6 +189,7 @@ def test_civic_incomplete_nested_page_preserves_snapshot(
     """
     module = load_script("fetch_civic_evidence")
     module.OUTPUT_PATH = tmp_path / "civic.json"
+    module.GENES = ["BRAF"]
     module.OUTPUT_PATH.write_text("existing snapshot")
     payload = {
         "data": {
@@ -223,3 +227,89 @@ def test_chembl_complex_is_not_reduced_to_first_subunit(monkeypatch) -> None:
         },
     )
     assert module._target_uniprot_and_symbol("CHEMBL1") == (None, None)
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        ("genes",),
+        ("gene", "variants"),
+        ("variant", "molecularProfiles"),
+        ("molecularProfile", "evidenceItems"),
+    ],
+)
+def test_civic_follows_each_connection_cursor(monkeypatch, path: tuple[str, ...]) -> None:
+    """Fetch the second page using its parent selector and cursor.
+
+    Args:
+        monkeypatch: Pytest patch fixture.
+        path: Connection path returned by the API.
+
+    Returns:
+        None.
+    """
+    module = load_script("fetch_civic_evidence")
+    connection = {"nodes": [{"id": 1}], "pageInfo": {"hasNextPage": True, "endCursor": "next"}}
+    page = {"nodes": [{"id": 2}], "pageInfo": {"hasNextPage": False, "endCursor": "end"}}
+    response = page
+    for key in reversed(path):
+        response = {key: response}
+
+    def post(query: str, variables: dict) -> dict:
+        """Verify the parent selector is preserved when paging.
+
+        Args:
+            query: Query document.
+            variables: Query variables.
+
+        Returns:
+            Simulated next page.
+        """
+        assert variables == {"id": 7, "after": "next"}
+        return {"data": response}
+
+    monkeypatch.setattr(module, "_post_json", post)
+    module.complete_connection(connection, "query", {"id": 7}, path, set())
+    assert connection["nodes"] == [{"id": 1}, {"id": 2}]
+    module.require_complete_connections(connection)
+
+
+@pytest.mark.parametrize("duplicate", [True, False])
+def test_civic_rejects_overlapping_or_stalled_pages(monkeypatch, duplicate: bool) -> None:
+    """Do not accept unstable pagination or loop forever.
+
+    Args:
+        monkeypatch: Pytest patch fixture.
+        duplicate: Return a duplicate ID rather than a stalled cursor.
+
+    Returns:
+        None.
+    """
+    module = load_script("fetch_civic_evidence")
+    connection = {"nodes": [{"id": 1}], "pageInfo": {"hasNextPage": True, "endCursor": "next"}}
+    page = {
+        "nodes": [{"id": 1 if duplicate else 2}],
+        "pageInfo": {"hasNextPage": True, "endCursor": "next"},
+    }
+    monkeypatch.setattr(module, "_post_json", lambda *_: {"data": {"genes": page}})
+    with pytest.raises(RuntimeError, match="duplicate|stalled"):
+        module.complete_connection(connection, "query", {}, ("genes",), set())
+
+
+def test_profile_membership_includes_unrequested_features() -> None:
+    """Retain a compound profile member outside the curated gene list.
+
+    Args:
+        None.
+
+    Returns:
+        None.
+    """
+    module = load_script("fetch_civic_evidence")
+    profile = {
+        "variants": [
+            {"name": "V600E", "feature": {"name": "BRAF"}},
+            {"name": "Mutation", "feature": {"name": "UNREQUESTED"}},
+        ]
+    }
+    assert module.profile_variant_labels(profile) == ["BRAF V600E", "UNREQUESTED Mutation"]

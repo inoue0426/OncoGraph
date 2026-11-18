@@ -46,6 +46,7 @@ def import_source(
         "--hgnc-complete-set",
         help="HGNC complete-set TSV (required for trrust; maps civic genes and scopes reactome)",
     ),
+    atomic: bool = typer.Option(False, "--atomic", help="Roll back the whole import on any error"),
     identifier_map: str = typer.Option(
         None,
         "--identifier-map",
@@ -80,7 +81,7 @@ def import_source(
         adapter = adapter_cls(path, release=release)
     create_db_and_tables()
     with Session(engine) as session:
-        report = import_adapter(session, adapter)
+        report = import_adapter(session, adapter, atomic=atomic)
     typer.echo(
         f"entities: {report.entities_created} created, {report.entities_updated} updated; "
         f"edges: {report.edges_created} created, {report.edges_skipped} skipped"
@@ -89,6 +90,9 @@ def import_source(
         typer.echo(f"  {error}")
     if len(report.errors) > 20:
         typer.echo(f"  ... and {len(report.errors) - 20} more errors")
+    if report.rolled_back and not source.startswith("lewis_"):
+        typer.echo("Import incomplete: all source writes were rolled back.")
+        raise typer.Exit(code=1)
     if hasattr(adapter, "validation_report"):
         source_report = adapter.validation_report()
         typer.echo(
@@ -107,5 +111,8 @@ def import_source(
             if len(source_report.errors) > 20:
                 typer.echo(f"  ... and {len(source_report.errors) - 20} more source errors")
             if report.errors or not source_report.valid:
-                typer.echo("Import incomplete: only accepted records were persisted.")
+                typer.echo(
+                    "Import incomplete: all source writes were rolled back." if report.rolled_back
+                    else "Import incomplete: only accepted records were persisted."
+                )
                 raise typer.Exit(code=1)

@@ -8,11 +8,14 @@ from oncograph import cli, db
 from oncograph.models import Entity, Evidence, Relation
 
 
+@pytest.mark.parametrize("atomic", [False, True])
 @pytest.mark.parametrize("extra_row,wrong_type,expected_exit,relation_count", [
     ("", False, 0, 1), ("UNKNOWN\tB\n", False, 1, 1), ("", True, 1, 0),
 ])
-def test_lewis_cli_reports_partial_persistence_and_exit_status(tmp_path, monkeypatch, extra_row, wrong_type, expected_exit, relation_count):
+def test_lewis_cli_reports_partial_persistence_and_exit_status(tmp_path, monkeypatch, extra_row, wrong_type, expected_exit, relation_count, atomic):
     """Valid rows persist idempotently, but unresolved rows cannot produce success."""
+    if atomic and expected_exit:
+        relation_count = 0
     source = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
     source.write_text("Ligand.ApprovedSymbol\tReceptor.ApprovedSymbol\nA\tB\n" + extra_row)
     mapping = tmp_path / "mapping.tsv"
@@ -31,11 +34,11 @@ def test_lewis_cli_reports_partial_persistence_and_exit_status(tmp_path, monkeyp
     for _ in range(2):
         result = CliRunner().invoke(cli.app, [
             "import-source", "lewis_ramilowski_2015", str(source), "--identifier-map", str(mapping),
-        ])
+        ] + (["--atomic"] if atomic else []))
         assert result.exit_code == expected_exit, result.output
         if expected_exit:
             assert "Import incomplete" in result.output
-            assert "accepted records were persisted" in result.output
+            assert ("all source writes were rolled back" if atomic else "accepted records were persisted") in result.output
         if extra_row:
             assert "1 unresolved" in result.output
         if wrong_type:

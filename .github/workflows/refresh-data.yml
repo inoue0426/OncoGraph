@@ -30,12 +30,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e .
+      - name: Fetch complete CIViC evidence before slower source downloads
+        run: python scripts/fetch_civic_evidence.py
       - run: python scripts/fetch_open_gene_sources.py
       - run: python scripts/fetch_open_drug_associations.py
       - run: python scripts/fetch_drugmechdb.py
       - run: python scripts/fetch_trrust.py
       - run: python scripts/fetch_gtex_expression.py
-      - run: python scripts/fetch_civic_evidence.py
       - run: python scripts/fetch_reactome.py
       - name: Extract real drug names from the GtoPdb interactions file for ChEMBL lookup
         run: |

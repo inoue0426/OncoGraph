@@ -106,6 +106,7 @@ def validate_adapter(adapter: SourceAdapter) -> ValidationReport:
 
 @dataclass
 class ImportReport:
+    rolled_back: bool = False
     entities_created: int = 0
     entities_updated: int = 0
     entities_conflicted: int = 0
@@ -334,7 +335,9 @@ def _log_resolution_issue(
     )
 
 
-def import_entities(session: Session, records: Iterable[EntityRecord]) -> ImportReport:
+def import_entities(
+    session: Session, records: Iterable[EntityRecord], *, commit: bool = True,
+) -> ImportReport:
     """Upsert entity candidates, keyed by the record's primary external identifier.
 
     Records without an identifier are inserted unconditionally since they cannot
@@ -431,7 +434,10 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
             session.flush()
             report.entities_created += 1
         _register_identifiers(session, entity, record, report)
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return report
 
 
@@ -495,6 +501,7 @@ def import_edges(
     extraction_method: str = ADAPTER_EXTRACTION_METHOD,
     source_type: str | None = None,
     license: str | None = None,
+    commit: bool = True,
 ) -> ImportReport:
     """Persist edge candidates as Relations, resolving endpoints by canonical_id.
 
@@ -585,13 +592,18 @@ def import_edges(
             publication_id=publication_id,
         ):
             report.evidence_created += 1
-    session.commit()
+    if commit:
+        session.commit()
+    else:
+        session.flush()
     return report
 
 
-def import_adapter(session: Session, adapter: SourceAdapter) -> ImportReport:
+def _import_adapter(
+    session: Session, adapter: SourceAdapter, *, commit: bool = True,
+) -> ImportReport:
     """Import one adapter's entities, then edges, into the shared graph tables."""
-    report = import_entities(session, adapter.iter_entities())
+    report = import_entities(session, adapter.iter_entities(), commit=commit)
     if adapter.descriptor.key.startswith("lewis_") and report.errors:
         # A rejected subunit must not leave its complex's LR edge importable.
         report.edges_skipped = sum(1 for _ in adapter.iter_edges())
@@ -603,9 +615,40 @@ def import_adapter(session: Session, adapter: SourceAdapter) -> ImportReport:
         source_key=adapter.descriptor.key,
         source_type=adapter.descriptor.source_type,
         license=adapter.descriptor.license,
+        commit=commit,
     )
     report.edges_created = edge_report.edges_created
     report.edges_skipped = edge_report.edges_skipped
     report.evidence_created = edge_report.evidence_created
     report.errors.extend(edge_report.errors)
+    return report
+
+
+def import_adapter(
+    session: Session, adapter: SourceAdapter, *, atomic: bool = False,
+) -> ImportReport:
+    """Import a source, optionally rolling back all its writes on any error.
+
+    Args:
+        session: Database session used for the import.
+        adapter: Source providing normalized records.
+        atomic: Require complete source validation and error-free ingestion.
+
+    Returns:
+        Persisted counts and diagnostics; rolled-back imports have zero writes.
+    """
+    if not atomic:
+        return _import_adapter(session, adapter)
+    if hasattr(adapter, "validation_report") and not adapter.validation_report().valid:
+        return ImportReport(rolled_back=True, errors=["Source validation incomplete; no records imported"])
+    with session.begin_nested() as transaction:
+        report = _import_adapter(session, adapter, commit=False)
+        if report.errors or report.entities_conflicted or report.edges_skipped:
+            transaction.rollback()
+            report.rolled_back = True
+            report.entities_created = 0
+            report.entities_updated = 0
+            report.edges_created = 0
+            report.evidence_created = 0
+    session.commit()
     return report

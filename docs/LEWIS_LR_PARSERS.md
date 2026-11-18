@@ -80,6 +80,12 @@ failure: consumers must check the exit status as well as the JSON.
 including source validation failures or database resolution errors. This command
 can persist accepted records before reporting failure; it is not an all-or-nothing
 transaction. Its output explicitly states that partial persistence occurred.
+Use `oncograph import-source ... --atomic` to require a complete source and
+roll back all source writes on any ingestion error. Rejected source validation
+does not write records; database conflicts roll back entity updates, new
+entities, crosswalk rows, relations, evidence, and resolution-issue rows.
+Diagnostics remain in the CLI report. The default retains partial-import
+compatibility. Atomic mode also supports non-Lewis adapters.
 The database-free validator catches source issues before import, but cannot
 predict conflicts with an existing graph. Use a disposable database copy when
 partial writes are not acceptable. Reimporting accepted records remains idempotent.
