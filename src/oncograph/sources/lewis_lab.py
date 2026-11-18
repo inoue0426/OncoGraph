@@ -322,7 +322,18 @@ class LewisDelimitedAdapter(SourceAdapter):
         resolved: list[LewisResolvedIdentifier] = []
         for component in components:
             resolved.extend(self._resolve(component, kind))
-        return tuple(resolved) if len(resolved) == len(components) else ()
+        if len(resolved) != len(components):
+            return ()
+        identity_symbols: dict[tuple[str, str], set[str]] = {}
+        for component, item in zip(components, resolved, strict=True):
+            identity = (item.identifier.namespace, item.identifier.value)
+            identity_symbols.setdefault(identity, set()).add(component.upper())
+        if any(len(symbols) > 1 for symbols in identity_symbols.values()):
+            self._report.errors.append(
+                f"distinct complex components resolve to the same identifier: {value}"
+            )
+            return ()
+        return tuple(resolved)
 
     def _complex_identifier(self, components: tuple[LewisResolvedIdentifier, ...]) -> ExternalIdentifier:
         members = "|".join(sorted(f"{item.identifier.namespace}:{item.identifier.value}" for item in components))

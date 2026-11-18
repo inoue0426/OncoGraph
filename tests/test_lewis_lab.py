@@ -705,6 +705,25 @@ def test_liana_complex_retains_all_subunits_without_pairwise_bindings(tmp_path):
     assert unresolved.validation_report().unresolved_values == ["C"]
 
 
+@pytest.mark.parametrize("complex_expression", ["B_ALIAS", "ALIAS_B"])
+def test_distinct_complex_components_cannot_collapse_to_one_id(tmp_path, complex_expression):
+    """Alias collisions must not invent repeated-subunit complex composition."""
+    path = tmp_path / LewisDimitrovAdapter.profile.filename
+    path.write_text(f"source_genesymbol,target_genesymbol,resource\nA,{complex_expression},fixture\n")
+    adapter = LewisDimitrovAdapter(path, _map(
+        ("A", ExternalIdentifier("hgnc", "HGNC:1"), "gene"),
+        ("B", ExternalIdentifier("hgnc", "HGNC:2"), "gene"),
+        ("ALIAS", ExternalIdentifier("HGNC", "hgnc:2"), "gene"),
+    ))
+    assert list(adapter.iter_entities()) == []
+    assert list(adapter.iter_edges()) == []
+    report = adapter.validation_report()
+    assert report.valid is False
+    assert report.skipped_rows == 1
+    assert report.emitted_membership_edges == 0
+    assert any("distinct complex components" in error for error in report.errors)
+
+
 def test_complex_import_order_and_reimport_preserve_source_evidence(tmp_path):
     """Two sources keep opaque complexes and stable provenance in either order."""
     jin_path = tmp_path / LewisJinAdapter.profile.filename

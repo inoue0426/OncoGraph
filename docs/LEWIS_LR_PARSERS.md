@@ -259,6 +259,14 @@ endpoint identifiers. Validation failures and resolution collisions both count
 as skipped edges. Existing persisted self relations are not deleted or
 retroactively reclassified by this change and require separate review.
 
+Complex resolution applies the same conservative policy internally: distinct
+component names mapping to one normalized identifier reject the entire row.
+The parser must not silently deduplicate components or reinterpret aliases
+as repeated subunits. This is a mapping/composition error, reported with the
+original complex expression, rather than an unresolved identifier. Literal
+repetitions of the same component remain represented in the opaque complex
+identifier and raw source context; they do not establish physical stoichiometry.
+
 ### Multi-source SQLite diagnostic (2026-11-18)
 
 Using OncoGraph `4c34eef`, the pinned compendium commit and approved-symbol
