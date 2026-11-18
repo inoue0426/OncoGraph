@@ -154,6 +154,7 @@ def test_cabello_parser_preserves_source_evidence(tmp_path):
     edge = next(adapter.iter_edges())
     assert edge.context["source_evidence"] == "HPRD"
     assert edge.context["citation"] == "12809600"
+    assert edge.context["interaction_mode"] == "inferred_cell_communication"
 
 
 def test_zhao_parser_preserves_interaction_type(tmp_path):
@@ -173,6 +174,8 @@ def test_zhao_parser_preserves_interaction_type(tmp_path):
     edge = next(adapter.iter_edges())
     assert edge.predicate == "ligand_receptor_interaction"
     assert edge.context["interaction_type"] == "ligand-receptor"
+    assert edge.evidence_type == "inferred_ligand_receptor"
+    assert edge.context["interaction_mode"] == "inferred_cell_communication"
 
 
 def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
@@ -194,6 +197,7 @@ def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
     assert edge.predicate == "metabolite_target_association"
     assert edge.evidence_type == "metabolite_source_association"
     assert edge.context["ligand_kind"] == "metabolite"
+    assert edge.context["interaction_mode"] == "metabolic_association"
 
 
 def test_verified_human_xlsx_profiles_use_explicit_headers(tmp_path):
@@ -416,3 +420,56 @@ def test_import_is_idempotent_and_preserves_each_source_evidence(tmp_path):
         assert len(session.exec(select(Entity)).all()) == 2
         assert len(session.exec(select(Relation)).all()) == 1
         assert len(session.exec(select(Evidence)).all()) == 1
+
+
+def test_lewis_mapping_rejects_gene_protein_collision(tmp_path):
+    path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    path.write_text(
+        "Pair.Name\tLigand.ApprovedSymbol\tReceptor.ApprovedSymbol\n"
+        "A2M_LRP1\tA2M\tLRP1\n",
+        encoding="utf-8",
+    )
+    adapter = LewisRamilowskiAdapter(
+        path,
+        {
+            (HUMAN_TAXON, "A2M"): (
+                LewisResolvedIdentifier(ExternalIdentifier("hgnc", "HGNC:7"), "gene"),
+                LewisResolvedIdentifier(ExternalIdentifier("uniprot", "P01023"), "protein"),
+            ),
+            (HUMAN_TAXON, "LRP1"): (
+                LewisResolvedIdentifier(ExternalIdentifier("hgnc", "HGNC:6692"), "gene"),
+            ),
+        },
+    )
+
+    assert list(adapter.iter_edges()) == []
+    report = adapter.validation_report()
+    assert report.ambiguous_identifiers == 1
+    assert report.skipped_rows == 1
+    assert report.valid is False
+
+
+def test_lewis_mapping_does_not_fall_back_to_another_species(tmp_path):
+    path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    path.write_text(
+        "Pair.Name\tLigand.ApprovedSymbol\tReceptor.ApprovedSymbol\n"
+        "A2M_LRP1\tA2M\tLRP1\n",
+        encoding="utf-8",
+    )
+    adapter = LewisRamilowskiAdapter(
+        path,
+        {
+            (10090, "A2M"): (
+                LewisResolvedIdentifier(ExternalIdentifier("mgi", "MGI:88000"), "gene"),
+            ),
+            (HUMAN_TAXON, "LRP1"): (
+                LewisResolvedIdentifier(ExternalIdentifier("hgnc", "HGNC:6692"), "gene"),
+            ),
+        },
+    )
+
+    assert list(adapter.iter_edges()) == []
+    report = adapter.validation_report()
+    assert report.unresolved_identifiers == 1
+    assert report.unresolved_values == ["A2M"]
+    assert report.valid is False
