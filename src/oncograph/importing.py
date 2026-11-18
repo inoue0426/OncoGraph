@@ -20,6 +20,19 @@ from .sources.base import EdgeRecord, EntityRecord, ExternalIdentifier, SourceAd
 
 ADAPTER_EXTRACTION_METHOD = "adapter_import"
 
+# These namespaces have a sufficiently stable biological meaning to constrain
+# alternate-ID lookup. Canonical IDs remain backward-compatible and are still
+# authoritative when an existing graph contains legacy data.
+_ALTERNATE_IDENTIFIER_TYPES = {
+    "hgnc": {EntityType.GENE},
+    "ncbigene": {EntityType.GENE},
+    "ensembl": {EntityType.GENE},
+    "uniprot": {EntityType.PROTEIN},
+    "chembl": {EntityType.DRUG},
+    "pubchem": {EntityType.DRUG},
+}
+_SPECIES_SENSITIVE_NAMESPACES = {"hgnc", "mgi", "ncbigene", "ensembl", "uniprot"}
+
 
 @dataclass
 class ValidationReport:
@@ -129,8 +142,48 @@ def _identifier_owners(
         )
     ).all()
     if taxon is not None:
-        rows = [row for row in rows if row.taxon_id == taxon]
-    return {row.entity_id for row in rows}
+        rows = [
+            row
+            for row in rows
+            if row.taxon_id == taxon
+            or (row.taxon_id is None and normalized.namespace not in _SPECIES_SENSITIVE_NAMESPACES)
+        ]
+    return _compatible_alternate_entity_ids(session, normalized.namespace, rows)
+
+
+def _entity_matches_taxon(session: Session, entity: Entity, taxon: int | None) -> bool:
+    """Return whether an entity is compatible with an explicitly requested taxon."""
+    if taxon is None:
+        return True
+    if entity.entity_metadata:
+        try:
+            metadata = json.loads(entity.entity_metadata)
+        except (TypeError, json.JSONDecodeError):
+            metadata = {}
+        if metadata.get("taxon_id") is not None:
+            return int(metadata["taxon_id"]) == taxon
+    rows = session.exec(
+        select(EntityIdentifier).where(
+            EntityIdentifier.entity_id == entity.id,
+            EntityIdentifier.taxon_id == taxon,
+        )
+    ).all()
+    return bool(rows)
+
+
+def _compatible_alternate_entity_ids(
+    session: Session, normalized_namespace: str, candidates: list[EntityIdentifier]
+) -> set:
+    """Filter alternate-ID claims whose namespace contradicts entity type."""
+    allowed_types = _ALTERNATE_IDENTIFIER_TYPES.get(normalized_namespace)
+    if allowed_types is None:
+        return {row.entity_id for row in candidates}
+    compatible: set = set()
+    for row in candidates:
+        entity = session.get(Entity, row.entity_id)
+        if entity is not None and entity.type in allowed_types:
+            compatible.add(entity.id)
+    return compatible
 
 
 def _lookup_entity_id(
@@ -142,9 +195,10 @@ def _lookup_entity_id(
     A canonical hit still wins so legacy graphs keep their original identity.
     """
     normalized = normalize_identifier(identifier)
+    taxon = taxon if taxon is not None else _identifier_taxon(identifier)
     canonical_id = f"{normalized.namespace}:{normalized.value}"
     entity = session.exec(select(Entity).where(Entity.canonical_id == canonical_id)).first()
-    if entity is not None:
+    if entity is not None and _entity_matches_taxon(session, entity, taxon):
         return entity.id
     candidates = session.exec(
         select(EntityIdentifier).where(
@@ -152,10 +206,17 @@ def _lookup_entity_id(
             EntityIdentifier.value == normalized.value,
         )
     ).all()
-    taxon = taxon if taxon is not None else _identifier_taxon(identifier)
     if taxon is not None:
-        candidates = [x for x in candidates if x.taxon_id == taxon]
-    owner_ids = {x.entity_id for x in candidates}
+        candidates = [
+            x
+            for x in candidates
+            if x.taxon_id == taxon
+            or (x.taxon_id is None and normalized.namespace not in _SPECIES_SENSITIVE_NAMESPACES)
+        ]
+    raw_owner_ids = {x.entity_id for x in candidates}
+    if len(raw_owner_ids) > 1:
+        return None
+    owner_ids = _compatible_alternate_entity_ids(session, normalized.namespace, candidates)
     return next(iter(owner_ids)) if len(owner_ids) == 1 else None
 
 
@@ -266,16 +327,33 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
             if canonical_id
             else None
         )
+        if existing is not None and not _entity_matches_taxon(session, existing, taxon):
+            existing = None
+        if existing is None and record.identifiers:
+            alternate_owner = _lookup_entity_id(session, record.identifiers[0], taxon=taxon)
+            if alternate_owner is not None:
+                existing = session.get(Entity, alternate_owner)
         if existing is None and record.identifiers:
             owners = set()
             for identifier in record.identifiers[1:]:
                 owners.update(_identifier_owners(session, identifier, taxon))
             if len(owners) == 1:
                 candidate = session.get(Entity, next(iter(owners)))
-                # Names are only a guard against merging two distinct records
-                # that happen to share an alias; they are never an identity key.
+                # Keep the existing conservative name guard. A changed name
+                # is reported as a possible duplicate instead of silently
+                # merging records from unrelated adapters.
                 if candidate is not None and candidate.name == record.name:
                     existing = candidate
+                elif candidate is not None:
+                    _log_resolution_issue(
+                        session,
+                        ResolutionIssueType.CONFLICT,
+                        identifier,
+                        detail=(
+                            f"alternate identifier already belongs to {candidate.name!r}; "
+                            f"incoming name is {record.name!r}"
+                        ),
+                    )
             elif len(owners) > 1:
                 _log_resolution_issue(
                     session, ResolutionIssueType.CONFLICT, record.identifiers[0],
