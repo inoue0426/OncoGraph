@@ -138,6 +138,17 @@ def test_nonhuman_profile_is_rejected():
         MouseProfileAdapter("mouse.tsv", {})
 
 
+def test_parse_failure_remains_failure_for_every_public_accessor(tmp_path):
+    """A failed read must not become an empty, valid cached import."""
+    adapter = LewisRamilowskiAdapter(tmp_path / "renamed.txt", {})
+    for accessor in (
+        adapter.iter_entities, adapter.iter_edges, adapter.validation_report,
+        adapter.iter_entities,
+    ):
+        with pytest.raises(ValueError, match="Expected"):
+            accessor()
+
+
 def test_cabello_parser_preserves_source_evidence(tmp_path):
     path = tmp_path / "Human-2020-Cabello-Aguilar-LR-pairs.csv"
     path.write_text(

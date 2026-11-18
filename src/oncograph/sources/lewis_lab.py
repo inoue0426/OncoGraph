@@ -155,6 +155,7 @@ class LewisDelimitedAdapter(SourceAdapter):
             else dict(identifier_map)
         )
         self._prepared = False
+        self._preparation_error: Exception | None = None
         self._entities: list[EntityRecord] = []
         self._edges: list[EdgeRecord] = []
         self._report = LewisValidationReport(self.profile.source_key)
@@ -280,9 +281,22 @@ class LewisDelimitedAdapter(SourceAdapter):
         return ExternalIdentifier("lewis_complex", f"{self.profile.source_key}:{digest}")
 
     def _prepare(self) -> None:
+        """Materialize once, retaining failures so partial results never escape."""
+        if self._preparation_error is not None:
+            raise self._preparation_error
         if self._prepared:
             return
+        try:
+            self._prepare_records()
+        except Exception as exc:
+            self._entities.clear()
+            self._edges.clear()
+            self._preparation_error = exc
+            raise
         self._prepared = True
+
+    def _prepare_records(self) -> None:
+        """Build records; the caller exposes them only after successful parsing."""
         rows = self._read_rows()
         seen: set[str] = set()
         entities: dict[tuple[str, str], EntityRecord] = {}
