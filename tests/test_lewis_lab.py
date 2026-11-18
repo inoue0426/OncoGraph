@@ -221,7 +221,7 @@ def test_parse_failure_remains_failure_for_every_public_accessor(tmp_path):
 def test_cabello_parser_preserves_source_evidence(tmp_path):
     path = tmp_path / "Human-2020-Cabello-Aguilar-LR-pairs.csv"
     path.write_text(
-        "ligand,receptor,sources,pmid\nTGFB1,TGFBR1,HPRD,12809600\n",
+        "ligand,receptor,source,PMIDs\nTGFB1,TGFBR1,HPRD,12809600\n",
         encoding="utf-8",
     )
     adapter = LewisCabelloAguilarAdapter(
@@ -234,7 +234,8 @@ def test_cabello_parser_preserves_source_evidence(tmp_path):
     edge = next(adapter.iter_edges())
     assert edge.context["source_evidence"] == "HPRD"
     assert edge.context["citation"] == "12809600"
-    assert edge.context["interaction_mode"] == "inferred_cell_communication"
+    assert edge.context["interaction_mode"] == "compiled_prior"
+    assert edge.evidence_type == "compiled_ligand_receptor"
 
 
 def test_zhao_parser_preserves_interaction_type(tmp_path):

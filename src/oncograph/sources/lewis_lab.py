@@ -492,10 +492,10 @@ class LewisCabelloAguilarAdapter(LewisDelimitedAdapter):
         delimiter=",",
         ligand_column="ligand",
         receptor_column="receptor",
-        evidence_column="sources",
-        citation_column="pmid",
-        evidence_type="inferred_ligand_receptor",
-        interaction_mode="inferred_cell_communication",
+        evidence_column="source",
+        citation_column="PMIDs",
+        evidence_type="compiled_ligand_receptor",
+        interaction_mode="compiled_prior",
     )
 
 

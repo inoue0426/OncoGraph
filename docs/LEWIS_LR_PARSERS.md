@@ -154,7 +154,7 @@ of redistribution permission. No database was populated. All sources have
 | Source | Input rows | Candidate interactions | Skipped rows | Unresolved occurrences |
 | --- | ---: | ---: | ---: | ---: |
 | Ramilowski | 2422 | 2327 | 95 | 100 |
-| Cabello | 3251 | 3163 | 76 | 78 |
+| Cabello | 3251 | 3172 | 76 | 78 |
 | Zheng | 440 | 0 | 440 | 441 |
 | Qiao | 933 | 861 | 72 | 75 |
 | Pavlicev | 1006 | 859 | 142 | 177 |
@@ -166,11 +166,18 @@ of redistribution permission. No database was populated. All sources have
 | Noel | 380 | 368 | 12 | 11 |
 | Browaeys | 12659 | 12606 | 53 | 53 |
 
-Unresolved counts are occurrences, not unique identifiers. Cabello had 12
+Unresolved counts are occurrences, not unique identifiers. Cabello had 3
 duplicate rows and Pavlicev had 5. No ambiguous mappings were observed with
 this restricted map. Zheng's metabolite endpoints intentionally remain
 unresolved because an HGNC-only map cannot resolve HMDB identifiers. Missing
 complex mappings and historical symbols still require source-specific review.
+
+Cabello uses the actual export columns `source` and `PMIDs`. Its rows are
+compiled prior knowledge, not predictions from a cell-expression analysis.
+An earlier profile used incorrect column names and lost that provenance;
+the corrected audit preserves nine additional distinct evidence candidates.
+Previously imported local evidence requires review or rebuilding from inputs,
+because the old incomplete records cannot recover their missing citations.
 
 LIANA underscore-delimited partners are parsed as complexes, following the
 [official resource implementation](https://github.com/saezlab/liana-py/blob/main/src/liana/resource/_resource_utils.py).
