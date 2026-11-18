@@ -353,6 +353,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 object=receptor_id,
                 source_record_id=f"{self.profile.source_key}:{record_id}",
                 context=context,
+                metadata={"taxon_id": self.profile.taxon_id},
                 evidence_type=self.profile.evidence_type,
             ))
             self._report.emitted_interactions += 1
@@ -408,6 +409,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 object=part.identifier,
                 source_record_id=f"{self.profile.source_key}:{record_id}:member:{part.identifier.value}",
                 context={**context, "relationship": "complex_membership"},
+                metadata={"taxon_id": self.profile.taxon_id},
                 evidence_type="curated_complex_membership",
             ))
             self._report.emitted_membership_edges += 1

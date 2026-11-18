@@ -9,9 +9,9 @@ from pathlib import Path
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
-from oncograph.importing import import_adapter
+from oncograph.importing import import_adapter, import_edges, import_entities
 from oncograph.models import Entity, Evidence, Relation
-from oncograph.sources.base import ExternalIdentifier
+from oncograph.sources.base import EntityRecord, ExternalIdentifier
 from oncograph.sources.lewis_lab import (
     HUMAN_TAXON,
     LewisBrowaeysAdapter,
@@ -338,6 +338,39 @@ def test_noel_xlsx_preserves_multi_subunit_sides(tmp_path):
     edges = list(adapter.iter_edges())
     assert sum(edge.predicate == "ligand_receptor_interaction" for edge in edges) == 1
     assert adapter.validation_report().emitted_membership_edges == 2
+    assert all(edge.metadata["taxon_id"] == HUMAN_TAXON for edge in edges)
+
+
+def test_lewis_edges_resolve_human_aliases_in_mixed_species_graph(tmp_path):
+    """Pass source species to the DB resolver, beyond display provenance."""
+    path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    path.write_text(
+        "Pair.Name\tLigand.ApprovedSymbol\tReceptor.ApprovedSymbol\n"
+        "A_B\tA\tB\n", encoding="utf-8",
+    )
+    identifiers = [ExternalIdentifier("ensembl", value) for value in ("ENSG_SHARED1", "ENSG_SHARED2")]
+    adapter = LewisRamilowskiAdapter(
+        path, _map(*[(symbol, identifier, "gene")
+                     for symbol, identifier in zip(("A", "B"), identifiers)]),
+    )
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        for taxon, namespace, prefix in ((9606, "hgnc", "HGNC:"), (10090, "mgi", "MGI:")):
+            import_entities(session, [
+                EntityRecord(
+                    entity_type="gene", name=f"{taxon}-{index}",
+                    identifiers=(ExternalIdentifier(namespace, f"{prefix}{index}"), alias),
+                    metadata={"taxon_id": taxon},
+                )
+                for index, alias in enumerate(identifiers, start=1)
+            ])
+        result = import_edges(session, adapter.iter_edges(), source_key=adapter.descriptor.key)
+        assert result.edges_created == 1
+        assert result.edges_skipped == 0
+        relation = session.exec(select(Relation)).one()
+        for entity_id in (relation.subject_id, relation.object_id):
+            assert session.get(Entity, entity_id).canonical_id.startswith("hgnc:")
 
 
 def test_browaeys_zip_selects_only_lr_member(tmp_path):
