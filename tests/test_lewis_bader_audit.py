@@ -83,7 +83,15 @@ def test_taxonomy_requires_complete_explicit_terms(value: str, expected: str) ->
     assert audit.taxon_status(value) == expected
 
 
-@pytest.mark.parametrize("payload", [b"not gzip", gzip.compress(b"wrong\theader\n")])
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"not gzip",
+        gzip.compress(b"wrong\theader\n"),
+        bytes.fromhex("1f8b08000000000000ffff"),
+        gzip.compress(b"truncated")[:12],
+    ],
+)
 def test_command_reports_fatal_failures(
     tmp_path: Path, monkeypatch, capsys, payload: bytes
 ) -> None:

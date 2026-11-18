@@ -14,6 +14,7 @@ import gzip
 import hashlib
 import json
 import re
+import zlib
 from collections import Counter
 from pathlib import Path
 
@@ -169,7 +170,7 @@ def main() -> None:
     args = parser.parse_args()
     try:
         report = audit_source(args.path)
-    except (OSError, EOFError, ValueError, csv.Error) as exc:
+    except (OSError, EOFError, ValueError, csv.Error, zlib.error) as exc:
         print(
             json.dumps(
                 {
