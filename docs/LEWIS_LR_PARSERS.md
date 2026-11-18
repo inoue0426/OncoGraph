@@ -1,7 +1,7 @@
 # Lewis Lab parser policy
 
 OncoGraph currently supports selected **human** Lewis Lab files through
-source-specific, local-only adapters. The supported adapters are:
+source-specific, local-only adapters. The profiles and current restrictions are:
 
 | Source key | File profile | Taxon | Mapping required |
 | --- | --- | --- | --- |
@@ -129,11 +129,13 @@ forced through the simple symbol profiles above.
 
 ## Human coverage status
 
-The upstream README lists 18 human files. Twelve have enabled profiles in
-the table above. The six remaining human entries are intentionally blocked:
+The upstream README lists 18 human files. Eleven currently have usable local
+profiles in the table above, subject to explicit mapping and source review.
+Seven audited human entries are blocked, including the quarantined Jin export:
 
 | File/profile | Current blocker |
 | --- | --- |
+| Jin/CellChat 2020 | Audited Human export contains mouse-specific partners; the whole table is quarantined rather than accepting conserved symbols as human evidence. |
 | Zhao/NeuronChat 2023 | Disabled: the audited export has 182/190 blank target-subunit fields; contributor genes may represent synthesis/transport rather than ligands. |
 | Kirouac 2010 | Receptor labels such as `ADIPOR 1/2` need a validated component map. |
 | Choi 2015 | Folder metadata and the cited biological model need species reconciliation before using taxon 9606. |
@@ -256,3 +258,28 @@ an explicitly supported self interaction must already use matching normalized
 endpoint identifiers. Validation failures and resolution collisions both count
 as skipped edges. Existing persisted self relations are not deleted or
 retroactively reclassified by this change and require separate review.
+
+### Multi-source SQLite diagnostic (2026-11-18)
+
+Using OncoGraph `4c34eef`, the pinned compendium commit and approved-symbol
+HGNC snapshot above, a local in-memory SQLite diagnostic imported the ten
+profiles with resolved HGNC candidates: Ramilowski, Cabello, Qiao, Pavlicev,
+Hou, Wang, Shao, Dimitrov, Noel, and Browaeys, in that order. Jin and Zhao were
+quarantined; Zheng had no candidates under this gene-only mapping policy.
+Parser-skipped rows were excluded and remain unresolved, not validated.
+
+The combined graph contained 2,560 entities, 16,408 relations, and 35,632
+evidence records, including complex membership evidence. Every import
+reported zero ingestion errors. Repeating all ten imports added zero entities,
+relations, or evidence records. A separate fresh in-memory database loaded the
+same inputs in reverse order. Its sets of canonical entity IDs, relation
+endpoint/predicate tuples, and evidence tuples (relation, source, source-record
+ID, serialized context) exactly matched the forward run. Display labels and
+timestamps were not part of this comparison. Neither database was persisted.
+
+This checks multi-source identity, provenance retention, and idempotency for
+the resolved subset. It does not establish biological validity, coverage of
+unresolved rows, permission to redistribute, or automatic migration of old
+evidence. The subsequent alternate-ID self-relation guard is covered by the
+identifier-resolution regression tests; this real-file diagnostic used only
+canonical HGNC endpoint mappings.
