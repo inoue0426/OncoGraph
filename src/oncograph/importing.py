@@ -106,7 +106,36 @@ def _identifier_taxon(identifier: ExternalIdentifier, metadata: dict | None = No
     return {"hgnc": 9606, "mgi": 10090}.get(namespace)
 
 
-def _lookup_entity_id(session: Session, identifier: ExternalIdentifier):
+def _record_taxon(record: EntityRecord) -> int | None:
+    """Return the record-level species used for all of its crosswalk rows."""
+    if record.metadata.get("taxon_id") is not None:
+        return int(record.metadata["taxon_id"])
+    for identifier in record.identifiers:
+        taxon = _identifier_taxon(identifier)
+        if taxon is not None:
+            return taxon
+    return None
+
+
+def _identifier_owners(
+    session: Session, identifier: ExternalIdentifier, taxon: int | None = None
+) -> set:
+    """Find all entities claiming an alternate ID, preserving ambiguity."""
+    normalized = normalize_identifier(identifier)
+    rows = session.exec(
+        select(EntityIdentifier).where(
+            EntityIdentifier.namespace == normalized.namespace,
+            EntityIdentifier.value == normalized.value,
+        )
+    ).all()
+    if taxon is not None:
+        rows = [row for row in rows if row.taxon_id == taxon]
+    return {row.entity_id for row in rows}
+
+
+def _lookup_entity_id(
+    session: Session, identifier: ExternalIdentifier, *, taxon: int | None = None
+):
     """Primary ID lookup first; uniquely indexed alternate ID second.
 
     Never resolve a disputed alternate identifier to the first available row.
@@ -123,7 +152,7 @@ def _lookup_entity_id(session: Session, identifier: ExternalIdentifier):
             EntityIdentifier.value == normalized.value,
         )
     ).all()
-    taxon = _identifier_taxon(identifier)
+    taxon = taxon if taxon is not None else _identifier_taxon(identifier)
     if taxon is not None:
         candidates = [x for x in candidates if x.taxon_id == taxon]
     owner_ids = {x.entity_id for x in candidates}
@@ -147,7 +176,12 @@ def _register_identifiers(
         ).all()
         if any(row.entity_id == entity.id and row.taxon_id == taxon for row in rows):
             continue
-        if any(row.entity_id != entity.id and row.taxon_id == taxon for row in rows):
+        canonical_owner = session.exec(
+            select(Entity).where(
+                Entity.canonical_id == f"{normalized.namespace}:{normalized.value}"
+            )
+        ).first()
+        if canonical_owner is not None and canonical_owner.id != entity.id:
             _log_resolution_issue(
                 session, ResolutionIssueType.CONFLICT, identifier,
                 detail="Alternate identifier already belongs to another entity",
@@ -157,6 +191,17 @@ def _register_identifiers(
                 f"ambiguous alternate identifier: {normalized.namespace}:{normalized.value}"
             )
             continue
+        if any(row.entity_id != entity.id and row.taxon_id == taxon for row in rows):
+            # Retain both claims so the resolver remains ambiguous regardless
+            # of import order; never let the first importer win by accident.
+            _log_resolution_issue(
+                session, ResolutionIssueType.CONFLICT, identifier,
+                detail="Alternate identifier is claimed by multiple entities",
+            )
+            report.entities_conflicted += 1
+            report.errors.append(
+                f"ambiguous alternate identifier: {normalized.namespace}:{normalized.value}"
+            )
         session.add(
             EntityIdentifier(
                 entity_id=entity.id,
@@ -215,11 +260,30 @@ def import_entities(session: Session, records: Iterable[EntityRecord]) -> Import
             continue
 
         canonical_id = _canonical_id(record.identifiers[0]) if record.identifiers else None
+        taxon = _record_taxon(record)
         existing = (
             session.exec(select(Entity).where(Entity.canonical_id == canonical_id)).first()
             if canonical_id
             else None
         )
+        if existing is None and record.identifiers:
+            owners = set()
+            for identifier in record.identifiers[1:]:
+                owners.update(_identifier_owners(session, identifier, taxon))
+            if len(owners) == 1:
+                candidate = session.get(Entity, next(iter(owners)))
+                # Names are only a guard against merging two distinct records
+                # that happen to share an alias; they are never an identity key.
+                if candidate is not None and candidate.name == record.name:
+                    existing = candidate
+            elif len(owners) > 1:
+                _log_resolution_issue(
+                    session, ResolutionIssueType.CONFLICT, record.identifiers[0],
+                    detail="Incoming record has alternate IDs owned by multiple entities",
+                )
+                report.entities_conflicted += 1
+                report.errors.append(f"entity[{i}]: ambiguous alternate identifiers")
+                continue
         if existing is not None:
             if existing.type != entity_type:
                 # Identifier-first resolution means canonical_id is authoritative;
@@ -339,8 +403,9 @@ def import_edges(
             report.errors.append(f"edge[{i}]: {exc}")
             continue
 
-        subject_id = _lookup_entity_id(session, record.subject)
-        object_id = _lookup_entity_id(session, record.object)
+        edge_taxon = int(record.metadata["taxon_id"]) if record.metadata.get("taxon_id") is not None else None
+        subject_id = _lookup_entity_id(session, record.subject, taxon=edge_taxon)
+        object_id = _lookup_entity_id(session, record.object, taxon=edge_taxon)
         if subject_id is None or object_id is None:
             if subject_id is None:
                 _log_resolution_issue(
