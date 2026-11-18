@@ -616,6 +616,52 @@ def test_liana_complex_retains_all_subunits_without_pairwise_bindings(tmp_path):
     assert unresolved.validation_report().unresolved_values == ["C"]
 
 
+def test_complex_import_order_and_reimport_preserve_source_evidence(tmp_path):
+    """Two sources keep opaque complexes and stable provenance in either order."""
+    jin_path = tmp_path / LewisJinAdapter.profile.filename
+    jin_path.write_text(
+        "ligand_symbol,receptor_symbol,evidence\nA,B&C,fixture\n", encoding="utf-8",
+    )
+    liana_path = tmp_path / LewisDimitrovAdapter.profile.filename
+    liana_path.write_text(
+        "source_genesymbol,target_genesymbol,resource\nA,C_B,fixture\n", encoding="utf-8",
+    )
+    mapping = _map(*[
+        (symbol, ExternalIdentifier("hgnc", f"HGNC:{index}"), "gene")
+        for index, symbol in enumerate(("A", "B", "C"), start=1)
+    ])
+    factories = [(LewisJinAdapter, jin_path), (LewisDimitrovAdapter, liana_path)]
+    signatures = []
+    for order in (factories, list(reversed(factories))):
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+        with Session(engine) as session:
+            for repeat in range(2):
+                for cls, path in order:
+                    report = import_adapter(session, cls(path, mapping))
+                    assert report.errors == []
+                    if repeat:
+                        assert report.edges_created == report.evidence_created == 0
+            entities = {item.id: item for item in session.exec(select(Entity)).all()}
+            relations = session.exec(select(Relation)).all()
+            evidence = session.exec(select(Evidence)).all()
+            assert len(entities) == 5
+            assert len(relations) == len(evidence) == 6
+            assert sum(item.type == "molecular_complex" for item in entities.values()) == 2
+            signatures.append({
+                (entities[item.subject_id].canonical_id, item.predicate,
+                 entities[item.object_id].canonical_id) for item in relations
+            })
+            assert {item.source for item in evidence} == {
+                "lewis_jin_2020", "lewis_dimitrov_2022",
+            }
+            for item in relations:
+                if item.predicate == "ligand_receptor_interaction":
+                    assert entities[item.object_id].type == "molecular_complex"
+        engine.dispose()
+    assert signatures[0] == signatures[1]
+
+
 def test_import_is_idempotent_and_preserves_each_source_evidence(tmp_path):
     path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
     path.write_text(
