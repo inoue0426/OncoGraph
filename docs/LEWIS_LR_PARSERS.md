@@ -124,8 +124,33 @@ distinguishes ligands, metabolic contributors, targets, and interaction classes.
 The NATMI workbook contains 2,293 data rows, differing from the README's 2,187;
 these are format counts, not validated interactions.
 
-No upstream dataset was available as a permission-cleared local import during
-this implementation, so unresolved/ambiguous counts below the parser level
-are not claimed for the real compendium. Each run's `validation_report()` is
-the authoritative source-level report once a permitted file and explicit
-human identifier map are supplied.
+### Local identifier audit (2026-11-18)
+
+A database-free audit of the upstream commit above used only approved HGNC
+symbols (45,395 keys), without alias or former-symbol inference. The HGNC
+complete-set SHA-256 was
+`6df77ac3cbaeb86a6dce5e17d851ebb27b6b3cdcd2471a211a3d8464f00c54c4`.
+These are parser candidates, not validated biological interactions or evidence
+of redistribution permission. No database was populated. All sources have
+`valid=false` because some rows remain unresolved or invalid.
+
+| Source | Input rows | Candidate interactions | Skipped rows | Unresolved occurrences |
+| --- | ---: | ---: | ---: | ---: |
+| Ramilowski | 2422 | 2327 | 95 | 100 |
+| Cabello | 3251 | 3163 | 76 | 78 |
+| Zheng | 440 | 0 | 440 | 441 |
+| Qiao | 933 | 861 | 72 | 75 |
+| Pavlicev | 1006 | 859 | 142 | 177 |
+| Hou | 2293 | 2284 | 9 | 9 |
+| Wang | 2649 | 2533 | 116 | 121 |
+| Jin | 2005 | 1862 | 143 | 150 |
+| Shao | 3398 | 3382 | 16 | 17 |
+| Dimitrov | 4701 | 3587 | 1114 | 1130 |
+| Noel | 380 | 368 | 12 | 11 |
+| Browaeys | 12659 | 12606 | 53 | 53 |
+
+Unresolved counts are occurrences, not unique identifiers. Cabello had 12
+duplicate rows and Pavlicev had 5. No ambiguous mappings were observed with
+this restricted map. Zheng's metabolite endpoints intentionally remain
+unresolved because an HGNC-only map cannot resolve HMDB identifiers. Missing
+complex mappings and historical symbols still require source-specific review.
