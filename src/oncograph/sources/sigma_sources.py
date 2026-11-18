@@ -9,9 +9,10 @@ import gzip
 import hashlib
 import math
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 from ..signed_molecular import SIGNED_RELATIONS, SignedImportReport, stable_digest
@@ -23,6 +24,9 @@ from .base import (
     SourceDescriptor,
     SourceType,
 )
+
+if TYPE_CHECKING:
+    from .lincs_identity import CompoundResolution
 
 LINCS_URL = "https://maayanlab.cloud/static/hdfs/harmonizome/data/l1000chempert/"
 LINCS_DATASET = "LINCS L1000 CMAP Chemical Perturbation Consensus Signatures"
@@ -161,6 +165,7 @@ class LincsConsensusAdapter:
         release: str,
         mapping_sha256: str,
         gene_ids: set[str] | None = None,
+        compound_resolutions: dict[str, "CompoundResolution"] | None = None,
     ):
         """Configure a local source import.
 
@@ -170,11 +175,15 @@ class LincsConsensusAdapter:
             release: Snapshot label; an unknown upstream release must say so.
             mapping_sha256: Fingerprint of the metadata supplying the crosswalk.
             gene_ids: Optional explicit NCBI gene scope; None means all genes.
+            compound_resolutions: Opt-in conservative genome-scale chemical identities.
         """
         self.path, self.mapping, self.release = path, mapping, release
         self.mapping_sha256, self.gene_ids = mapping_sha256, gene_ids
         self.report = SignedImportReport()
         self.mapping_diagnostics = {}
+        self.compound_resolutions = compound_resolutions
+        self.compound_counts = Counter()
+        self.gene_counts = Counter()
 
     def iter_edges(self) -> Iterator[EdgeRecord]:
         """Preserve source row IDs, z-scores and unavailable experimental context.
@@ -184,6 +193,8 @@ class LincsConsensusAdapter:
         """
         self.report.reset()
         self.mapping_diagnostics.clear()
+        self.compound_counts.clear()
+        self.gene_counts.clear()
         digest = file_sha256(self.path)
         required = {"", "Gene", "Gene ID", "Chemical Perturbation", "Z-score", "Threshold Value"}
         for row in table_rows(self.path):
@@ -209,19 +220,41 @@ class LincsConsensusAdapter:
                 self.report.skipped["invalid_source_row"] += 1
                 continue
             self.report.parsed_records += 1
+            self.gene_counts[gene] += 1
             if self.gene_ids is not None and gene not in self.gene_ids:
                 self.report.skipped["outside_gene_scope"] += 1
                 continue
             self.report.scoped_records += 1
-            cids = self.mapping.get(token, set())
-            status = "matched" if len(cids) == 1 else "ambiguous" if cids else "unmatched"
-            self.mapping_diagnostics[token] = {"status": status, "candidates": sorted(cids)}
-            if status != "matched":
-                self.report.skipped[f"compound_{status}"] += 1
-                continue
+            self.compound_counts[token] += 1
+            identity_context = {}
+            if self.compound_resolutions is not None:
+                resolution = self.compound_resolutions.get(token)
+                if resolution is None:
+                    self.report.skipped["compound_missing_metadata"] += 1
+                    self.mapping_diagnostics[token] = {"status": "missing_metadata"}
+                    continue
+                subject = resolution.identifier
+                identity_context = {
+                    "compound_identity": resolution.provenance,
+                    "source_gene_id": gene,
+                    "mapping_source": "LINCS2020 / GSE92742 conservative resolver",
+                }
+                self.mapping_diagnostics[token] = {
+                    "status": resolution.provenance["identity_status"],
+                    "strategy": resolution.provenance["strategy"],
+                    "metadata_conflict": resolution.provenance["metadata_conflict"],
+                }
+            else:
+                cids = self.mapping.get(token, set())
+                status = "matched" if len(cids) == 1 else "ambiguous" if cids else "unmatched"
+                self.mapping_diagnostics[token] = {"status": status, "candidates": sorted(cids)}
+                if status != "matched":
+                    self.report.skipped[f"compound_{status}"] += 1
+                    continue
+                subject = ExternalIdentifier("pubchem", next(iter(cids)))
             predicate = "upregulates" if sign == 1 else "downregulates"
             yield EdgeRecord(
-                subject=ExternalIdentifier("pubchem", next(iter(cids))),
+                subject=subject,
                 predicate=predicate,
                 object=ExternalIdentifier("ncbigene", gene),
                 source_record_id=row[""],
@@ -254,6 +287,7 @@ class LincsConsensusAdapter:
                     "context_availability": "not supplied in export",
                     "sigma_balance_pruned": False,
                     "local_only": True,
+                    **identity_context,
                 },
             )
 

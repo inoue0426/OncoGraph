@@ -6,6 +6,9 @@ command does not publish data or modify the Pages refresh. See docs/SIGMA_KG.md.
 
 import argparse
 import json
+import resource
+import sys
+import time
 from collections import Counter
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
@@ -17,6 +20,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from oncograph.signed_molecular import TypedCrosswalk, import_signed_observations
 from oncograph.sources.hetionet_expression import HETIONET_URL, HetionetExpressionAdapter
 from oncograph.sources.hgnc import HGNCAdapter
+from oncograph.sources.lincs_identity import COMPOUNDINFO_URL, compound_resolutions
 from oncograph.sources.sigma_sources import (
     LINCS_URL,
     GtoPdbSignedAdapter,
@@ -66,7 +70,12 @@ def download_inputs(root: Path) -> dict:
 
 
 def run_import(
-    root: Path, database: Path, gene_ids: set[str] | None, sources: list[str], snapshot: str
+    root: Path,
+    database: Path,
+    gene_ids: set[str] | None,
+    sources: list[str],
+    snapshot: str,
+    lincs_compoundinfo: Path | None = None,
 ) -> dict:
     """Import original sources, retaining exact statistics and crosswalk diagnostics.
 
@@ -76,10 +85,12 @@ def run_import(
         gene_ids: Optional NCBI gene scope for LINCS; all when None.
         sources: Source adapters to execute.
         snapshot: Explicit downloaded-snapshot label, not an upstream version claim.
+        lincs_compoundinfo: Optional frozen official LINCS2020 chemical metadata.
 
     Returns:
         JSON-compatible audit report for this execution.
     """
+    started = time.monotonic()
     result = {
         "snapshot": snapshot,
         "sigma_kg_imported": False,
@@ -120,8 +131,20 @@ def run_import(
         result["identity_registration"]["hgnc"] = crosswalk.register(genes)
         adapters = []
         if "lincs" in sources:
+            resolutions = None
             mapping, compounds = lincs_compound_mapping(root / "lincs_pert_info.txt.gz")
-            result["identity_registration"]["lincs_pubchem"] = crosswalk.register(compounds)
+            if lincs_compoundinfo is not None:
+                resolutions, compounds, mapping_audit = compound_resolutions(
+                    lincs_compoundinfo, root / "lincs_pert_info.txt.gz"
+                )
+                result["inputs"]["compoundinfo_beta.txt"] = {
+                    "sha256": file_sha256(lincs_compoundinfo),
+                    "url": COMPOUNDINFO_URL,
+                    "release": "LINCS2020 beta; frozen snapshot, upstream date unavailable",
+                }
+            result["identity_registration"][
+                "lincs_compounds" if resolutions is not None else "lincs_pubchem"
+            ] = crosswalk.register(compounds)
             adapters.append(
                 LincsConsensusAdapter(
                     root / "lincs_edges.tsv.gz",
@@ -129,6 +152,7 @@ def run_import(
                     release=snapshot,
                     mapping_sha256=file_sha256(root / "lincs_pert_info.txt.gz"),
                     gene_ids=gene_ids,
+                    compound_resolutions=resolutions,
                 )
             )
         if "gtopdb" in sources:
@@ -162,10 +186,45 @@ def run_import(
                 data["compound_mapping_coverage"] = dict(
                     Counter(item["status"] for item in adapter.mapping_diagnostics.values())
                 )
+                data["unique_source_compounds_scoped"] = len(adapter.compound_counts)
+                data["unique_original_genes"] = len(adapter.gene_counts)
+                if resolutions is not None:
+                    strategies = Counter()
+                    strategy_records = Counter()
+                    globally_resolved = set()
+                    for token, count in adapter.compound_counts.items():
+                        resolution = resolutions.get(token)
+                        strategy = (
+                            resolution.provenance["strategy"] if resolution else "missing_metadata"
+                        )
+                        strategies[strategy] += 1
+                        strategy_records[strategy] += count
+                        if resolution and resolution.identifier.namespace == "pubchem":
+                            globally_resolved.add(resolution.identifier.value)
+                    legacy = mapping_audit["legacy_mapping"]
+                    data["mapping_strategy_compounds"] = dict(strategies)
+                    data["mapping_strategy_records"] = dict(strategy_records)
+                    data["unique_resolved_pubchem_cids"] = len(globally_resolved)
+                    data["new_chembl_identities"] = 0
+                    data["legacy_unique_cid_compound_keys"] = sum(
+                        len(legacy.get(key, [])) == 1 for key in adapter.compound_counts
+                    )
+                    data["legacy_mapped_records"] = sum(
+                        count
+                        for key, count in adapter.compound_counts.items()
+                        if len(legacy.get(key, [])) == 1
+                    )
+                    data["metadata_conflicting_compound_keys"] = sum(
+                        item.get("metadata_conflict", False)
+                        for item in adapter.mapping_diagnostics.values()
+                    )
             data["license"] = adapter.descriptor.license
             data["license_url"] = adapter.descriptor.license_url
             result["sources"][adapter.descriptor.key] = data
     engine.dispose()
+    result["processing_seconds"] = time.monotonic() - started
+    rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    result["peak_process_rss_bytes"] = rss if sys.platform == "darwin" else rss * 1024
     return result
 
 
@@ -182,6 +241,9 @@ def main() -> None:
     parser.add_argument("--snapshot", required=True)
     parser.add_argument("--download", action="store_true")
     parser.add_argument(
+        "--lincs-compoundinfo", type=Path, help="Opt in to LINCS2020 native identity preservation"
+    )
+    parser.add_argument(
         "--sources",
         nargs="+",
         choices=["lincs", "gtopdb", "hetionet"],
@@ -190,7 +252,10 @@ def main() -> None:
     parser.add_argument("--gene-ids", help="Comma-separated NCBI IDs; omit for all LINCS genes")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
-    for path in (args.raw_dir, args.database, args.report):
+    paths = [args.raw_dir, args.database, args.report]
+    if args.lincs_compoundinfo is not None:
+        paths.append(args.lincs_compoundinfo)
+    for path in paths:
         if path.resolve().is_relative_to(repo):
             parser.error("Raw files, database and reports must be outside the checkout")
     if args.download:
@@ -201,6 +266,7 @@ def main() -> None:
         set(args.gene_ids.split(",")) if args.gene_ids else None,
         args.sources,
         args.snapshot,
+        args.lincs_compoundinfo,
     )
     args.report.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(

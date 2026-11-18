@@ -1,0 +1,420 @@
+{
+  "baseline_main": "2698415",
+  "genome": {
+    "compound_mapping_coverage": {
+      "globally_resolved": 10932,
+      "source_native_only": 12981
+    },
+    "duplicate_evidence": 0,
+    "duplicate_relationships": 0,
+    "evidence_created": 5081369,
+    "identifier_coverage": {
+      "matched": 36026,
+      "unmatched": 13
+    },
+    "identifier_coverage_by_type": {
+      "drug": {
+        "matched": 23913
+      },
+      "gene": {
+        "matched": 12113,
+        "unmatched": 13
+      }
+    },
+    "identity_registration": {
+      "hgnc": {
+        "ambiguous": 6,
+        "created": 45389,
+        "matched": 45389
+      },
+      "lincs_compounds": {
+        "created": 39751,
+        "matched": 39751
+      }
+    },
+    "input_records": 5086167,
+    "legacy_mapped_records": 257078,
+    "legacy_unique_cid_compound_keys": 11779,
+    "license": "CC BY-NC-SA 4.0",
+    "license_url": "https://maayanlab.cloud/Harmonizome/terms",
+    "mapped_records": 5081369,
+    "mapping_strategy_compounds": {
+      "native_id_and_full_inchikey": 10932,
+      "source_native_consensus": 12981
+    },
+    "mapping_strategy_records": {
+      "native_id_and_full_inchikey": 247921,
+      "source_native_consensus": 4838246
+    },
+    "metadata_conflicting_compound_keys": 252,
+    "new_chembl_identities": 0,
+    "parsed_records": 5086167,
+    "peak_process_rss_bytes": 970391552,
+    "processing_seconds": 920.2633547089999,
+    "relations_created": 5081369,
+    "scoped_records": 5086167,
+    "skipped": {
+      "unresolved_or_conflicting_endpoint": 4798
+    },
+    "unique_original_genes": 12126,
+    "unique_resolved_pubchem_cids": 10932,
+    "unique_source_compounds_scoped": 23913,
+    "unresolved_gene_identifier_count": 13
+  },
+  "genome_graph_audit": {
+    "audit_seconds": 72.91187333299968,
+    "compound_entities_by_namespace": {
+      "lincs_consensus": 12981,
+      "pubchem": 10931
+    },
+    "endpoint_type_violations": 0,
+    "evidence_records": 5081369,
+    "foreign_key_violations": 0,
+    "gene_feature_space": {
+      "counts_by_ncbi_id": {
+        "best inferred": 9020,
+        "inferred": 2105,
+        "landmark": 958,
+        "unknown": 30
+      },
+      "metadata_sha256": "e739d06bad42ff9285c00b778e65d8999425062a3375cc7e7cdab0e7154490b5",
+      "scope": "LINCS2020 platform annotation; not per-observation measurement validation"
+    },
+    "gene_taxon_violations": 0,
+    "opposite_sign_pairs": 0,
+    "relations_by_sign": {
+      "downregulates": 2504195,
+      "upregulates": 2577174
+    },
+    "signed_relations": 5081369,
+    "unique_compound_entities": 23912,
+    "unique_gene_entities": 12113
+  },
+  "genome_reimport": {
+    "compound_mapping_coverage": {
+      "globally_resolved": 10932,
+      "source_native_only": 12981
+    },
+    "duplicate_evidence": 5081369,
+    "duplicate_relationships": 5081369,
+    "evidence_created": 0,
+    "identifier_coverage": {
+      "matched": 36026,
+      "unmatched": 13
+    },
+    "identifier_coverage_by_type": {
+      "drug": {
+        "matched": 23913
+      },
+      "gene": {
+        "matched": 12113,
+        "unmatched": 13
+      }
+    },
+    "identity_registration": {
+      "hgnc": {
+        "ambiguous": 6,
+        "matched": 45389
+      },
+      "lincs_compounds": {
+        "matched": 39751
+      }
+    },
+    "input_records": 5086167,
+    "legacy_mapped_records": 257078,
+    "legacy_unique_cid_compound_keys": 11779,
+    "license": "CC BY-NC-SA 4.0",
+    "license_url": "https://maayanlab.cloud/Harmonizome/terms",
+    "mapped_records": 5081369,
+    "mapping_strategy_compounds": {
+      "native_id_and_full_inchikey": 10932,
+      "source_native_consensus": 12981
+    },
+    "mapping_strategy_records": {
+      "native_id_and_full_inchikey": 247921,
+      "source_native_consensus": 4838246
+    },
+    "metadata_conflicting_compound_keys": 252,
+    "new_chembl_identities": 0,
+    "parsed_records": 5086167,
+    "peak_process_rss_bytes": 923484160,
+    "processing_seconds": 287.54241754100076,
+    "relations_created": 0,
+    "scoped_records": 5086167,
+    "skipped": {
+      "unresolved_or_conflicting_endpoint": 4798
+    },
+    "unique_original_genes": 12126,
+    "unique_resolved_pubchem_cids": 10932,
+    "unique_source_compounds_scoped": 23913,
+    "unresolved_gene_identifier_count": 13
+  },
+  "input_sha256": {
+    "hgnc.tsv": "6df77ac3cbaeb86a6dce5e17d851ebb27b6b3cdcd2471a211a3d8464f00c54c4",
+    "ligand_id_mapping.csv": "f3c4f271d05e8778401c2a48d9bafa01229d9fad148593e6d934100d582817ce",
+    "lincs_edges.tsv.gz": "e2e4ddedafb1829bda695bed54571bb660440674afc8555faa9af7bc1283bfc6",
+    "lincs_pert_info.txt.gz": "b1945b3fde51021865b12269929cc78ccf2665be27f53a4da9336e4ddcf4b42f"
+  },
+  "legacy_pilot": {
+    "compound_unmatched_records": 4176,
+    "genes": 9,
+    "relations": 259,
+    "scoped_records": 4435
+  },
+  "limitations": [
+    "Source-backed PubChem CIDs are not independently revalidated against a current PubChem structure release.",
+    "No new ChEMBL mappings; source-native consensus keys remain distinct from global chemical identity.",
+    "No cell line, concentration or exposure duration is available in the consensus export.",
+    "LINCS2020 gene feature-space labels are platform annotations, not per-observation validation.",
+    "Separate fresh databases were used; no in-place remapping of legacy pilot evidence.",
+    "Downloaded published graph has no pathway entities; protein targets were not merged into genes.",
+    "LINCS2020 full metadata redistribution scope remains unconfirmed; no data published."
+  ],
+  "local_only": true,
+  "metadata_original_rows": {
+    "compoundinfo_beta.txt": 39321,
+    "geneinfo_beta.txt": 12328,
+    "gse70138_pert_info.txt.gz": 2170,
+    "hgnc.tsv": 45395,
+    "lincs_pert_info.txt.gz": 51383
+  },
+  "metadata_sha256": {
+    "compoundinfo_beta.txt": "a71fca6de41dcc46a5063858be7e04155f3c09832c8b3fb35814f03db8d9fdff",
+    "geneinfo_beta.txt": "e739d06bad42ff9285c00b778e65d8999425062a3375cc7e7cdab0e7154490b5",
+    "gse70138_pert_info.txt.gz": "000171e8ce17cb00a3e80a907d97f0bc4218077eb4cb2ac03f4e0f9f4f2e5493"
+  },
+  "metadata_usage": {
+    "compoundinfo_beta.txt": "LINCS2020 beta compound identity metadata",
+    "geneinfo_beta.txt": "LINCS2020 beta platform annotation audit only",
+    "gse70138_pert_info.txt.gz": "GSE70138 2017-03-06 inspected only; no CID column",
+    "ligand_id_mapping.csv": "GtoPdb 2026.3.1 / 2026-10-12, public graph comparison only"
+  },
+  "original_source_audit": {
+    "audit_seconds": 25.735417625000082,
+    "duplicate_observations_ignoring_row_id": 0,
+    "file_sha256": "e2e4ddedafb1829bda695bed54571bb660440674afc8555faa9af7bc1283bfc6",
+    "invalid_records": 0,
+    "opposite_sign_native_compound_gene_pairs": 0,
+    "original_records": 5086167,
+    "repeated_record_ids": 0,
+    "source_records_by_sign": {
+      "-1": 2506466,
+      "1": 2579701
+    },
+    "unique_record_ids": 5086167,
+    "unique_source_compounds": 23913,
+    "unique_source_genes": 12126,
+    "valid_records": 5086167
+  },
+  "pilot": {
+    "compound_mapping_coverage": {
+      "globally_resolved": 255,
+      "source_native_only": 3610
+    },
+    "duplicate_evidence": 0,
+    "duplicate_relationships": 0,
+    "evidence_created": 4435,
+    "identifier_coverage": {
+      "matched": 3874
+    },
+    "identifier_coverage_by_type": {
+      "drug": {
+        "matched": 3865
+      },
+      "gene": {
+        "matched": 9
+      }
+    },
+    "identity_registration": {
+      "hgnc": {
+        "ambiguous": 6,
+        "created": 45389,
+        "matched": 45389
+      },
+      "lincs_compounds": {
+        "created": 39751,
+        "matched": 39751
+      }
+    },
+    "input_records": 5086167,
+    "legacy_mapped_records": 259,
+    "legacy_unique_cid_compound_keys": 258,
+    "license": "CC BY-NC-SA 4.0",
+    "license_url": "https://maayanlab.cloud/Harmonizome/terms",
+    "mapped_records": 4435,
+    "mapping_strategy_compounds": {
+      "native_id_and_full_inchikey": 255,
+      "source_native_consensus": 3610
+    },
+    "mapping_strategy_records": {
+      "native_id_and_full_inchikey": 256,
+      "source_native_consensus": 4179
+    },
+    "metadata_conflicting_compound_keys": 1,
+    "new_chembl_identities": 0,
+    "parsed_records": 5086167,
+    "peak_process_rss_bytes": 985972736,
+    "processing_seconds": 33.70844879200013,
+    "relations_created": 4435,
+    "scoped_records": 4435,
+    "skipped": {
+      "outside_gene_scope": 5081732
+    },
+    "unique_original_genes": 12126,
+    "unique_resolved_pubchem_cids": 255,
+    "unique_source_compounds_scoped": 3865,
+    "unresolved_gene_identifier_count": 0
+  },
+  "pilot_graph_audit": {
+    "audit_seconds": 0.566377874999489,
+    "compound_entities_by_namespace": {
+      "lincs_consensus": 3610,
+      "pubchem": 255
+    },
+    "endpoint_type_violations": 0,
+    "evidence_records": 4435,
+    "foreign_key_violations": 0,
+    "gene_feature_space": {
+      "counts_by_ncbi_id": {
+        "best inferred": 2,
+        "inferred": 1,
+        "landmark": 6
+      },
+      "metadata_sha256": "e739d06bad42ff9285c00b778e65d8999425062a3375cc7e7cdab0e7154490b5",
+      "scope": "LINCS2020 platform annotation; not per-observation measurement validation"
+    },
+    "gene_taxon_violations": 0,
+    "opposite_sign_pairs": 0,
+    "relations_by_sign": {
+      "downregulates": 2033,
+      "upregulates": 2402
+    },
+    "signed_relations": 4435,
+    "unique_compound_entities": 3865,
+    "unique_gene_entities": 9
+  },
+  "pilot_reimport": {
+    "compound_mapping_coverage": {
+      "globally_resolved": 255,
+      "source_native_only": 3610
+    },
+    "duplicate_evidence": 4435,
+    "duplicate_relationships": 4435,
+    "evidence_created": 0,
+    "identifier_coverage": {
+      "matched": 3874
+    },
+    "identifier_coverage_by_type": {
+      "drug": {
+        "matched": 3865
+      },
+      "gene": {
+        "matched": 9
+      }
+    },
+    "identity_registration": {
+      "hgnc": {
+        "ambiguous": 6,
+        "matched": 45389
+      },
+      "lincs_compounds": {
+        "matched": 39751
+      }
+    },
+    "input_records": 5086167,
+    "legacy_mapped_records": 259,
+    "legacy_unique_cid_compound_keys": 258,
+    "license": "CC BY-NC-SA 4.0",
+    "license_url": "https://maayanlab.cloud/Harmonizome/terms",
+    "mapped_records": 4435,
+    "mapping_strategy_compounds": {
+      "native_id_and_full_inchikey": 255,
+      "source_native_consensus": 3610
+    },
+    "mapping_strategy_records": {
+      "native_id_and_full_inchikey": 256,
+      "source_native_consensus": 4179
+    },
+    "metadata_conflicting_compound_keys": 1,
+    "new_chembl_identities": 0,
+    "parsed_records": 5086167,
+    "peak_process_rss_bytes": 917831680,
+    "processing_seconds": 25.317060042000776,
+    "relations_created": 0,
+    "scoped_records": 4435,
+    "skipped": {
+      "outside_gene_scope": 5081732
+    },
+    "unique_original_genes": 12126,
+    "unique_resolved_pubchem_cids": 255,
+    "unique_source_compounds_scoped": 3865,
+    "unresolved_gene_identifier_count": 0
+  },
+  "public_graph_comparison": {
+    "affected_genes_present_in_public_snapshot": 12113,
+    "comparison_scope": "Frozen published snapshot; not all current upstream data",
+    "entity_matching": {
+      "matched_drug": 330,
+      "matched_gene": 45275,
+      "unmatched_biomarker": 309,
+      "unmatched_combination_treatment": 2225,
+      "unmatched_disease": 2254,
+      "unmatched_drug": 2823,
+      "unmatched_gene": 8,
+      "unmatched_go_term": 38092,
+      "unmatched_protein": 635,
+      "unmatched_tissue": 53,
+      "unmatched_trial": 21626
+    },
+    "inputs_sha256": {
+      "ligand_id_mapping.csv": "f3c4f271d05e8778401c2a48d9bafa01229d9fad148593e6d934100d582817ce",
+      "public-relations.json": "2e3f0218bb5f0da967f64e4fd77f23815f44ea86cd654e7cf80cf488ae086877",
+      "public-search-index.json": "202eaecdae0732c9afbe180f958ab0718ebe8da801b1686b0b19c730f6b4c9f1"
+    },
+    "protein_targets": "Not equated to genes; require a separate encoding relation or reviewed HGNC product crosswalk",
+    "public_entities": 113630,
+    "public_pathway_entities": 0,
+    "public_relations": 130900,
+    "public_signed_drug_gene_relations": 0,
+    "target_overlap": {
+      "public_drug_gene_target_relations": 1148,
+      "target_relations_with_resolved_endpoints": 259,
+      "target_relations_with_unresolved_endpoint": 889,
+      "unique_local_drug_gene_pairs": 0
+    }
+  },
+  "public_graph_snapshot": {
+    "entities": {
+      "biomarker": 309,
+      "combination_treatment": 2225,
+      "disease": 2254,
+      "drug": 3153,
+      "gene": 45283,
+      "go_term": 38092,
+      "protein": 635,
+      "tissue": 53,
+      "total": 113630,
+      "trial": 21626
+    },
+    "evidence_records": 133962,
+    "generated_at": "2026-10-11T21:44:41Z",
+    "graph_version": "2026-10-11T21:26:47Z",
+    "paths": {
+      "benchmark_gold": 202,
+      "mechanistic": 4502,
+      "total": 4704
+    },
+    "relations": 130900,
+    "sources": 10
+  },
+  "published": false,
+  "sigma_kg_processed_edges_imported": false,
+  "snapshot": "2026-11-18-genome-validation",
+  "validation": {
+    "ci": "See pull request checks for the exact final commit",
+    "javascript_suites": 7,
+    "javascript_tests_passed": 20,
+    "python_tests_passed": 476,
+    "ruff": "passed"
+  }
+}

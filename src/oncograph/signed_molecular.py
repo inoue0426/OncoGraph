@@ -9,8 +9,9 @@ import json
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from uuid import UUID
+from uuid import UUID, uuid4
 
+from sqlalchemy import Index, insert, tuple_
 from sqlmodel import Session, select
 
 from .models import Entity, EntityIdentifier, EntityType, Evidence, Relation
@@ -27,6 +28,7 @@ SIGNED_RELATIONS = {
     "downregulated_in": ("gene", "disease", -1, "disease_expression_association"),
 }
 BIOLOGICAL_TYPES = {"gene", "protein"}
+SIGNED_BATCH_SIZE = 250
 
 
 def identifier_key(identifier: ExternalIdentifier) -> str:
@@ -239,14 +241,48 @@ def import_signed_observations(
     Returns:
         Updated report, including every skipped identifier and duplicate count.
     """
-    relations = {
-        (r.subject_id, r.predicate, r.object_id): r.id for r in session.exec(select(Relation))
-    }
-    evidence = {
-        (e.relation_id, e.source_id)
-        for e in session.exec(select(Evidence).where(Evidence.source == descriptor.key))
-    }
-    pending = 0
+    try:
+        result = _import_signed_observations(session, records, descriptor, crosswalk, report)
+        session.commit()
+        return result
+    except BaseException:
+        session.rollback()
+        raise
+
+
+def _import_signed_observations(
+    session: Session,
+    records: Iterable[EdgeRecord],
+    descriptor: SourceDescriptor,
+    crosswalk: TypedCrosswalk,
+    report: SignedImportReport,
+) -> SignedImportReport:
+    """Validate and batch observations within the caller's atomic transaction.
+
+    Args:
+        session: Transaction-owning session.
+        records: Streaming signed observations.
+        descriptor: Source license and provenance.
+        crosswalk: Species-aware identity resolver.
+        report: Counters shared with the source parser.
+
+    Returns:
+        Updated import report; no commit is performed here.
+    """
+    # Composite indexes bound lookups by the current batch, not total graph size.
+    for table, name, columns in (
+        (
+            Relation.__table__,
+            "ix_signed_relation_identity",
+            ("subject_id", "predicate", "object_id"),
+        ),
+        (Evidence.__table__, "ix_signed_evidence_identity", ("source", "source_id", "relation_id")),
+    ):
+        index = next((item for item in table.indexes if item.name == name), None)
+        if index is None:
+            index = Index(name, *(table.c[column] for column in columns))
+        index.create(session.connection(), checkfirst=True)
+    pending = []
     for record in records:
         spec = SIGNED_RELATIONS.get(record.predicate)
         context = record.context
@@ -281,58 +317,107 @@ def import_signed_observations(
             report.skipped["unresolved_or_conflicting_endpoint"] += 1
             continue
         report.mapped_records += 1
-        relation_key = (resolved[0], record.predicate, resolved[1])
-        if relation_key not in relations:
-            relation = Relation(
-                subject_id=resolved[0], predicate=record.predicate, object_id=resolved[1]
-            )
-            session.add(relation)
-            session.flush()
-            relations[relation_key] = relation.id
-            report.relations_created += 1
-        else:
-            report.duplicate_relationships += 1
-        relation_id = relations[relation_key]
         # Original ID remains intact in context. The evidence key also captures
         # context, release and source scores, so differing observations coexist.
         fingerprint = context
         if record.confidence is not None:
             fingerprint = {"context": context, "source_confidence": record.confidence}
         source_id = f"{record.source_record_id}:{stable_digest(fingerprint)}"
-        key = (relation_id, source_id)
-        if key in evidence:
-            report.duplicate_evidence += 1
-            continue
-        session.add(
-            Evidence(
-                relation_id=relation_id,
-                source=descriptor.key,
-                source_id=source_id,
-                source_url=record.source_url,
-                source_type=descriptor.source_type,
-                license=descriptor.license,
-                evidence_type=spec[3],
-                context=json.dumps(
-                    {
-                        **context,
-                        "original_source_record_id": record.source_record_id,
-                        "redistribution": descriptor.redistribution,
-                        "license_url": descriptor.license_url,
-                    },
-                    sort_keys=True,
-                ),
-                extraction_method=record.extraction_method or "source_adapter_transform",
-                confidence=record.confidence,
+        pending.append(
+            (
+                (resolved[0], record.predicate, resolved[1]),
+                {
+                    "source": descriptor.key,
+                    "source_id": source_id,
+                    "source_url": record.source_url,
+                    "source_type": descriptor.source_type,
+                    "license": descriptor.license,
+                    "evidence_type": spec[3],
+                    "context": json.dumps(
+                        {
+                            **context,
+                            "original_source_record_id": record.source_record_id,
+                            "redistribution": descriptor.redistribution,
+                            "license_url": descriptor.license_url,
+                        },
+                        sort_keys=True,
+                    ),
+                    "extraction_method": record.extraction_method or "source_adapter_transform",
+                    "confidence": record.confidence,
+                },
             )
         )
-        evidence.add(key)
-        report.evidence_created += 1
-        pending += 1
-        if pending >= 1000:
-            session.flush()
-            pending = 0
-    session.commit()
+        if len(pending) >= SIGNED_BATCH_SIZE:
+            _persist_signed_batch(session, pending, report)
+            pending.clear()
+    if pending:
+        _persist_signed_batch(session, pending, report)
     return report
+
+
+def _persist_signed_batch(session: Session, batch: list, report: SignedImportReport) -> None:
+    """Insert a bounded batch with the same identity rules as individual imports.
+
+    Args:
+        session: Transaction-owning session; never commit individual batches.
+        batch: Resolved relation keys and provenance-bearing evidence mappings.
+        report: Counters to extend, including duplicates within/across batches.
+
+    Returns:
+        None. Raises on pre-existing duplicate relation identities.
+    """
+    relation_table, evidence_table = Relation.__table__, Evidence.__table__
+    keys = {key for key, _ in batch}
+    existing = session.execute(
+        select(Relation.subject_id, Relation.predicate, Relation.object_id, Relation.id).where(
+            tuple_(Relation.subject_id, Relation.predicate, Relation.object_id).in_(keys)
+        )
+    ).all()
+    relations = {}
+    for subject, predicate, target, relation_id in existing:
+        key = (subject, predicate, target)
+        if key in relations:
+            raise ValueError(f"Ambiguous existing relation identity: {key}")
+        relations[key] = relation_id
+    new_relations = []
+    for key, _ in batch:
+        if key in relations:
+            report.duplicate_relationships += 1
+        else:
+            relations[key] = uuid4()
+            new_relations.append(
+                {
+                    "id": relations[key],
+                    "subject_id": key[0],
+                    "predicate": key[1],
+                    "object_id": key[2],
+                }
+            )
+            report.relations_created += 1
+    if new_relations:
+        session.execute(insert(relation_table), new_relations)
+    # One descriptor per import; source_id includes all context and raw scores.
+    source = batch[0][1]["source"]
+    evidence_keys = set(
+        session.execute(
+            select(Evidence.relation_id, Evidence.source_id).where(
+                Evidence.source == source,
+                Evidence.source_id.in_({item["source_id"] for _, item in batch}),
+            )
+        ).all()
+    )
+    new_evidence = []
+    for key, item in batch:
+        relation_id = relations[key]
+        evidence_key = (relation_id, item["source_id"])
+        if evidence_key in evidence_keys:
+            report.duplicate_evidence += 1
+            continue
+        evidence_keys.add(evidence_key)
+        new_evidence.append({**item, "relation_id": relation_id})
+        report.evidence_created += 1
+    if new_evidence:
+        session.execute(insert(evidence_table), new_evidence)
 
 
 def signed_effects(session: Session, drug_id: UUID) -> list[dict]:
@@ -345,26 +430,61 @@ def signed_effects(session: Session, drug_id: UUID) -> list[dict]:
     Returns:
         Evidence-bearing observations; opposite signs are flagged, not averaged.
     """
+    return _expression_observations(session, drug_id=drug_id)
+
+
+def signed_compounds(session: Session, gene_id: UUID) -> list[dict]:
+    """List compounds affecting one gene, preserving both signs and every evidence.
+
+    Args:
+        session: Database session.
+        gene_id: Resolved human gene UUID, not a protein identifier.
+
+    Returns:
+        Source-backed observations with separate drug/gene IDs and opposite-sign flags.
+    """
+    return _expression_observations(session, gene_id=gene_id)
+
+
+def _expression_observations(
+    session: Session, *, drug_id: UUID | None = None, gene_id: UUID | None = None
+) -> list[dict]:
+    """Read a single entity's transcriptional evidence in either query direction.
+
+    Args:
+        session: Database session.
+        drug_id: Optional drug endpoint filter.
+        gene_id: Optional gene endpoint filter.
+
+    Returns:
+        Uncollapsed evidence. Both-sign flags describe observations, not causality.
+    """
+    if drug_id is None and gene_id is None:
+        raise ValueError("A drug or gene endpoint is required")
     observations = []
     signs = defaultdict(set)
-    rows = session.exec(
+    statement = (
         select(Relation, Evidence)
         .join(Evidence, Evidence.relation_id == Relation.id)
-        .where(
-            Relation.subject_id == drug_id, Relation.predicate.in_(["upregulates", "downregulates"])
-        )
+        .where(Relation.predicate.in_(["upregulates", "downregulates"]))
     )
-    for relation, evidence in rows:
+    if drug_id is not None:
+        statement = statement.where(Relation.subject_id == drug_id)
+    if gene_id is not None:
+        statement = statement.where(Relation.object_id == gene_id)
+    for relation, evidence in session.exec(statement):
         context = json.loads(evidence.context or "{}")
         if (
             evidence.evidence_type != "drug_induced_transcription"
             or context.get("model_generated") is not False
         ):
             continue
-        signs[relation.object_id].add(relation.predicate)
+        pair = (str(relation.subject_id), str(relation.object_id))
+        signs[pair].add(relation.predicate)
         observations.append(
             {
-                "gene_id": str(relation.object_id),
+                "drug_id": pair[0],
+                "gene_id": pair[1],
                 "predicate": relation.predicate,
                 "source": evidence.source,
                 "source_id": evidence.source_id,
@@ -374,5 +494,6 @@ def signed_effects(session: Session, drug_id: UUID) -> list[dict]:
             }
         )
     for observation in observations:
-        observation["opposite_direction_observed"] = len(signs[UUID(observation["gene_id"])]) > 1
+        pair = (observation["drug_id"], observation["gene_id"])
+        observation["opposite_direction_observed"] = len(signs[pair]) > 1
     return observations

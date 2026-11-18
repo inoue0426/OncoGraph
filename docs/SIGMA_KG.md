@@ -210,3 +210,10 @@ for test_file in tests/*.cjs; do node "$test_file" || exit 1; done
 * Himmelstein et al., Hetionet / Project Rephetio, eLife 2017,
   doi:10.7554/eLife.26726; STARGEO differential-expression meta-analysis;
   Disease Ontology; HGNC (CC0).
+
+## Genome-scale LINCS follow-up
+
+The opt-in LINCS2020 identity resolver and separate all-gene validation are
+specified in [LINCS_GENOME.md](LINCS_GENOME.md). That work preserves source-native
+chemical identities when a global match is not justified and keeps the original
+nine-gene baseline above as a distinct historical validation.
