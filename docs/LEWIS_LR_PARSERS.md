@@ -7,7 +7,6 @@ source-specific, local-only adapters. The supported adapters are:
 | --- | --- | --- | --- |
 | `lewis_ramilowski_2015` | `Human-2015-Ramilowski-LR-pairs.txt` | 9606 | yes |
 | `lewis_cabello_2020` | `Human-2020-Cabello-Aguilar-LR-pairs.csv` | 9606 | yes |
-| `lewis_zhao_2023` | `Human-2023-Zhao-LR-pairs.tsv` | 9606 | yes |
 | `lewis_zheng_2022` | `Human-2022-Zheng-MetSensor-pairs.tsv` | 9606 | yes |
 | `lewis_qiao_2014` | `Human-2014-Qiao-LR-pairs.xlsx` | 9606 | yes |
 | `lewis_pavlicev_2017` | `Human-2017-Pavlicev-LR-pairs.xlsx` | 9606 | yes |
@@ -103,16 +102,27 @@ forced through the simple symbol profiles above.
 
 ## Human coverage status
 
-The upstream README lists 18 human files. Thirteen have explicit profiles in
-the table above. The five remaining human entries are intentionally blocked:
+The upstream README lists 18 human files. Twelve have enabled profiles in
+the table above. The six remaining human entries are intentionally blocked:
 
 | File/profile | Current blocker |
 | --- | --- |
+| Zhao/NeuronChat 2023 | Disabled: the audited export has 182/190 blank target-subunit fields; contributor genes may represent synthesis/transport rather than ligands. |
 | Kirouac 2010 | Receptor labels such as `ADIPOR 1/2` need a validated component map. |
 | Choi 2015 | Folder metadata and the cited biological model need species reconciliation before using taxon 9606. |
 | Vento-Tormo 2018 | Descriptive CellPhoneDB complex labels need explicit subunit mapping. |
 | Ximerakis/BaderLab 2019 | The audit tool now recognizes its gzip-delimited payload; ingestion remains blocked until alias direction, species, and interaction semantics are validated. |
 | OmniPath/Turei 2021 | The bundle contains intercellular proteins and PPIs, not a validated LR-pair table; no interaction may be inferred. |
+
+The local schema audit used upstream commit
+`c0ce8167c20c2f5d1a3d309e04514da9a178c41c`. NeuronChat's eight remaining
+target fields are numeric, so none of its 190 rows currently has a validated
+target mapping. The registered command fails explicitly, even with a supplied
+identifier map. Do not reconstruct targets by splitting interaction names.
+Re-enabling this source requires a reviewed upstream representation that
+distinguishes ligands, metabolic contributors, targets, and interaction classes.
+The NATMI workbook contains 2,293 data rows, differing from the README's 2,187;
+these are format counts, not validated interactions.
 
 No upstream dataset was available as a permission-cleared local import during
 this implementation, so unresolved/ambiguous counts below the parser level

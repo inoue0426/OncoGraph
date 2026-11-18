@@ -496,7 +496,15 @@ class LewisCabelloAguilarAdapter(LewisDelimitedAdapter):
 
 @registry.register
 class LewisZhaoAdapter(LewisDelimitedAdapter):
-    """Parser for the human NeuronChat 2023 TSV list."""
+    """Quarantined NeuronChat profile pending validated molecular semantics."""
+
+    def _read_rows(self) -> list[dict[str, str]]:
+        """Reject the incomplete export before creating any graph records."""
+        raise ValueError(
+            "NeuronChat import is disabled: the audited export has missing target "
+            "subunits and contributor genes are not necessarily ligands. "
+            "A validated source-specific reconstruction is required."
+        )
 
     descriptor = _profile_descriptor("lewis_zhao_2023", "Lewis Lab: NeuronChat 2023")
     profile = LewisSourceProfile(

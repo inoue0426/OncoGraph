@@ -251,11 +251,9 @@ def test_zhao_parser_preserves_interaction_type(tmp_path):
             ("VIPR1", ExternalIdentifier("hgnc", "HGNC:12694"), "gene"),
         ),
     )
-    edge = next(adapter.iter_edges())
-    assert edge.predicate == "ligand_receptor_interaction"
-    assert edge.context["interaction_type"] == "ligand-receptor"
-    assert edge.evidence_type == "inferred_ligand_receptor"
-    assert edge.context["interaction_mode"] == "inferred_cell_communication"
+    for accessor in (adapter.iter_edges, adapter.iter_entities, adapter.validation_report):
+        with pytest.raises(ValueError, match="NeuronChat import is disabled"):
+            accessor()
 
 
 def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
