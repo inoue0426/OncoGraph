@@ -65,7 +65,8 @@ class LewisSourceProfile:
     ligand_kind_default: str = "protein"
     receptor_kind_default: str = "protein"
     predicate: str = "ligand_receptor_interaction"
-    evidence_type: str = "curated_ligand_receptor"
+    evidence_type: str = "source_derived_ligand_receptor"
+    interaction_mode: str = "source_derived"
     interaction_type_column: str | None = None
     complex_separator: str | None = None
 
@@ -330,6 +331,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 "citation": row.get(self.profile.citation_column or "") or None,
                 "source_evidence": row.get(self.profile.evidence_column or "") or None,
                 "interaction_type": row.get(self.profile.interaction_type_column or "") or None,
+                "interaction_mode": self.profile.interaction_mode,
             }
             self._edges.append(EdgeRecord(
                 subject=ligand_id,
@@ -434,6 +436,8 @@ class LewisRamilowskiAdapter(LewisDelimitedAdapter):
         record_id_column="Pair.Name",
         evidence_column="Pair.Evidence",
         citation_column="PMID.Manual",
+        evidence_type="source_curated_ligand_receptor",
+        interaction_mode="curated_literature",
     )
 
 
@@ -452,6 +456,8 @@ class LewisCabelloAguilarAdapter(LewisDelimitedAdapter):
         receptor_column="receptor",
         evidence_column="sources",
         citation_column="pmid",
+        evidence_type="inferred_ligand_receptor",
+        interaction_mode="inferred_cell_communication",
     )
 
 
@@ -471,6 +477,8 @@ class LewisZhaoAdapter(LewisDelimitedAdapter):
         record_id_column="interaction_name",
         ligand_kind_column="ligand_type",
         interaction_type_column="interaction_type",
+        evidence_type="inferred_ligand_receptor",
+        interaction_mode="inferred_cell_communication",
     )
 
 
@@ -493,6 +501,7 @@ class LewisMetSensorAdapter(LewisDelimitedAdapter):
         ligand_kind_default="metabolite",
         predicate="metabolite_target_association",
         evidence_type="metabolite_source_association",
+        interaction_mode="metabolic_association",
     )
 
 
@@ -513,6 +522,8 @@ class LewisQiaoAdapter(LewisDelimitedAdapter):
         receptor_column="Receptor (Symbols)",
         record_id_column="#",
         evidence_column="Confidence from iRefWeb",
+        evidence_type="literature_network_interaction",
+        interaction_mode="curated_network",
     )
 
 
@@ -531,6 +542,8 @@ class LewisPavlicevAdapter(LewisDelimitedAdapter):
         sheet_name="Sheet1",
         ligand_column="Ligand",
         receptor_column="Receptor",
+        evidence_type="inferred_ligand_receptor",
+        interaction_mode="inferred_cell_communication",
     )
 
 
@@ -551,6 +564,8 @@ class LewisHouAdapter(LewisDelimitedAdapter):
         receptor_column="Receptor gene symbol",
         evidence_column="Ligand location",
         citation_column="PMID support",
+        evidence_type="inferred_ligand_receptor",
+        interaction_mode="inferred_cell_communication",
     )
 
 
@@ -571,6 +586,8 @@ class LewisWangAdapter(LewisDelimitedAdapter):
         receptor_name_column="Receptor.Name",
         record_id_column="Pair.Name",
         evidence_column="Classification",
+        evidence_type="inferred_ligand_receptor",
+        interaction_mode="inferred_cell_communication",
     )
 
 
@@ -591,6 +608,8 @@ class LewisJinAdapter(LewisDelimitedAdapter):
         evidence_column="evidence",
         interaction_type_column="pathway_name",
         complex_separator="&",
+        evidence_type="inferred_ligand_receptor",
+        interaction_mode="inferred_cell_communication",
     )
 
 
@@ -609,6 +628,8 @@ class LewisShaoAdapter(LewisDelimitedAdapter):
         receptor_column="receptor_gene_symbol",
         record_id_column="lr_pair",
         citation_column="evidence",
+        evidence_type="source_curated_ligand_receptor",
+        interaction_mode="curated_database",
     )
 
 
@@ -626,6 +647,8 @@ class LewisDimitrovAdapter(LewisDelimitedAdapter):
         ligand_column="source_genesymbol",
         receptor_column="target_genesymbol",
         evidence_column="resource",
+        evidence_type="compiled_ligand_receptor",
+        interaction_mode="compiled_prior",
     )
 
 
@@ -650,6 +673,8 @@ class LewisNoelAdapter(LewisDelimitedAdapter):
         citation_column="PubMed ID",
         interaction_type_column="Classifications",
         complex_separator="|",
+        evidence_type="source_curated_complex_ligand_receptor",
+        interaction_mode="curated_complex",
     )
 
 
@@ -670,4 +695,6 @@ class LewisBrowaeysAdapter(LewisDelimitedAdapter):
         receptor_column="to",
         evidence_column="source",
         interaction_type_column="database",
+        evidence_type="prior_knowledge_ligand_receptor",
+        interaction_mode="compiled_prior",
     )
