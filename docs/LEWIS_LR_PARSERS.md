@@ -9,6 +9,9 @@ source-specific, local-only adapters. The supported adapters are:
 | `lewis_cabello_2020` | `Human-2020-Cabello-Aguilar-LR-pairs.csv` | 9606 | yes |
 | `lewis_zhao_2023` | `Human-2023-Zhao-LR-pairs.tsv` | 9606 | yes |
 | `lewis_zheng_2022` | `Human-2022-Zheng-MetSensor-pairs.tsv` | 9606 | yes |
+| `lewis_qiao_2014` | `Human-2014-Qiao-LR-pairs.xlsx` | 9606 | yes |
+| `lewis_pavlicev_2017` | `Human-2017-Pavlicev-LR-pairs.xlsx` | 9606 | yes |
+| `lewis_hou_2020` | `Human-2020-Hou-LR-pairs.xlsx` | 9606 | yes |
 
 The upstream compendium is heterogeneous and its repository-level README is
 not a redistribution license. No upstream files are stored here, and these
@@ -27,6 +30,10 @@ Mappings are keyed by `(taxon_id, symbol)`. Missing or duplicate mappings are
 reported and skipped; symbols are never used as graph identity keys. For this
 project's primary scope, only human mappings (`taxon_id=9606`) should be
 provided.
+
+XLSX parsing is optional and requires the project's `lewis` extra (which adds
+`openpyxl`). Workbooks are read in memory and are never copied into the
+repository.
 
 ## Biological safeguards
 

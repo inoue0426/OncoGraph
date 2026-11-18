@@ -1,5 +1,6 @@
 """Focused tests for the permission-gated, human Lewis Lab adapters."""
 
+import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
 
 from oncograph.importing import import_adapter
@@ -9,7 +10,10 @@ from oncograph.sources.lewis_lab import (
     HUMAN_TAXON,
     LewisCabelloAguilarAdapter,
     LewisDelimitedAdapter,
+    LewisHouAdapter,
     LewisMetSensorAdapter,
+    LewisPavlicevAdapter,
+    LewisQiaoAdapter,
     LewisRamilowskiAdapter,
     LewisResolvedIdentifier,
     LewisSourceProfile,
@@ -119,6 +123,51 @@ def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
     assert edge.predicate == "metabolite_target_association"
     assert edge.evidence_type == "metabolite_source_association"
     assert edge.context["ligand_kind"] == "metabolite"
+
+
+def test_verified_human_xlsx_profiles_use_explicit_headers(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    cases = [
+        (
+            LewisQiaoAdapter,
+            "Human-2014-Qiao-LR-pairs.xlsx",
+            "Sheet1",
+            ["#", "Ligand      (Entrez ID)", "Receptor (Entrez ID)", "Ligand (Symbol)", "Receptor (Symbols)", "miScore from iRefWeb", "Confidence from iRefWeb"],
+            [1, 116, 117, "ADCYAP1", "ADCYAP1R1", 0.921, "high"],
+            {"ADCYAP1": "HGNC:100", "ADCYAP1R1": "HGNC:101"},
+        ),
+        (
+            LewisPavlicevAdapter,
+            "Human-2017-Pavlicev-LR-pairs.xlsx",
+            "Sheet1",
+            ["Receptor", "Ligand"],
+            ["VIPR1", "ADCYAP1"],
+            {"ADCYAP1": "HGNC:100", "VIPR1": "HGNC:101"},
+        ),
+        (
+            LewisHouAdapter,
+            "Human-2020-Hou-LR-pairs.xlsx",
+            "Sheet1",
+            ["Ligand gene symbol", "Ligand HGNC ID", "Ligand location", "Receptor gene symbol", "Receptor HGNC ID", "PMID support"],
+            ["A2M", "HGNC:7", "secreted", "LRP1", "HGNC:6692", 1702392],
+            {"A2M": "HGNC:7", "LRP1": "HGNC:6692"},
+        ),
+    ]
+    for adapter_class, filename, sheet_name, headers, row, ids in cases:
+        path = tmp_path / filename
+        workbook = openpyxl.Workbook()
+        worksheet = workbook.active
+        worksheet.title = sheet_name
+        worksheet.append(headers)
+        worksheet.append(row)
+        workbook.save(path)
+        adapter = adapter_class(
+            path,
+            _map(*[(symbol, ExternalIdentifier("hgnc", identifier), "gene") for symbol, identifier in ids.items()]),
+        )
+        edges = list(adapter.iter_edges())
+        assert len(edges) == 1
+        assert edges[0].context["taxon_id"] == HUMAN_TAXON
 
 
 def test_complex_and_metabolite_rows_are_not_split_or_inferred(tmp_path):

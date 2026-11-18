@@ -49,6 +49,8 @@ class LewisSourceProfile:
     delimiter: str
     ligand_column: str
     receptor_column: str
+    file_format: str = "delimited"
+    sheet_name: str | None = None
     ligand_name_column: str | None = None
     receptor_name_column: str | None = None
     record_id_column: str | None = None
@@ -147,6 +149,33 @@ class LewisDelimitedAdapter(SourceAdapter):
                 f"Expected {self.profile.filename!r} for {self.profile.source_key}; "
                 f"got {self.path.name!r}"
             )
+        if self.profile.file_format == "xlsx":
+            try:
+                from openpyxl import load_workbook
+            except ImportError as exc:
+                raise RuntimeError(
+                    "Install the optional 'lewis' extra to parse XLSX sources"
+                ) from exc
+            workbook = load_workbook(self.path, read_only=True, data_only=True)
+            try:
+                worksheet = (
+                    workbook[self.profile.sheet_name]
+                    if self.profile.sheet_name
+                    else workbook.active
+                )
+                rows = worksheet.iter_rows(values_only=True)
+                headers = [str(value).strip() if value is not None else "" for value in next(rows, ())]
+                return [
+                    {
+                        header: value
+                        for header, value in zip(headers, row, strict=False)
+                        if header
+                    }
+                    for row in rows
+                    if any(value is not None for value in row)
+                ]
+            finally:
+                workbook.close()
         with self.path.open(encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle, delimiter=self.profile.delimiter)
             required = {
@@ -222,7 +251,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 continue
             fingerprint = "|".join([
                 self.profile.source_key, ligand, receptor, ligand_kind, receptor_kind,
-                row.get(self.profile.citation_column or "", ""),
+                str(row.get(self.profile.citation_column or "", "")),
             ])
             record_id = row.get(self.profile.record_id_column or "") or hashlib.sha256(
                 fingerprint.encode("utf-8")
@@ -413,4 +442,62 @@ class LewisMetSensorAdapter(LewisDelimitedAdapter):
         ligand_kind_default="metabolite",
         predicate="metabolite_target_association",
         evidence_type="metabolite_source_association",
+    )
+
+
+@registry.register
+class LewisQiaoAdapter(LewisDelimitedAdapter):
+    """Parser for the human Qiao 2014 XLSX list."""
+
+    descriptor = _profile_descriptor("lewis_qiao_2014", "Lewis Lab: Qiao 2014")
+    profile = LewisSourceProfile(
+        source_key="lewis_qiao_2014",
+        filename="Human-2014-Qiao-LR-pairs.xlsx",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="",
+        file_format="xlsx",
+        sheet_name="Sheet1",
+        ligand_column="Ligand (Symbol)",
+        receptor_column="Receptor (Symbols)",
+        record_id_column="#",
+        evidence_column="Confidence from iRefWeb",
+    )
+
+
+@registry.register
+class LewisPavlicevAdapter(LewisDelimitedAdapter):
+    """Parser for the human Pavlicev 2017 XLSX list."""
+
+    descriptor = _profile_descriptor("lewis_pavlicev_2017", "Lewis Lab: Pavlicev 2017")
+    profile = LewisSourceProfile(
+        source_key="lewis_pavlicev_2017",
+        filename="Human-2017-Pavlicev-LR-pairs.xlsx",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="",
+        file_format="xlsx",
+        sheet_name="Sheet1",
+        ligand_column="Ligand",
+        receptor_column="Receptor",
+    )
+
+
+@registry.register
+class LewisHouAdapter(LewisDelimitedAdapter):
+    """Parser for the human NATMI 2020 XLSX list."""
+
+    descriptor = _profile_descriptor("lewis_hou_2020", "Lewis Lab: Hou 2020")
+    profile = LewisSourceProfile(
+        source_key="lewis_hou_2020",
+        filename="Human-2020-Hou-LR-pairs.xlsx",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="",
+        file_format="xlsx",
+        sheet_name="Sheet1",
+        ligand_column="Ligand gene symbol",
+        receptor_column="Receptor gene symbol",
+        evidence_column="Ligand location",
+        citation_column="PMID support",
     )
