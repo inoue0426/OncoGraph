@@ -29,27 +29,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Find latest successful data refresh run
+      - name: Find retained artifact from a successful main refresh
         id: find_run
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          run_id=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow refresh-data.yml \
-            --status success --limit 1 --json databaseId --jq '.[0].databaseId')
-          if [ -z "$run_id" ] || [ "$run_id" = "null" ]; then
-            echo "::error::No successful 'Refresh data' workflow run found. Run that workflow (manually, or wait for its weekly schedule) before this one can deploy."
-            exit 1
-          fi
-          echo "Using data from refresh-data run $run_id"
+          run_id=""
+          for candidate in $(gh run list --repo "$GITHUB_REPOSITORY" --workflow refresh-data.yml \
+            --branch main --status success --limit 100 --json databaseId --jq '.[].databaseId'); do
+            count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$candidate/artifacts" \
+              --jq '[.artifacts[] | select(.name == "search-index" and .expired == false)] | length')
+            if [ "$count" -gt 0 ]; then
+              run_id="$candidate"
+              break
+            fi
+          done
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
 
       - name: Download search index artifact
+        if: steps.find_run.outputs.run_id != ''
         uses: actions/download-artifact@v4
         with:
           name: search-index
           path: _data-refresh
           run-id: ${{ steps.find_run.outputs.run_id }}
           github-token: ${{ github.token }}
+
+      - name: Preserve published snapshot when refresh artifacts have expired
+        if: steps.find_run.outputs.run_id == ''
+        run: |
+          echo "::notice::No retained refresh artifact; reusing the existing published snapshot without refreshing data."
+          python scripts/download_public_snapshot.py
+          mkdir -p _data-refresh
+          cp web/data/search-index.json web/data/relations.json web/data/stats.json _data-refresh/
 
       - name: Verify and install the downloaded index
         run: |
