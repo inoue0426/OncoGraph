@@ -69,3 +69,22 @@ The Vento/CellPhoneDB file is intentionally not enabled yet: its partner
 columns contain descriptive complex labels (for example, receptor names with
 subunit notation) rather than a validated identifier mapping. It must not be
 forced through the simple symbol profiles above.
+
+## Human coverage status
+
+The upstream README lists 18 human files. Thirteen have explicit profiles in
+the table above. The five remaining human entries are intentionally blocked:
+
+| File/profile | Current blocker |
+| --- | --- |
+| Kirouac 2010 | Receptor labels such as `ADIPOR 1/2` need a validated component map. |
+| Choi 2015 | Folder metadata and the cited biological model need species reconciliation before using taxon 9606. |
+| Vento-Tormo 2018 | Descriptive CellPhoneDB complex labels need explicit subunit mapping. |
+| Ximerakis/BaderLab 2019 | The upstream `.zip` is gzip-compressed content with a nonstandard extension and requires source-format review. |
+| OmniPath/Turei 2021 | The bundle contains intercellular proteins and PPIs, not a validated LR-pair table; no interaction may be inferred. |
+
+No upstream dataset was available as a permission-cleared local import during
+this implementation, so unresolved/ambiguous counts below the parser level
+are not claimed for the real compendium. Each run's `validation_report()` is
+the authoritative source-level report once a permitted file and explicit
+human identifier map are supplied.

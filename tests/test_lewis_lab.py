@@ -75,6 +75,22 @@ def test_source_profile_rejects_wrong_file_name(tmp_path):
         raise AssertionError("wrong source file name was accepted")
 
 
+def test_nonhuman_profile_is_rejected():
+    class MouseProfileAdapter(LewisDelimitedAdapter):
+        profile = LewisSourceProfile(
+            source_key="mouse_fixture",
+            filename="mouse.tsv",
+            species="Mus musculus",
+            taxon_id=10090,
+            delimiter="\t",
+            ligand_column="ligand",
+            receptor_column="receptor",
+        )
+
+    with pytest.raises(ValueError, match="human taxon 9606"):
+        MouseProfileAdapter("mouse.tsv", {})
+
+
 def test_cabello_parser_preserves_source_evidence(tmp_path):
     path = tmp_path / "Human-2020-Cabello-Aguilar-LR-pairs.csv"
     path.write_text(

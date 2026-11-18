@@ -29,7 +29,6 @@ from .base import (
 from .registry import registry
 
 HUMAN_TAXON = 9606
-MOUSE_TAXON = 10090
 
 
 @dataclass(frozen=True)
@@ -133,6 +132,8 @@ class LewisDelimitedAdapter(SourceAdapter):
     ) -> None:
         self.path = Path(path)
         self.release = release
+        if self.profile.taxon_id != HUMAN_TAXON:
+            raise ValueError("Lewis adapters currently accept human taxon 9606 only")
         self.identifier_map = (
             load_identifier_map(identifier_map)
             if isinstance(identifier_map, (str, Path))
