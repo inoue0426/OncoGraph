@@ -160,7 +160,7 @@ Six audited human entries remain blocked, including the quarantined Jin export:
 | Zhao/NeuronChat 2023 | Disabled: the audited export has 182/190 blank target-subunit fields; contributor genes may represent synthesis/transport rather than ligands. |
 | Choi 2015 | Folder metadata and the cited biological model need species reconciliation before using taxon 9606. |
 | Vento-Tormo 2018 | Descriptive CellPhoneDB complex labels need explicit subunit mapping. |
-| Ximerakis/BaderLab 2019 | The audit tool now recognizes its gzip-delimited payload; ingestion remains blocked until alias direction, species, and interaction semantics are validated. |
+| Ximerakis/BaderLab 2019 | The dedicated audit finds mixed/missing taxonomy and heterogeneous interaction types; endpoint roles and LR direction remain unvalidated. See the BaderLab diagnostic below. |
 | OmniPath/Turei 2021 | The bundle contains intercellular proteins and PPIs, not a validated LR-pair table; no interaction may be inferred. |
 
 The local schema audit used upstream commit
@@ -391,3 +391,53 @@ cross-source relation deduplication. The earlier ten-source SQLite diagnostic
 above predates this extension and must not be read as including Kirouac.
 Reuse permission and review of ambiguous Kirouac labels remain outstanding;
 the adapter stays local-only with unknown redistribution rights.
+
+### BaderLab taxonomy and interaction audit (2026-11-18)
+
+Run the review-only diagnostic against the separately obtained local export:
+
+```bash
+uv run python scripts/audit_lewis_bader.py \
+  /path/to/Human-2019-Ximerakis-BaderLab-2017.txt.zip
+```
+
+The command streams the gzip payload, checks the exact 17-column header and
+each row's width, and records the compressed file's SHA-256 before and after
+inspection. JSON goes to stdout. Exit 0 and `audit_complete: true` mean only
+that inspection completed; `import_ready` remains false and no graph records
+are created. Fatal input errors produce JSON with `audit_complete: false` and
+exit 1. Row-width errors are counted separately; taxonomy and field summaries
+exclude those malformed rows. No upstream files or source-row fixtures are
+bundled in this repository.
+
+For compendium commit `c0ce8167c20c2f5d1a3d309e04514da9a178c41c`, the file hash is
+`19cb4b95b7c65b2fabd9008fba71ecbb6145327bfaa73c92c6e4d188e8765524`.
+All 115,900 data rows have 17 fields. Explicit taxonomy fields give:
+
+| Endpoint A / endpoint B | Rows |
+| --- | ---: |
+| Human / human | 27,701 |
+| Human / nonhuman | 33 |
+| Missing / human | 17,178 |
+| Missing / missing | 70,874 |
+| Missing / nonhuman | 52 |
+| Nonhuman / human | 62 |
+
+These are source-field diagnostics, not corrected taxonomy or validated
+interactions. The script never fills absent taxonomy from aliases, the Human
+folder, or the citing paper. The `interactionType` field includes 33,922
+`in-complex-with`, 11,558 `controls-state-change-of`, and 5,444
+`controls-expression-of` rows. It also contains database-like labels such as
+`MI:0469(intact)`; a correct field count alone does not validate field semantics.
+There are 12,161 missing interaction-type fields and 322 missing PMID fields.
+The 4,591 rows with equal nonempty endpoint aliases are flagged for review,
+without assuming those aliases establish identical canonical entities.
+
+The [BaderLab source documentation](https://baderlab.org/CellCellInteractions)
+defines AliasA/B as molecule aliases and describes a network that includes
+receptor-receptor, ligand-ligand, and ECM interactions as well as LR pairs.
+Consequently, column order cannot be treated as ligand-to-receptor direction.
+Enabling ingestion requires version-matched endpoint role annotations, explicit
+molecular identity and taxonomy resolution, review of interaction semantics,
+and source reuse clearance. Even the 27,701 explicit human/human rows are not
+currently eligible LR edges. The existing LR coverage totals are unchanged.
