@@ -23,6 +23,8 @@ class EntityType(StrEnum):
     CELL_STATE = "cell_state"
     LIGAND = "ligand"
     RECEPTOR = "receptor"
+    METABOLITE = "metabolite"
+    MOLECULAR_COMPLEX = "molecular_complex"
     PERTURBATION = "perturbation"
     MODEL_SYSTEM = "model_system"
     CELL_LINE = "cell_line"

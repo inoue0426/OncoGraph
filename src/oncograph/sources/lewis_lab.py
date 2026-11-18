@@ -1,0 +1,350 @@
+"""Fail-closed adapters for selected Lewis Lab ligand-receptor source files.
+
+The upstream compendium is a collection of heterogeneous files, not one
+validated database. These adapters therefore require an explicit source
+profile and an explicit species-aware identifier map. They never resolve a
+gene symbol by name, split a complex into invented pairwise bindings, or infer
+an interaction from a downstream-gene list.
+"""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from .base import (
+    EdgeRecord,
+    EntityRecord,
+    ExternalIdentifier,
+    RedistributionPolicy,
+    SourceAdapter,
+    SourceDescriptor,
+    SourceType,
+)
+from .registry import registry
+
+HUMAN_TAXON = 9606
+MOUSE_TAXON = 10090
+
+
+@dataclass(frozen=True)
+class LewisResolvedIdentifier:
+    """A previously validated identifier and its graph entity type."""
+
+    identifier: ExternalIdentifier
+    entity_type: str = "gene"
+
+
+@dataclass(frozen=True)
+class LewisSourceProfile:
+    """Explicit column mapping for one upstream file format."""
+
+    source_key: str
+    filename: str
+    species: str
+    taxon_id: int
+    delimiter: str
+    ligand_column: str
+    receptor_column: str
+    ligand_name_column: str | None = None
+    receptor_name_column: str | None = None
+    record_id_column: str | None = None
+    evidence_column: str | None = None
+    citation_column: str | None = None
+    ligand_kind_column: str | None = None
+    receptor_kind_column: str | None = None
+    complex_separator: str | None = None
+
+
+@dataclass
+class LewisValidationReport:
+    """Counts and diagnostics emitted by a single source parser."""
+
+    source_key: str
+    input_rows: int = 0
+    emitted_interactions: int = 0
+    emitted_membership_edges: int = 0
+    skipped_rows: int = 0
+    duplicate_rows: int = 0
+    unresolved_identifiers: int = 0
+    ambiguous_identifiers: int = 0
+    unresolved_values: list[str] = field(default_factory=list)
+    ambiguous_values: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+
+def load_identifier_map(path: str | Path) -> dict[tuple[int, str], tuple[LewisResolvedIdentifier, ...]]:
+    """Load an explicit ``taxon_id,symbol,namespace,identifier,entity_type`` map.
+
+    Duplicate keys are retained as ambiguous candidates and are never guessed.
+    """
+    result: dict[tuple[int, str], list[LewisResolvedIdentifier]] = {}
+    with Path(path).open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        required = {"taxon_id", "symbol", "namespace", "identifier"}
+        missing = required - set(reader.fieldnames or ())
+        if missing:
+            raise ValueError(f"Identifier map missing columns: {sorted(missing)}")
+        for row in reader:
+            key = (int(row["taxon_id"]), row["symbol"].strip().upper())
+            result.setdefault(key, []).append(
+                LewisResolvedIdentifier(
+                    ExternalIdentifier(row["namespace"].strip(), row["identifier"].strip()),
+                    row.get("entity_type", "gene").strip() or "gene",
+                )
+            )
+    return {key: tuple(values) for key, values in result.items()}
+
+
+class LewisDelimitedAdapter(SourceAdapter):
+    """Parse one explicitly mapped delimited Lewis source without guessing."""
+
+    descriptor = SourceDescriptor(
+        key="lewis_delimited",
+        name="Lewis Lab ligand-receptor source (local, permission-gated)",
+        homepage="https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs",
+        redistribution=RedistributionPolicy.UNKNOWN,
+        notes="Local input only; verify per-file permission before any public refresh.",
+        source_type=SourceType.CURATED_DATABASE,
+    )
+    profile: LewisSourceProfile
+
+    def __init__(
+        self,
+        path: str | Path,
+        identifier_map: str | Path | Mapping[tuple[int, str], tuple[LewisResolvedIdentifier, ...]],
+        *,
+        release: str | None = None,
+    ) -> None:
+        self.path = Path(path)
+        self.release = release
+        self.identifier_map = (
+            load_identifier_map(identifier_map)
+            if isinstance(identifier_map, (str, Path))
+            else dict(identifier_map)
+        )
+        self._prepared = False
+        self._entities: list[EntityRecord] = []
+        self._edges: list[EdgeRecord] = []
+        self._report = LewisValidationReport(self.profile.source_key)
+
+    def validation_report(self) -> LewisValidationReport:
+        """Return the parser report after materializing entities and edges."""
+        self._prepare()
+        return self._report
+
+    def _read_rows(self) -> list[dict[str, str]]:
+        with self.path.open(encoding="utf-8-sig", newline="") as handle:
+            return list(csv.DictReader(handle, delimiter=self.profile.delimiter))
+
+    def _resolve(self, symbol: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
+        candidates = self.identifier_map.get((self.profile.taxon_id, symbol.strip().upper()), ())
+        if not candidates:
+            self._report.unresolved_identifiers += 1
+            self._report.unresolved_values.append(symbol.strip())
+            return ()
+        candidates = tuple({
+            (item.identifier.namespace, item.identifier.value, item.entity_type): item
+            for item in candidates
+        }.values())
+        if len(candidates) > 1:
+            self._report.ambiguous_identifiers += 1
+            self._report.ambiguous_values.append(symbol.strip())
+            return ()
+        resolved = candidates[0]
+        if kind == "metabolite" and resolved.entity_type != "metabolite":
+            self._report.errors.append(f"metabolite mapping has non-metabolite type: {symbol}")
+            return ()
+        return (resolved,)
+
+    def _resolve_side(self, value: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
+        if not self.profile.complex_separator or self.profile.complex_separator not in value:
+            return self._resolve(value, kind)
+        components = [part.strip() for part in value.split(self.profile.complex_separator) if part.strip()]
+        resolved: list[LewisResolvedIdentifier] = []
+        for component in components:
+            resolved.extend(self._resolve(component, kind))
+        return tuple(resolved) if len(resolved) == len(components) else ()
+
+    def _complex_identifier(self, components: tuple[LewisResolvedIdentifier, ...]) -> ExternalIdentifier:
+        members = "|".join(sorted(f"{item.identifier.namespace}:{item.identifier.value}" for item in components))
+        digest = hashlib.sha256(members.encode("utf-8")).hexdigest()[:24]
+        return ExternalIdentifier("lewis_complex", f"{self.profile.source_key}:{digest}")
+
+    def _prepare(self) -> None:
+        if self._prepared:
+            return
+        self._prepared = True
+        rows = self._read_rows()
+        seen: set[str] = set()
+        entities: dict[tuple[str, str], EntityRecord] = {}
+        for index, row in enumerate(rows, start=2):
+            self._report.input_rows += 1
+            ligand = (row.get(self.profile.ligand_column) or "").strip()
+            receptor = (row.get(self.profile.receptor_column) or "").strip()
+            if not ligand or not receptor:
+                self._report.skipped_rows += 1
+                self._report.errors.append(f"row {index}: missing ligand or receptor")
+                continue
+            ligand_kind = (row.get(self.profile.ligand_kind_column or "") or "protein").strip().lower()
+            receptor_kind = (row.get(self.profile.receptor_kind_column or "") or "protein").strip().lower()
+            ligand_parts = self._resolve_side(ligand, ligand_kind)
+            receptor_parts = self._resolve_side(receptor, receptor_kind)
+            if not ligand_parts or not receptor_parts:
+                self._report.skipped_rows += 1
+                continue
+            fingerprint = "|".join([
+                self.profile.source_key, ligand, receptor, ligand_kind, receptor_kind,
+                row.get(self.profile.citation_column or "", ""),
+            ])
+            record_id = row.get(self.profile.record_id_column or "") or hashlib.sha256(
+                fingerprint.encode("utf-8")
+            ).hexdigest()[:24]
+            if fingerprint in seen:
+                self._report.duplicate_rows += 1
+                continue
+            seen.add(fingerprint)
+            ligand_id = self._side_identifier(ligand_parts, ligand_kind)
+            receptor_id = self._side_identifier(receptor_parts, receptor_kind)
+            ligand_entity_type = self._side_entity_type(ligand_parts, ligand_kind)
+            receptor_entity_type = self._side_entity_type(receptor_parts, receptor_kind)
+            self._add_entity(entities, ligand_id, row.get(self.profile.ligand_name_column or "") or ligand, ligand_entity_type)
+            self._add_entity(entities, receptor_id, row.get(self.profile.receptor_name_column or "") or receptor, receptor_entity_type)
+            for item in ligand_parts + receptor_parts:
+                self._add_entity(entities, item.identifier, item.identifier.value, item.entity_type)
+            context = {
+                "source_key": self.profile.source_key,
+                "source_file": self.profile.filename,
+                "release": self.release,
+                "species": self.profile.species,
+                "taxon_id": self.profile.taxon_id,
+                "ligand_kind": ligand_kind,
+                "receptor_kind": receptor_kind,
+                "citation": row.get(self.profile.citation_column or "") or None,
+                "source_evidence": row.get(self.profile.evidence_column or "") or None,
+            }
+            self._edges.append(EdgeRecord(
+                subject=ligand_id,
+                predicate="ligand_receptor_interaction",
+                object=receptor_id,
+                source_record_id=f"{self.profile.source_key}:{record_id}",
+                context=context,
+                evidence_type="curated_ligand_receptor",
+            ))
+            self._report.emitted_interactions += 1
+            self._add_membership_edges(ligand_id, ligand_parts, record_id, context)
+            self._add_membership_edges(receptor_id, receptor_parts, record_id, context)
+        self._entities = list(entities.values())
+
+    def _side_identifier(
+        self, parts: tuple[LewisResolvedIdentifier, ...], kind: str
+    ) -> ExternalIdentifier:
+        if len(parts) == 1:
+            return parts[0].identifier
+        return self._complex_identifier(parts)
+
+    @staticmethod
+    def _side_entity_type(parts: tuple[LewisResolvedIdentifier, ...], kind: str) -> str:
+        """Keep complexes opaque; preserve explicit metabolite/protein types."""
+        if len(parts) > 1:
+            return "molecular_complex"
+        if kind == "metabolite":
+            return "metabolite"
+        return parts[0].entity_type
+
+    def _add_entity(
+        self,
+        entities: dict[tuple[str, str], EntityRecord],
+        identifier: ExternalIdentifier,
+        name: str,
+        entity_type: str,
+    ) -> None:
+        key = (identifier.namespace, identifier.value)
+        if key in entities:
+            return
+        metadata = {"source_key": self.profile.source_key, "taxon_id": self.profile.taxon_id}
+        if entity_type == "molecular_complex":
+            metadata["entity_role"] = "complex"
+        entities[key] = EntityRecord(entity_type=entity_type, name=name, identifiers=(identifier,), metadata=metadata)
+
+    def _add_membership_edges(
+        self,
+        side_identifier: ExternalIdentifier,
+        parts: tuple[LewisResolvedIdentifier, ...],
+        record_id: str,
+        context: dict,
+    ) -> None:
+        if len(parts) <= 1:
+            return
+        complex_id = side_identifier
+        for part in parts:
+            self._edges.append(EdgeRecord(
+                subject=complex_id,
+                predicate="has_subunit",
+                object=part.identifier,
+                source_record_id=f"{self.profile.source_key}:{record_id}:member:{part.identifier.value}",
+                context={**context, "relationship": "complex_membership"},
+                evidence_type="curated_complex_membership",
+            ))
+            self._report.emitted_membership_edges += 1
+
+    def iter_entities(self) -> Iterable[EntityRecord]:
+        self._prepare()
+        return iter(self._entities)
+
+    def iter_edges(self) -> Iterable[EdgeRecord]:
+        self._prepare()
+        return iter(self._edges)
+
+
+def _profile_descriptor(key: str, name: str, homepage: str = "https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs") -> SourceDescriptor:
+    return SourceDescriptor(
+        key=key,
+        name=name,
+        homepage=homepage,
+        redistribution=RedistributionPolicy.UNKNOWN,
+        notes="Permission-gated local parser; no upstream data is bundled or refreshed publicly.",
+        source_type=SourceType.CURATED_DATABASE,
+    )
+
+
+@registry.register
+class LewisRamilowskiAdapter(LewisDelimitedAdapter):
+    """Parser for the explicitly mapped human Ramilowski text list."""
+
+    descriptor = _profile_descriptor("lewis_ramilowski_2015", "Lewis Lab: Ramilowski 2015")
+    profile = LewisSourceProfile(
+        source_key="lewis_ramilowski_2015",
+        filename="Human-2015-Ramilowski-LR-pairs.txt",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="\t",
+        ligand_column="Ligand.ApprovedSymbol",
+        receptor_column="Receptor.ApprovedSymbol",
+        ligand_name_column="Ligand.Name",
+        receptor_name_column="Receptor.Name",
+        record_id_column="Pair.Name",
+        evidence_column="Pair.Evidence",
+        citation_column="PMID.Manual",
+    )
+
+
+@registry.register
+class LewisCabelloAguilarAdapter(LewisDelimitedAdapter):
+    """Parser for the explicitly mapped human SingleCellSignalR CSV list."""
+
+    descriptor = _profile_descriptor("lewis_cabello_2020", "Lewis Lab: SingleCellSignalR 2020")
+    profile = LewisSourceProfile(
+        source_key="lewis_cabello_2020",
+        filename="Human-2020-Cabello-Aguilar-LR-pairs.csv",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter=",",
+        ligand_column="ligand",
+        receptor_column="receptor",
+        evidence_column="sources",
+        citation_column="pmid",
+    )

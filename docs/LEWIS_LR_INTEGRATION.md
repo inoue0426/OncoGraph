@@ -53,15 +53,21 @@ interactions. Existing data and any cached copies stay outside the repo.
 7. Only add a source to public `refresh-data.yml` after license clearance
    and source-specific biological validation.
 
-## Next work: global identifier resolution
+## Current implementation status
 
-Current `Entity.canonical_id` matching uses one identifier and does not
-automatically unify HGNC, Ensembl, NCBI Gene and UniProt identifiers for the
-same gene or protein. Proposed follow-up: an `EntityIdentifier` mapping
-table storing `entity_id`, namespace, value, taxon, mapping source,
-mapping status and version. Preserve canonical IDs and old API responses
-during migration. Reject ambiguous and cross-species matches rather than
-name-merge. Test import ordering and idempotency explicitly.
+OncoGraph now has a backward-compatible `EntityIdentifier` sidecar table for
+explicit alternate identifiers and conservative species-aware lookup. The
+first source-specific parsers are documented in
+[`LEWIS_LR_PARSERS.md`](LEWIS_LR_PARSERS.md). They are intentionally limited
+to selected human files and require a local, explicit `(taxon_id, symbol)`
+mapping; symbols are never used as identity keys.
+
+The parsers preserve complexes as opaque entities with explicit subunit
+membership and require an explicit metabolite mapping. They do not turn
+downstream-gene or functional-annotation files into ligand-receptor edges.
+Remaining source files, mouse/non-mammalian species, and any public refresh
+remain out of scope until source-specific permissions and biological mappings
+are reviewed.
 
 The audit script deliberately does **not** claim full integration and does
 not modify the current public graph or data refresh.

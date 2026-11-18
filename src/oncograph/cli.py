@@ -46,6 +46,11 @@ def import_source(
         "--hgnc-complete-set",
         help="HGNC complete-set TSV (required for trrust; maps civic genes and scopes reactome)",
     ),
+    identifier_map: str = typer.Option(
+        None,
+        "--identifier-map",
+        help="Explicit species-aware identifier map required by Lewis Lab source adapters",
+    ),
 ) -> None:
     """Import a locally permitted source file into the database.
 
@@ -67,6 +72,10 @@ def import_source(
         adapter = adapter_cls(path, hgnc_complete_set, release=release)
     elif source in {"reactome", "civic"}:
         adapter = adapter_cls(path, release=release, hgnc_path=hgnc_complete_set)
+    elif source.startswith("lewis_"):
+        if not identifier_map:
+            raise typer.BadParameter("--identifier-map is required for Lewis Lab sources")
+        adapter = adapter_cls(path, identifier_map, release=release)
     else:
         adapter = adapter_cls(path, release=release)
     create_db_and_tables()
@@ -80,3 +89,15 @@ def import_source(
         typer.echo(f"  {error}")
     if len(report.errors) > 20:
         typer.echo(f"  ... and {len(report.errors) - 20} more errors")
+    if hasattr(adapter, "validation_report"):
+        source_report = adapter.validation_report()
+        typer.echo(
+            "source validation: "
+            f"{source_report.input_rows} input rows, "
+            f"{source_report.emitted_interactions} interactions, "
+            f"{source_report.emitted_membership_edges} membership edges, "
+            f"{source_report.skipped_rows} skipped, "
+            f"{source_report.duplicate_rows} duplicates, "
+            f"{source_report.unresolved_identifiers} unresolved, "
+            f"{source_report.ambiguous_identifiers} ambiguous"
+        )

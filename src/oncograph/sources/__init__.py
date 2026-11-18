@@ -16,6 +16,7 @@ from . import gene_ontology as _gene_ontology  # noqa: F401
 from . import gtex as _gtex  # noqa: F401
 from . import gtopdb as _gtopdb  # noqa: F401
 from . import hgnc as _hgnc  # noqa: F401
+from . import lewis_lab as _lewis_lab  # noqa: F401
 from . import ligand_receptor as _ligand_receptor  # noqa: F401
 from . import oncokb as _oncokb  # noqa: F401
 from . import open_targets as _open_targets  # noqa: F401
