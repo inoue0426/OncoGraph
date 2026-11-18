@@ -70,7 +70,8 @@ def test_ramilowski_parser_requires_explicit_human_symbol_map(tmp_path):
     assert report.unresolved_identifiers == 1
     assert report.unresolved_values == ["UNKNOWN"]
     assert report.to_dict()["valid"] is False
-    assert edges[0].source_record_id == "lewis_ramilowski_2015:A2M_LRP1"
+    assert edges[0].source_record_id.startswith("lewis_ramilowski_2015:v2:")
+    assert edges[0].context["upstream_record_id"] == "A2M_LRP1"
     assert edges[0].context["taxon_id"] == HUMAN_TAXON
 
 
@@ -108,6 +109,29 @@ def test_validation_command_writes_source_report_without_database(tmp_path, monk
     assert report["input_rows"] == 1
     assert report["entities_emitted"] == 2
     assert report["edges_emitted"] == 1
+
+
+def test_distinct_evidence_survives_reused_pair_ids_and_row_reordering(tmp_path):
+    """Preserve separate citations and source evidence on the same relation."""
+    path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    header = "Pair.Name\tLigand.ApprovedSymbol\tReceptor.ApprovedSymbol\tPMID.Manual\tPair.Evidence\n"
+    rows = ["pair\tA\tB\t1\tsource-a\n", "pair\tA\tB\t2\tsource-a\n",
+            "pair\tA\tB\t1\tsource-b\n"]
+    mapping = _map(("A", ExternalIdentifier("hgnc", "HGNC:1"), "gene"),
+                   ("B", ExternalIdentifier("hgnc", "HGNC:2"), "gene"))
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        for index, ordered in enumerate((rows + rows, list(reversed(rows)))):
+            path.write_text(header + "".join(ordered), encoding="utf-8")
+            adapter = LewisRamilowskiAdapter(path, mapping, release="fixture")
+            result = import_adapter(session, adapter)
+            assert result.evidence_created == (3 if index == 0 else 0)
+        assert len(session.exec(select(Relation)).all()) == 1
+        evidence = session.exec(select(Evidence)).all()
+        assert len(evidence) == 3
+        assert {(json.loads(item.context)["citation"], json.loads(item.context)["source_evidence"])
+                for item in evidence} == {("1", "source-a"), ("2", "source-a"), ("1", "source-b")}
 
 
 def test_source_profile_rejects_wrong_file_name(tmp_path):

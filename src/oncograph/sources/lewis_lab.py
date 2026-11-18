@@ -12,6 +12,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 import zipfile
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
@@ -315,13 +316,17 @@ class LewisDelimitedAdapter(SourceAdapter):
             if not ligand_parts or not receptor_parts:
                 self._report.skipped_rows += 1
                 continue
-            fingerprint = "|".join([
+            upstream_record_id = row.get(self.profile.record_id_column or "") or None
+            fingerprint = json.dumps([
                 self.profile.source_key, ligand, receptor, ligand_kind, receptor_kind,
-                str(row.get(self.profile.citation_column or "", "")),
-            ])
-            record_id = row.get(self.profile.record_id_column or "") or hashlib.sha256(
+                row.get(self.profile.citation_column or ""),
+                row.get(self.profile.evidence_column or ""),
+                row.get(self.profile.interaction_type_column or ""),
+                upstream_record_id, self.release,
+            ], ensure_ascii=True, separators=(",", ":"))
+            record_id = "v2:" + hashlib.sha256(
                 fingerprint.encode("utf-8")
-            ).hexdigest()[:24]
+            ).hexdigest()
             if fingerprint in seen:
                 self._report.duplicate_rows += 1
                 continue
@@ -338,6 +343,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 "source_key": self.profile.source_key,
                 "source_file": self.profile.filename,
                 "release": self.release,
+                "upstream_record_id": upstream_record_id,
                 "species": self.profile.species,
                 "taxon_id": self.profile.taxon_id,
                 "ligand_kind": ligand_kind,

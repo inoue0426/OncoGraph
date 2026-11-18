@@ -62,6 +62,15 @@ membership edges, skipped rows, unresolved and ambiguous values, errors, and a
 
 ## Biological safeguards
 
+Evidence IDs use a versioned SHA-256 fingerprint of endpoints, kinds, original
+record ID, citation, source evidence, interaction type, and release. Identical
+rows deduplicate independently of row order; distinct provenance is retained.
+The original source ID is preserved in `context.upstream_record_id`.
+Earlier experimental imports used unversioned IDs. Reimporting those databases
+can retain both old and new evidence; rebuild a disposable local database or
+review those records explicitly before comparing counts. No automatic deletion
+or production migration is performed.
+
 - A source row becomes one directed evidence record; ordinary pair sources use
   `ligand_receptor_interaction`, while MEBOCOST rows use the more cautious
   `metabolite_target_association` predicate. Duplicate source rows are
