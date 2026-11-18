@@ -153,7 +153,9 @@ def _register_identifiers(
                 detail="Alternate identifier already belongs to another entity",
             )
             report.entities_conflicted += 1
-            report.errors.append(f"ambiguous alternate identifier: {normalized.namespace}:{normalized.value}")
+            report.errors.append(
+                f"ambiguous alternate identifier: {normalized.namespace}:{normalized.value}"
+            )
             continue
         session.add(
             EntityIdentifier(
