@@ -5,6 +5,7 @@ source-specific, local-only adapters. The profiles and current restrictions are:
 
 | Source key | File profile | Taxon | Mapping required |
 | --- | --- | --- | --- |
+| `lewis_kirouac_2010` | `Human-2010-Kirouac-LR-pairs.xlsx`, sheet `S12` (single partners only) | 9606 | yes |
 | `lewis_ramilowski_2015` | `Human-2015-Ramilowski-LR-pairs.txt` | 9606 | yes |
 | `lewis_cabello_2020` | `Human-2020-Cabello-Aguilar-LR-pairs.csv` | 9606 | yes |
 | `lewis_zheng_2022` | `Human-2022-Zheng-MetSensor-pairs.tsv` | 9606 | yes |
@@ -149,15 +150,14 @@ forced through the simple symbol profiles above.
 
 ## Human coverage status
 
-The upstream README lists 18 human files. Eleven currently have usable local
+The upstream README lists 18 human files. Twelve currently have usable local
 profiles in the table above, subject to explicit mapping and source review.
-Seven audited human entries are blocked, including the quarantined Jin export:
+Six audited human entries remain blocked, including the quarantined Jin export:
 
 | File/profile | Current blocker |
 | --- | --- |
 | Jin/CellChat 2020 | Audited Human export contains mouse-specific partners; the whole table is quarantined rather than accepting conserved symbols as human evidence. |
 | Zhao/NeuronChat 2023 | Disabled: the audited export has 182/190 blank target-subunit fields; contributor genes may represent synthesis/transport rather than ligands. |
-| Kirouac 2010 | Receptor labels such as `ADIPOR 1/2` need a validated component map. |
 | Choi 2015 | Folder metadata and the cited biological model need species reconciliation before using taxon 9606. |
 | Vento-Tormo 2018 | Descriptive CellPhoneDB complex labels need explicit subunit mapping. |
 | Ximerakis/BaderLab 2019 | The audit tool now recognizes its gzip-delimited payload; ingestion remains blocked until alias direction, species, and interaction semantics are validated. |
@@ -198,7 +198,7 @@ or changes the audit exit status. A unique human name match still requires
 source-specific biological and species review. No name match does not establish
 that a value is nonhuman or invalid.
 
-On the pinned inputs below, the 11 nonquarantined profiles have 1,110 unresolved
+Before the Kirouac extension below, the 11-profile audit had 1,110 unresolved
 occurrences: 604 with one HGNC candidate, 53 with multiple candidates, 13 without
 an HGNC name match, and 440 matching the HMDB identifier format. The latter need
 an explicit metabolite map; matching the format does not validate the accession
@@ -353,3 +353,41 @@ unresolved rows, permission to redistribute, or automatic migration of old
 evidence. The subsequent alternate-ID self-relation guard is covered by the
 identifier-resolution regression tests; this real-file diagnostic used only
 canonical HGNC endpoint mappings.
+
+### Kirouac single-partner extension (2026-11-18)
+
+The [original article](https://pmc.ncbi.nlm.nih.gov/articles/PMC2990637/)
+describes human umbilical cord-blood cultures and a literature-curated LR prior
+in Supplementary Table S12, largely derived from COPE. The prior table is
+distinct from the expression-derived cell-cell networks constructed later in
+the study. Accordingly, this adapter labels its observations `compiled_prior`;
+it does not claim experimentally demonstrated binding or cell-type communication
+for every row. Human mappings describe the study's application context and do
+not establish that every underlying literature observation was performed in humans.
+
+The pinned compendium workbook has 232 data rows in sheet `S12`, with columns
+`LIGAND` and `RECEPTOR(S)`. Its SHA-256 is
+`1193be9cb6e31a660c536497be3ea5467ae00661331f901741ea9257d2f82ece`.
+The article mentions 234 pairs in its results and 270 interactions in its
+methods; these differ from the exported row count and must not be substituted
+for it. The adapter accepts bare single symbols or a single trailing
+parenthesized symbol. Original labels remain in evidence context. Alternatives,
+numeric ranges, multiple/nested parentheses, malformed notation, and unknown
+placeholders are rejected rather than expanded or converted to complexes.
+Extracted symbols still require an explicit human identifier map.
+
+Using the same approved-symbol HGNC snapshot, 40 interactions were emitted,
+192 rows were skipped, and 46 unresolved identifier occurrences remained.
+There were also 196 unsupported-partner diagnostics; these count endpoints and
+can overlap with unresolved endpoints within a skipped row. The report remains
+invalid because coverage is partial. A disposable in-memory import created
+70 entities, 40 relations, and 40 evidence records with no ingestion errors;
+reimport added none. No input rows or database files are distributed here.
+
+This adds 40 source observations to the previous 11-profile coverage audit,
+bringing the 12-profile totals to 33,108 candidate interactions, 1,248 skipped
+rows, and 1,156 unresolved identifier occurrences. These sums are before
+cross-source relation deduplication. The earlier ten-source SQLite diagnostic
+above predates this extension and must not be read as including Kirouac.
+Reuse permission and review of ambiguous Kirouac labels remain outstanding;
+the adapter stays local-only with unknown redistribution rights.

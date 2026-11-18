@@ -21,6 +21,7 @@ from oncograph.sources.lewis_lab import (
     LewisDimitrovAdapter,
     LewisHouAdapter,
     LewisJinAdapter,
+    LewisKirouacAdapter,
     LewisMetSensorAdapter,
     LewisNoelAdapter,
     LewisPavlicevAdapter,
@@ -44,6 +45,52 @@ validator_spec.loader.exec_module(validator)
 def _map(*rows):
     return {(HUMAN_TAXON, symbol): (LewisResolvedIdentifier(identifier, entity_type),)
             for symbol, identifier, entity_type in rows}
+
+
+@pytest.mark.parametrize("receptor_label", ["Example receptor (B)", "B"])
+def test_kirouac_single_partner_labels_preserve_original_source_context(tmp_path, receptor_label):
+    """Only explicit single symbols are eligible; ambiguous labels are not expanded."""
+    openpyxl = pytest.importorskip("openpyxl")
+    path = tmp_path / LewisKirouacAdapter.profile.filename
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "S12"
+    sheet.append(["LIGAND", "RECEPTOR(S)"])
+    sheet.append(["Example ligand, (A)", receptor_label])
+    sheet.append(["Example ligand, (A)", receptor_label])
+    for receptor in ("B/C", "B 1/2", "B1-4", "???", "B (C))", "B (C) (D)", "xxx"):
+        sheet.append(["Example ligand (A)", receptor])
+    workbook.save(path)
+    workbook.close()
+    mapping = _map(
+        ("A", ExternalIdentifier("hgnc", "HGNC:1"), "gene"),
+        ("B", ExternalIdentifier("hgnc", "HGNC:2"), "gene"),
+        # Even an explicit map cannot turn a family range into one receptor.
+        ("B1-4", ExternalIdentifier("hgnc", "HGNC:3"), "gene"),
+        ("XXX", ExternalIdentifier("hgnc", "HGNC:3"), "gene"),
+    )
+    adapter = LewisKirouacAdapter(path, mapping)
+    report = adapter.validation_report()
+    assert report.emitted_interactions == 1
+    assert report.duplicate_rows == 1
+    assert report.skipped_rows == 7
+    assert report.valid is False
+    edge = next(adapter.iter_edges())
+    assert edge.context["source_ligand"] == "Example ligand, (A)"
+    assert edge.context["source_receptor"] == receptor_label
+    assert edge.context["interaction_mode"] == "compiled_prior"
+    assert edge.context["source_reference"] == "https://doi.org/10.1038/msb.2010.71"
+    assert edge.context["citation"] is None
+    assert edge.subject == ExternalIdentifier("hgnc", "HGNC:1")
+    assert edge.object == ExternalIdentifier("hgnc", "HGNC:2")
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        assert import_adapter(session, adapter).errors == []
+        assert import_adapter(session, adapter).evidence_created == 0
+        assert len(session.exec(select(Relation)).all()) == 1
+        assert len(session.exec(select(Evidence)).all()) == 1
+    engine.dispose()
 
 
 def test_ramilowski_parser_requires_explicit_human_symbol_map(tmp_path):

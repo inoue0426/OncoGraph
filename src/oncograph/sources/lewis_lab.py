@@ -13,6 +13,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import zipfile
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field
@@ -33,6 +34,7 @@ HUMAN_TAXON = 9606
 
 # Dataset references listed by the audited compendium, not row-level evidence.
 SOURCE_REFERENCES = {
+    "lewis_kirouac_2010": "https://doi.org/10.1038/msb.2010.71",
     "lewis_ramilowski_2015": "https://doi.org/10.1038/ncomms8866",
     "lewis_cabello_2020": "https://doi.org/10.1093/nar/gkaa183",
     "lewis_zheng_2022": "https://doi.org/10.1101/2022.05.30.494067",
@@ -533,6 +535,52 @@ def _profile_descriptor(key: str, name: str, homepage: str = "https://github.com
         notes="Permission-gated local parser; no upstream data is bundled or refreshed publicly.",
         source_type=SourceType.CURATED_DATABASE,
     )
+
+
+@registry.register
+class LewisKirouacAdapter(LewisDelimitedAdapter):
+    """Parse explicit single-partner labels from Kirouac's compiled S12 prior."""
+
+    descriptor = _profile_descriptor("lewis_kirouac_2010", "Lewis Lab: Kirouac 2010")
+    profile = LewisSourceProfile(
+        source_key="lewis_kirouac_2010",
+        filename="Human-2010-Kirouac-LR-pairs.xlsx",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="",
+        file_format="xlsx",
+        sheet_name="S12",
+        ligand_column="LIGAND",
+        receptor_column="RECEPTOR(S)",
+        evidence_type="compiled_ligand_receptor",
+        interaction_mode="compiled_prior",
+    )
+
+    def _resolve_side(self, value: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
+        """Resolve one declared symbol without expanding alternatives or families.
+
+        Args:
+            value: Original S12 partner label, retained verbatim in edge context.
+            kind: Source-declared molecular kind.
+
+        Returns:
+            One explicitly mapped identifier, or no candidate for unsupported labels.
+        """
+        token = r"[A-Za-z0-9][A-Za-z0-9_.-]*"
+        symbol = value.strip()
+        if symbol.lower() == "xxx":
+            self._report.errors.append(f"unknown Kirouac partner placeholder: {value}")
+            return ()
+        if not re.fullmatch(token, symbol):
+            match = re.fullmatch(rf"[^()/+&;]+\(({token})\)", symbol)
+            if match is None:
+                self._report.errors.append(f"unsupported Kirouac partner notation: {value}")
+                return ()
+            symbol = match.group(1)
+        if re.search(r"\d+-\d+$", symbol):
+            self._report.errors.append(f"unsupported Kirouac partner range: {value}")
+            return ()
+        return self._resolve(symbol, kind)
 
 
 @registry.register
