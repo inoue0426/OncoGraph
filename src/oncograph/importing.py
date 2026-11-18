@@ -171,10 +171,17 @@ def _entity_matches_taxon(session: Session, entity: Entity, taxon: int | None) -
     rows = session.exec(
         select(EntityIdentifier).where(
             EntityIdentifier.entity_id == entity.id,
-            EntityIdentifier.taxon_id == taxon,
         )
     ).all()
-    return bool(rows)
+    known_taxa = {row.taxon_id for row in rows if row.taxon_id is not None}
+    if known_taxa:
+        return known_taxa == {taxon}
+    # Legacy graphs predate the crosswalk. Organism-specific canonical IDs
+    # remain authoritative without requiring a destructive data migration.
+    namespace, separator, value = (entity.canonical_id or "").partition(":")
+    if separator:
+        return _identifier_taxon(ExternalIdentifier(namespace, value)) == taxon
+    return False
 
 
 def _compatible_alternate_entity_ids(
@@ -223,7 +230,14 @@ def _lookup_entity_id(
     if len(raw_owner_ids) > 1:
         return None
     owner_ids = _compatible_alternate_entity_ids(session, normalized.namespace, candidates)
-    return next(iter(owner_ids)) if len(owner_ids) == 1 else None
+    if len(owner_ids) != 1:
+        return None
+    owner_id = next(iter(owner_ids))
+    if normalized.namespace in _SPECIES_SENSITIVE_NAMESPACES:
+        owner = session.get(Entity, owner_id)
+        if owner is None or not _entity_matches_taxon(session, owner, taxon):
+            return None
+    return owner_id
 
 
 def _register_identifiers(

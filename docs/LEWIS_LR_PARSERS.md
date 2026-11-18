@@ -259,6 +259,16 @@ endpoint identifiers. Validation failures and resolution collisions both count
 as skipped edges. Existing persisted self relations are not deleted or
 retroactively reclassified by this change and require separate review.
 
+Legacy SQLite graphs do not need a bulk rewrite to recover canonical HGNC or
+MGI identities after crosswalk-table initialization. When explicit species
+metadata and known crosswalk species are absent, the resolver uses only these
+organism-specific canonical namespaces (human and mouse respectively). It
+does not infer species from generic namespaces or names, and conflicting known
+crosswalk taxa fail resolution. File-backed regression tests retain old entity,
+relation, and evidence IDs through repeated schema initialization and imports.
+This compatibility rule does not enable mouse Lewis sources or repair
+pre-existing duplicate identities automatically.
+
 Complex resolution applies the same conservative policy internally: distinct
 component names mapping to one normalized identifier reject the entire row.
 The parser must not silently deduplicate components or reinterpret aliases
