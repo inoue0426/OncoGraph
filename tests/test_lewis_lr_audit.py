@@ -1,7 +1,5 @@
 """Smoke tests for the provenance-preserving Lewis Lab source inventory."""
 import importlib.util
-import io
-import json
 import zipfile
 from pathlib import Path
 
