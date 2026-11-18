@@ -1,6 +1,10 @@
 """Focused tests for the permission-gated, human Lewis Lab adapters."""
 
+import importlib.util
+import json
+import sys
 import zipfile
+from pathlib import Path
 
 import pytest
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -27,6 +31,12 @@ from oncograph.sources.lewis_lab import (
     LewisWangAdapter,
     LewisZhaoAdapter,
 )
+
+VALIDATOR = Path(__file__).resolve().parents[1] / "scripts" / "validate_lewis_source.py"
+validator_spec = importlib.util.spec_from_file_location("validate_lewis_source", VALIDATOR)
+validator = importlib.util.module_from_spec(validator_spec)
+assert validator_spec.loader is not None
+validator_spec.loader.exec_module(validator)
 
 
 def _map(*rows):
@@ -62,6 +72,42 @@ def test_ramilowski_parser_requires_explicit_human_symbol_map(tmp_path):
     assert report.to_dict()["valid"] is False
     assert edges[0].source_record_id == "lewis_ramilowski_2015:A2M_LRP1"
     assert edges[0].context["taxon_id"] == HUMAN_TAXON
+
+
+def test_validation_command_writes_source_report_without_database(tmp_path, monkeypatch):
+    source_path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    source_path.write_text(
+        "Pair.Name\tLigand.ApprovedSymbol\tReceptor.ApprovedSymbol\n"
+        "A2M_LRP1\tA2M\tLRP1\n",
+        encoding="utf-8",
+    )
+    map_path = tmp_path / "human-symbol-map.tsv"
+    map_path.write_text(
+        "taxon_id\tsymbol\tnamespace\tidentifier\tentity_type\n"
+        "9606\tA2M\thgnc\tHGNC:7\tgene\n"
+        "9606\tLRP1\thgnc\tHGNC:6692\tgene\n",
+        encoding="utf-8",
+    )
+    report_path = tmp_path / "validation.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "validate_lewis_source.py",
+            "lewis_ramilowski_2015",
+            str(source_path),
+            "--identifier-map",
+            str(map_path),
+            "--out",
+            str(report_path),
+        ],
+    )
+    validator.main()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["valid"] is True
+    assert report["input_rows"] == 1
+    assert report["entities_emitted"] == 2
+    assert report["edges_emitted"] == 1
 
 
 def test_source_profile_rejects_wrong_file_name(tmp_path):
