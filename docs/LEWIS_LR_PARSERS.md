@@ -12,6 +12,10 @@ source-specific, local-only adapters. The supported adapters are:
 | `lewis_qiao_2014` | `Human-2014-Qiao-LR-pairs.xlsx` | 9606 | yes |
 | `lewis_pavlicev_2017` | `Human-2017-Pavlicev-LR-pairs.xlsx` | 9606 | yes |
 | `lewis_hou_2020` | `Human-2020-Hou-LR-pairs.xlsx` | 9606 | yes |
+| `lewis_wang_2019` | `Human-2019-Wang-LR-pairs.csv` | 9606 | yes |
+| `lewis_jin_2020` | `Human-2020-Jin-LR-pairs.csv` | 9606 | yes |
+| `lewis_shao_2020` | `Human-2020-Shao-LR-pairs.txt` | 9606 | yes |
+| `lewis_dimitrov_2022` | `Human-2022-Dimitrov-LR-pairs.csv` | 9606 | yes |
 
 The upstream compendium is heterogeneous and its repository-level README is
 not a redistribution license. No upstream files are stored here, and these
@@ -54,3 +58,8 @@ repository.
 The remaining Lewis files, including mouse and non-mammalian sources, remain
 unintegrated until their schemas, identifier semantics, citations, and
 permissions receive separate source-specific review.
+
+The Vento/CellPhoneDB file is intentionally not enabled yet: its partner
+columns contain descriptive complex labels (for example, receptor names with
+subunit notation) rather than a validated identifier mapping. It must not be
+forced through the simple symbol profiles above.

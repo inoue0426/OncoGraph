@@ -501,3 +501,78 @@ class LewisHouAdapter(LewisDelimitedAdapter):
         evidence_column="Ligand location",
         citation_column="PMID support",
     )
+
+
+@registry.register
+class LewisWangAdapter(LewisDelimitedAdapter):
+    """Parser for the human iTALK 2019 CSV list."""
+
+    descriptor = _profile_descriptor("lewis_wang_2019", "Lewis Lab: Wang iTALK 2019")
+    profile = LewisSourceProfile(
+        source_key="lewis_wang_2019",
+        filename="Human-2019-Wang-LR-pairs.csv",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter=",",
+        ligand_column="Ligand.ApprovedSymbol",
+        receptor_column="Receptor.ApprovedSymbol",
+        ligand_name_column="Ligand.Name",
+        receptor_name_column="Receptor.Name",
+        record_id_column="Pair.Name",
+        evidence_column="Classification",
+    )
+
+
+@registry.register
+class LewisJinAdapter(LewisDelimitedAdapter):
+    """Parser for the human CellChat 2020 CSV list with opaque complexes."""
+
+    descriptor = _profile_descriptor("lewis_jin_2020", "Lewis Lab: Jin CellChat 2020")
+    profile = LewisSourceProfile(
+        source_key="lewis_jin_2020",
+        filename="Human-2020-Jin-LR-pairs.csv",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter=",",
+        ligand_column="ligand_symbol",
+        receptor_column="receptor_symbol",
+        record_id_column="interaction_name",
+        evidence_column="evidence",
+        interaction_type_column="pathway_name",
+        complex_separator="&",
+    )
+
+
+@registry.register
+class LewisShaoAdapter(LewisDelimitedAdapter):
+    """Parser for the human CellTalkDB 2020 TSV list."""
+
+    descriptor = _profile_descriptor("lewis_shao_2020", "Lewis Lab: Shao CellTalkDB 2020")
+    profile = LewisSourceProfile(
+        source_key="lewis_shao_2020",
+        filename="Human-2020-Shao-LR-pairs.txt",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="\t",
+        ligand_column="ligand_gene_symbol",
+        receptor_column="receptor_gene_symbol",
+        record_id_column="lr_pair",
+        citation_column="evidence",
+    )
+
+
+@registry.register
+class LewisDimitrovAdapter(LewisDelimitedAdapter):
+    """Parser for the human LIANA 2022 CSV list."""
+
+    descriptor = _profile_descriptor("lewis_dimitrov_2022", "Lewis Lab: Dimitrov LIANA 2022")
+    profile = LewisSourceProfile(
+        source_key="lewis_dimitrov_2022",
+        filename="Human-2022-Dimitrov-LR-pairs.csv",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter=",",
+        ligand_column="source_genesymbol",
+        receptor_column="target_genesymbol",
+        evidence_column="resource",
+    )

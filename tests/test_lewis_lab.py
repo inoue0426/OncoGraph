@@ -10,13 +10,17 @@ from oncograph.sources.lewis_lab import (
     HUMAN_TAXON,
     LewisCabelloAguilarAdapter,
     LewisDelimitedAdapter,
+    LewisDimitrovAdapter,
     LewisHouAdapter,
+    LewisJinAdapter,
     LewisMetSensorAdapter,
     LewisPavlicevAdapter,
     LewisQiaoAdapter,
     LewisRamilowskiAdapter,
     LewisResolvedIdentifier,
+    LewisShaoAdapter,
     LewisSourceProfile,
+    LewisWangAdapter,
     LewisZhaoAdapter,
 )
 
@@ -168,6 +172,62 @@ def test_verified_human_xlsx_profiles_use_explicit_headers(tmp_path):
         edges = list(adapter.iter_edges())
         assert len(edges) == 1
         assert edges[0].context["taxon_id"] == HUMAN_TAXON
+
+
+def test_verified_human_delimited_profiles_preserve_complex_and_source_columns(tmp_path):
+    cases = [
+        (
+            LewisWangAdapter,
+            "Human-2019-Wang-LR-pairs.csv",
+            (
+                "Pair.Name,Ligand.ApprovedSymbol,Ligand.Name,Receptor.ApprovedSymbol,"
+                "Receptor.Name,Classification\n"
+                "A2M_LRP1,A2M,alpha-2-macroglobulin,LRP1,LRP1,other\n"
+            ),
+            {"A2M": "HGNC:7", "LRP1": "HGNC:6692"},
+        ),
+        (
+            LewisJinAdapter,
+            "Human-2020-Jin-LR-pairs.csv",
+            (
+                "interaction_name,pathway_name,ligand_symbol,receptor_symbol,evidence\n"
+                "TGFB1_TGFBR1_TGFBR2,TGFb,TGFB1,TGFBR1&TGFBR2,KEGG: hsa04350\n"
+            ),
+            {"TGFB1": "HGNC:11766", "TGFBR1": "HGNC:11772", "TGFBR2": "HGNC:11773"},
+        ),
+        (
+            LewisShaoAdapter,
+            "Human-2020-Shao-LR-pairs.txt",
+            (
+                "lr_pair\tligand_gene_symbol\treceptor_gene_symbol\tevidence\n"
+                "SEMA3F_PLXNA3\tSEMA3F\tPLXNA3\t15721238\n"
+            ),
+            {"SEMA3F": "HGNC:10724", "PLXNA3": "HGNC:9101"},
+        ),
+        (
+            LewisDimitrovAdapter,
+            "Human-2022-Dimitrov-LR-pairs.csv",
+            (
+                "source,target,source_genesymbol,target_genesymbol,resource\n"
+                "O00182,P08575,LGALS9,PTPRC,consensus\n"
+            ),
+            {"LGALS9": "HGNC:6566", "PTPRC": "HGNC:9662"},
+        ),
+    ]
+    for adapter_class, filename, content, ids in cases:
+        path = tmp_path / filename
+        path.write_text(content, encoding="utf-8")
+        adapter = adapter_class(
+            path,
+            _map(*[(symbol, ExternalIdentifier("hgnc", identifier), "gene") for symbol, identifier in ids.items()]),
+        )
+        edges = list(adapter.iter_edges())
+        interaction_edges = [edge for edge in edges if edge.predicate == "ligand_receptor_interaction"]
+        assert len(interaction_edges) == 1
+        assert interaction_edges[0].context["taxon_id"] == HUMAN_TAXON
+        if adapter_class is LewisJinAdapter:
+            assert sum(edge.predicate == "has_subunit" for edge in edges) == 2
+            assert adapter.validation_report().emitted_membership_edges == 2
 
 
 def test_complex_and_metabolite_rows_are_not_split_or_inferred(tmp_path):
