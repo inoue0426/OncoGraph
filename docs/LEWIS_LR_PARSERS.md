@@ -91,6 +91,18 @@ can retain both old and new evidence; rebuild a disposable local database or
 review those records explicitly before comparing counts. No automatic deletion
 or production migration is performed.
 
+New evidence also records the dataset reference as `context.source_reference`
+and links `source_url` to the compendium repository. Dataset references follow
+the [audited upstream README](https://github.com/LewisLabUCSD/Ligand-Receptor-Pairs/blob/c0ce8167c20c2f5d1a3d309e04514da9a178c41c/README.md),
+including its original preprint versions. They are attribution for the source
+resource, not row-specific experimental support. The separate `context.citation`
+field keeps the original row's citation, and a dataset reference is never
+automatically attached as the interaction's `publication_id`. Complex membership
+evidence retains the same source attribution. Existing evidence is not silently
+rewritten on reimport; older local graphs need an explicitly reviewed rebuild
+or enrichment to gain these fields. Source URLs identify the repository, not
+an assertion that an arbitrary local input matches a particular upstream commit.
+
 - A source row becomes one directed evidence record; ordinary pair sources use
   `ligand_receptor_interaction`, while MEBOCOST rows use the more cautious
   `metabolite_target_association` predicate. Duplicate source rows are

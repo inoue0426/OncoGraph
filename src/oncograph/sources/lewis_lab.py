@@ -31,6 +31,23 @@ from .registry import registry
 
 HUMAN_TAXON = 9606
 
+# Dataset references listed by the audited compendium, not row-level evidence.
+SOURCE_REFERENCES = {
+    "lewis_ramilowski_2015": "https://doi.org/10.1038/ncomms8866",
+    "lewis_cabello_2020": "https://doi.org/10.1093/nar/gkaa183",
+    "lewis_zheng_2022": "https://doi.org/10.1101/2022.05.30.494067",
+    "lewis_qiao_2014": "https://doi.org/10.15252/msb.20145141",
+    "lewis_pavlicev_2017": "https://doi.org/10.1101/gr.207597.116",
+    "lewis_hou_2020": "https://doi.org/10.1038/s41467-020-18873-z",
+    "lewis_wang_2019": "https://doi.org/10.1101/507871",
+    "lewis_jin_2020": "https://doi.org/10.1101/2020.07.21.214387",
+    "lewis_shao_2020": "https://doi.org/10.1093/bib/bbaa269",
+    "lewis_dimitrov_2022": "https://doi.org/10.1038/s41467-022-30755-0",
+    "lewis_noel_2020": "https://doi.org/10.1101/2020.03.05.976878",
+    "lewis_browaeys_2019": "https://doi.org/10.1038/s41592-019-0667-5",
+    "lewis_zhao_2023": "https://doi.org/10.1101/2023.01.12.523826",
+}
+
 
 @dataclass(frozen=True)
 class LewisResolvedIdentifier:
@@ -404,6 +421,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 self._add_entity(entities, item.identifier, item.identifier.value, item.entity_type)
             context = {
                 "source_key": self.profile.source_key,
+                "source_reference": self.descriptor.citation,
                 "source_file": self.profile.filename,
                 "source_sha256": self._source_sha256,
                 "source_ligand": ligand,
@@ -428,6 +446,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 predicate=self.profile.predicate,
                 object=receptor_id,
                 source_record_id=f"{self.profile.source_key}:{record_id}",
+                source_url=self.descriptor.homepage,
                 context=context,
                 metadata={"taxon_id": self.profile.taxon_id},
                 evidence_type=self.profile.evidence_type,
@@ -484,6 +503,7 @@ class LewisDelimitedAdapter(SourceAdapter):
                 predicate="has_subunit",
                 object=part.identifier,
                 source_record_id=f"{self.profile.source_key}:{record_id}:member:{part.identifier.value}",
+                source_url=self.descriptor.homepage,
                 context={**context, "relationship": "complex_membership"},
                 metadata={"taxon_id": self.profile.taxon_id},
                 evidence_type="curated_complex_membership",
@@ -504,6 +524,7 @@ def _profile_descriptor(key: str, name: str, homepage: str = "https://github.com
         key=key,
         name=name,
         homepage=homepage,
+        citation=SOURCE_REFERENCES.get(key),
         redistribution=RedistributionPolicy.UNKNOWN,
         notes="Permission-gated local parser; no upstream data is bundled or refreshed publicly.",
         source_type=SourceType.CURATED_DATABASE,

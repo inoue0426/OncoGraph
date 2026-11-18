@@ -365,6 +365,19 @@ def test_cabello_parser_preserves_source_evidence(tmp_path):
     assert edge.context["citation"] == "12809600"
     assert edge.context["interaction_mode"] == "compiled_prior"
     assert edge.evidence_type == "compiled_ligand_receptor"
+    assert edge.context["source_reference"] == "https://doi.org/10.1093/nar/gkaa183"
+    engine = create_engine("sqlite://")
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        assert import_adapter(session, adapter).errors == []
+        evidence = session.exec(select(Evidence)).one()
+        context = json.loads(evidence.context)
+        assert context["citation"] == "12809600"
+        assert context["source_reference"] == adapter.descriptor.citation
+        assert evidence.source_url == adapter.descriptor.homepage
+        assert evidence.publication_id is None
+        assert import_adapter(session, adapter).evidence_created == 0
+    engine.dispose()
 
 
 def test_zhao_parser_preserves_interaction_type(tmp_path):
@@ -699,6 +712,10 @@ def test_liana_complex_retains_all_subunits_without_pairwise_bindings(tmp_path):
     assert len(interactions) == 1
     assert interactions[0].object.namespace == "lewis_complex"
     assert sum(edge.predicate == "has_subunit" for edge in edges) == 2
+    for edge in edges:
+        assert edge.context["source_reference"] == "https://doi.org/10.1038/s41467-022-30755-0"
+        assert edge.source_url == adapter.descriptor.homepage
+        assert edge.context["citation"] is None
     del mapping[(HUMAN_TAXON, "C")]
     unresolved = LewisDimitrovAdapter(path, mapping)
     assert list(unresolved.iter_edges()) == []
