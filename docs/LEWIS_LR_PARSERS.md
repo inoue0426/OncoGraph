@@ -66,6 +66,10 @@ membership edges, skipped rows, unresolved and ambiguous values, errors, and a
   `ligand_receptor_interaction`, while MEBOCOST rows use the more cautious
   `metabolite_target_association` predicate. Duplicate source rows are
   collapsed by a stable source fingerprint.
+- Provenance distinguishes `curated_literature`, `curated_database`,
+  `curated_network`, `curated_complex`, `inferred_cell_communication`,
+  `compiled_prior`, and `metabolic_association` in `context.interaction_mode`.
+  An inferred CCC edge is never labeled as experimentally demonstrated binding.
 - Complex sides remain opaque `molecular_complex` entities. The parser emits
   explicit `has_subunit` membership edges and never invents component-wise
   ligand-receptor bindings.
