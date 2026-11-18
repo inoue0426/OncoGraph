@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import hashlib
 import io
 import json
@@ -69,7 +70,13 @@ def audit_file(path: Path) -> dict:
     data = path.read_bytes()
     result = {"file": path.name, "bytes": len(data),
               "sha256": hashlib.sha256(data).hexdigest(), "tables": []}
-    if path.suffix.lower() == ".zip":
+    if path.suffix.lower() == ".zip" and data[:2] == b"\x1f\x8b":
+        decompressed = gzip.decompress(data)
+        if len(decompressed) > MAX_MEMBER_BYTES:
+            raise ValueError("Oversized gzip payload")
+        result["archive_format"] = "gzip-delimited"
+        result["tables"] = _audit_table(decompressed, path.with_suffix("").name)
+    elif path.suffix.lower() == ".zip":
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             for member in archive.infolist():
                 if member.is_dir() or Path(member.filename).suffix.lower() not in DATA_EXTS - {".zip"}:

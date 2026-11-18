@@ -95,7 +95,7 @@ the table above. The five remaining human entries are intentionally blocked:
 | Kirouac 2010 | Receptor labels such as `ADIPOR 1/2` need a validated component map. |
 | Choi 2015 | Folder metadata and the cited biological model need species reconciliation before using taxon 9606. |
 | Vento-Tormo 2018 | Descriptive CellPhoneDB complex labels need explicit subunit mapping. |
-| Ximerakis/BaderLab 2019 | The upstream `.zip` is gzip-compressed content with a nonstandard extension and requires source-format review. |
+| Ximerakis/BaderLab 2019 | The audit tool now recognizes its gzip-delimited payload; ingestion remains blocked until alias direction, species, and interaction semantics are validated. |
 | OmniPath/Turei 2021 | The bundle contains intercellular proteins and PPIs, not a validated LR-pair table; no interaction may be inferred. |
 
 No upstream dataset was available as a permission-cleared local import during

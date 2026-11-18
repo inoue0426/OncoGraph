@@ -1,4 +1,5 @@
 """Smoke tests for the provenance-preserving Lewis Lab source inventory."""
+import gzip
 import importlib.util
 import zipfile
 from pathlib import Path
@@ -39,6 +40,15 @@ def test_zip_members_are_inspected_without_extraction(tmp_path):
     assert result["tables"][0]["rows_after_first"] == 1
     assert result["tables"][0]["first_row"] == ["ligand", "receptor"]
     assert not (tmp_path.parent / "pairs.csv").exists()
+
+
+def test_gzip_payload_with_zip_suffix_is_audited_without_extraction(tmp_path):
+    path = tmp_path / "Human-2019-Ximerakis-BaderLab-2017.txt.zip"
+    path.write_bytes(gzip.compress(b"AliasA\tAliasB\tinteractionType\nA\tB\tknown\n"))
+    result = audit.audit_file(path)
+    assert result["archive_format"] == "gzip-delimited"
+    assert result["tables"][0]["rows_after_first"] == 1
+    assert result["tables"][0]["delimiter"] == "\t"
 
 
 def test_missing_directory_is_reported(tmp_path):
