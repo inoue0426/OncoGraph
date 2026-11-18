@@ -420,3 +420,56 @@ def test_import_is_idempotent_and_preserves_each_source_evidence(tmp_path):
         assert len(session.exec(select(Entity)).all()) == 2
         assert len(session.exec(select(Relation)).all()) == 1
         assert len(session.exec(select(Evidence)).all()) == 1
+
+
+def test_lewis_mapping_rejects_gene_protein_collision(tmp_path):
+    path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    path.write_text(
+        "Pair.Name\tLigand.ApprovedSymbol\tReceptor.ApprovedSymbol\n"
+        "A2M_LRP1\tA2M\tLRP1\n",
+        encoding="utf-8",
+    )
+    adapter = LewisRamilowskiAdapter(
+        path,
+        {
+            (HUMAN_TAXON, "A2M"): (
+                LewisResolvedIdentifier(ExternalIdentifier("hgnc", "HGNC:7"), "gene"),
+                LewisResolvedIdentifier(ExternalIdentifier("uniprot", "P01023"), "protein"),
+            ),
+            (HUMAN_TAXON, "LRP1"): (
+                LewisResolvedIdentifier(ExternalIdentifier("hgnc", "HGNC:6692"), "gene"),
+            ),
+        },
+    )
+
+    assert list(adapter.iter_edges()) == []
+    report = adapter.validation_report()
+    assert report.ambiguous_identifiers == 1
+    assert report.skipped_rows == 1
+    assert report.valid is False
+
+
+def test_lewis_mapping_does_not_fall_back_to_another_species(tmp_path):
+    path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    path.write_text(
+        "Pair.Name\tLigand.ApprovedSymbol\tReceptor.ApprovedSymbol\n"
+        "A2M_LRP1\tA2M\tLRP1\n",
+        encoding="utf-8",
+    )
+    adapter = LewisRamilowskiAdapter(
+        path,
+        {
+            (10090, "A2M"): (
+                LewisResolvedIdentifier(ExternalIdentifier("mgi", "MGI:88000"), "gene"),
+            ),
+            (HUMAN_TAXON, "LRP1"): (
+                LewisResolvedIdentifier(ExternalIdentifier("hgnc", "HGNC:6692"), "gene"),
+            ),
+        },
+    )
+
+    assert list(adapter.iter_edges()) == []
+    report = adapter.validation_report()
+    assert report.unresolved_identifiers == 1
+    assert report.unresolved_values == ["A2M"]
+    assert report.valid is False
