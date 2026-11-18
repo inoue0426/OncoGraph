@@ -273,6 +273,11 @@ class LewisDelimitedAdapter(SourceAdapter):
         if kind == "metabolite" and resolved.entity_type != "metabolite":
             self._report.errors.append(f"metabolite mapping has non-metabolite type: {symbol}")
             return ()
+        if kind != "metabolite" and resolved.entity_type not in {"gene", "protein"}:
+            self._report.errors.append(
+                f"protein-side mapping has incompatible type {resolved.entity_type}: {symbol}"
+            )
+            return ()
         return (resolved,)
 
     def _resolve_side(self, value: str, kind: str) -> tuple[LewisResolvedIdentifier, ...]:
@@ -539,6 +544,7 @@ class LewisMetSensorAdapter(LewisDelimitedAdapter):
         ligand_name_column="standard_metName",
         receptor_name_column="Protein_name",
         citation_column="Evidence",
+        interaction_type_column="Annotation",
         ligand_kind_default="metabolite",
         predicate="metabolite_target_association",
         evidence_type="metabolite_source_association",

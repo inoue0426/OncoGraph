@@ -276,6 +276,26 @@ def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
     assert edge.evidence_type == "metabolite_source_association"
     assert edge.context["ligand_kind"] == "metabolite"
     assert edge.context["interaction_mode"] == "metabolic_association"
+    assert edge.context["interaction_type"] == "Transporter"
+
+
+@pytest.mark.parametrize("invalid_type", ["metabolite", "disease", "drug", "molecular_complex"])
+def test_protein_side_rejects_incompatible_entity_mapping(tmp_path, invalid_type):
+    """An explicit map cannot turn a protein partner into another molecular kind."""
+    path = tmp_path / LewisRamilowskiAdapter.profile.filename
+    path.write_text(
+        "Ligand.ApprovedSymbol\tReceptor.ApprovedSymbol\nA\tB\n", encoding="utf-8",
+    )
+    adapter = LewisRamilowskiAdapter(path, _map(
+        ("A", ExternalIdentifier("hgnc", "HGNC:1"), "gene"),
+        ("B", ExternalIdentifier("hgnc", "HGNC:2"), invalid_type),
+    ))
+    assert list(adapter.iter_edges()) == []
+    assert list(adapter.iter_entities()) == []
+    report = adapter.validation_report()
+    assert report.skipped_rows == 1
+    assert report.valid is False
+    assert any("incompatible type" in error for error in report.errors)
 
 
 def test_verified_human_xlsx_profiles_use_explicit_headers(tmp_path):

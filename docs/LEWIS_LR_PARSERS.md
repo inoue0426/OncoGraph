@@ -86,6 +86,11 @@ or production migration is performed.
   ligand-receptor bindings.
 - Metabolites require an explicit `entity_type=metabolite` mapping and retain
   their source identifier namespace (for example ChEBI).
+- Protein partners accept only gene or protein mappings; mappings to drugs,
+  diseases, metabolites, or preassembled complexes are rejected. Gene mappings
+  retain their gene type and do not assert protein-level physical binding.
+  MEBOCOST's `Annotation` is retained as `context.interaction_type`, preserving
+  distinctions such as transporter versus receptor associations.
 - The parser does not convert downstream-gene or functional-annotation files
   into ligand-receptor edges.
 - `validation_report()` exposes input, emitted, duplicate, skipped, unresolved,
