@@ -176,6 +176,37 @@ def test_nonhuman_profile_is_rejected():
         MouseProfileAdapter("mouse.tsv", {})
 
 
+@pytest.mark.parametrize("content, message", [
+    ("", "missing required columns"),
+    ("wrong\theader\n", "missing required columns"),
+    ("Ligand.ApprovedSymbol\tReceptor.ApprovedSymbol\n", "no data rows"),
+    (("Ligand.ApprovedSymbol\tReceptor.ApprovedSymbol\tReceptor.ApprovedSymbol\n"
+      "A\tB\tC\n"), "duplicate column names"),
+])
+def test_invalid_source_headers_never_report_valid(tmp_path, content, message):
+    """Reject truncated or ambiguous schemas before resolving any rows."""
+    path = tmp_path / "Human-2015-Ramilowski-LR-pairs.txt"
+    path.write_text(content, encoding="utf-8")
+    adapter = LewisRamilowskiAdapter(path, {})
+    with pytest.raises(ValueError, match=message):
+        adapter.validation_report()
+
+
+def test_missing_complex_component_column_cannot_shrink_complex(tmp_path):
+    """A missing column is not equivalent to a blank optional subunit cell."""
+    openpyxl = pytest.importorskip("openpyxl")
+    path = tmp_path / LewisNoelAdapter.profile.filename
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "All"
+    sheet.append(["Ligand 1", "Ligand 2", "Receptor 1", "Receptor 2"])
+    sheet.append(["A", None, "B", None])
+    workbook.save(path)
+    adapter = LewisNoelAdapter(path, {})
+    with pytest.raises(ValueError, match="Receptor 3"):
+        list(adapter.iter_entities())
+
+
 def test_parse_failure_remains_failure_for_every_public_accessor(tmp_path):
     """A failed read must not become an empty, valid cached import."""
     adapter = LewisRamilowskiAdapter(tmp_path / "renamed.txt", {})

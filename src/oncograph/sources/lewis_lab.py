@@ -213,10 +213,32 @@ class LewisDelimitedAdapter(SourceAdapter):
             reader = csv.DictReader(
                 io.StringIO(data.decode("utf-8-sig")), delimiter=self.profile.delimiter
             )
+            headers = reader.fieldnames or []
             rows = list(reader)
         else:
             with self.path.open(encoding="utf-8-sig", newline="") as handle:
-                rows = list(csv.DictReader(handle, delimiter=self.profile.delimiter))
+                reader = csv.DictReader(handle, delimiter=self.profile.delimiter)
+                headers = reader.fieldnames or []
+                rows = list(reader)
+
+        named_headers = [header for header in headers if header]
+        if len(named_headers) != len(set(named_headers)):
+            raise ValueError(f"{self.profile.source_key} has duplicate column names")
+        required = {
+            *(self.profile.ligand_component_columns or (self.profile.ligand_column,)),
+            *(self.profile.receptor_component_columns or (self.profile.receptor_column,)),
+            *(column for column in (
+                self.profile.ligand_kind_column,
+                self.profile.receptor_kind_column,
+            ) if column),
+        }
+        missing = required - set(headers)
+        if missing:
+            raise ValueError(
+                f"{self.profile.source_key} missing required columns: {sorted(missing)}"
+            )
+        if not rows:
+            raise ValueError(f"{self.profile.source_key} has no data rows")
 
         for row in rows:
             if self.profile.ligand_component_columns:
@@ -230,20 +252,6 @@ class LewisDelimitedAdapter(SourceAdapter):
                     str(row.get(column)).strip()
                     for column in self.profile.receptor_component_columns
                     if row.get(column) not in (None, "")
-                )
-        required = {
-            self.profile.ligand_column,
-            self.profile.receptor_column,
-            *(column for column in (
-                self.profile.ligand_kind_column,
-                self.profile.receptor_kind_column,
-            ) if column),
-        }
-        if rows:
-            missing = required - set(rows[0])
-            if missing:
-                raise ValueError(
-                    f"{self.profile.source_key} missing required columns: {sorted(missing)}"
                 )
         return rows
 
