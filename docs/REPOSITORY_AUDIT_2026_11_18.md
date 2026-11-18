@@ -1,5 +1,8 @@
 # Repository inspection, 2026-11-18
 
+For subsequent fixes and current status, see
+[the follow-up report](AUDIT_FOLLOWUP_2026_11_18.md).
+
 Baseline: `origin/main` at `0d70baf`. Inspection and fixes are on
 `audit/repository-health`, in the separate `oncograph-lewis-followup` worktree.
 This report distinguishes completed checks from remaining implementation work.
