@@ -127,6 +127,23 @@ class Evidence(SQLModel, table=True):
     retrieved_at: datetime = Field(default_factory=utcnow)
 
 
+class EntityIdentifier(SQLModel, table=True):
+    """External ID crosswalk; never use a name/symbol as an identity key.
+
+    One Entity can have multiple identifiers. Multiple entities can claim an
+    identifier during dirty imports; a lookup must reject ambiguous matches
+    rather than arbitrarily choosing one.
+    """
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    entity_id: UUID = Field(foreign_key="entity.id", index=True)
+    namespace: str = Field(index=True)
+    value: str = Field(index=True)
+    taxon_id: int | None = Field(default=None, index=True)
+    mapping_source: str | None = None
+    created_at: datetime = Field(default_factory=utcnow)
+
+
 class EntityResolutionIssue(SQLModel, table=True):
     """A durable log of identifier resolution problems, for validation/reporting.
 
