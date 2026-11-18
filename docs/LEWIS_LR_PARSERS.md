@@ -7,6 +7,8 @@ source-specific, local-only adapters. The supported adapters are:
 | --- | --- | --- | --- |
 | `lewis_ramilowski_2015` | `Human-2015-Ramilowski-LR-pairs.txt` | 9606 | yes |
 | `lewis_cabello_2020` | `Human-2020-Cabello-Aguilar-LR-pairs.csv` | 9606 | yes |
+| `lewis_zhao_2023` | `Human-2023-Zhao-LR-pairs.tsv` | 9606 | yes |
+| `lewis_zheng_2022` | `Human-2022-Zheng-MetSensor-pairs.tsv` | 9606 | yes |
 
 The upstream compendium is heterogeneous and its repository-level README is
 not a redistribution license. No upstream files are stored here, and these
@@ -28,8 +30,10 @@ provided.
 
 ## Biological safeguards
 
-- A source row becomes one directed `ligand_receptor_interaction` evidence
-  record; duplicate source rows are collapsed by a stable source fingerprint.
+- A source row becomes one directed evidence record; ordinary pair sources use
+  `ligand_receptor_interaction`, while MEBOCOST rows use the more cautious
+  `metabolite_target_association` predicate. Duplicate source rows are
+  collapsed by a stable source fingerprint.
 - Complex sides remain opaque `molecular_complex` entities. The parser emits
   explicit `has_subunit` membership edges and never invents component-wise
   ligand-receptor bindings.

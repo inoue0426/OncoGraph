@@ -9,9 +9,11 @@ from oncograph.sources.lewis_lab import (
     HUMAN_TAXON,
     LewisCabelloAguilarAdapter,
     LewisDelimitedAdapter,
+    LewisMetSensorAdapter,
     LewisRamilowskiAdapter,
     LewisResolvedIdentifier,
     LewisSourceProfile,
+    LewisZhaoAdapter,
 )
 
 
@@ -65,6 +67,46 @@ def test_cabello_parser_preserves_source_evidence(tmp_path):
     edge = next(adapter.iter_edges())
     assert edge.context["source_evidence"] == "HPRD"
     assert edge.context["citation"] == "12809600"
+
+
+def test_zhao_parser_preserves_interaction_type(tmp_path):
+    path = tmp_path / "Human-2023-Zhao-LR-pairs.tsv"
+    path.write_text(
+        "interaction_name\tligand_type\tinteraction_type\tlig_contributor\ttarget_subunit\n"
+        "VIP_VIPR1\tNeuropeptide\tligand-receptor\tVIP\tVIPR1\n",
+        encoding="utf-8",
+    )
+    adapter = LewisZhaoAdapter(
+        path,
+        _map(
+            ("VIP", ExternalIdentifier("hgnc", "HGNC:12690"), "gene"),
+            ("VIPR1", ExternalIdentifier("hgnc", "HGNC:12694"), "gene"),
+        ),
+    )
+    edge = next(adapter.iter_edges())
+    assert edge.predicate == "ligand_receptor_interaction"
+    assert edge.context["interaction_type"] == "ligand-receptor"
+
+
+def test_metsensor_is_not_labeled_as_protein_ligand_receptor(tmp_path):
+    path = tmp_path / "Human-2022-Zheng-MetSensor-pairs.tsv"
+    path.write_text(
+        "HMDB_ID\tstandard_metName\tmetName\tGene_name\tProtein_name\tAnnotation\tEvidence\n"
+        "HMDB0006247\t25-Hydroxycholesterol\t25-Hydroxycholesterol\tABCA1\t"
+        "Phospholipid-transporting ATPase ABCA1\tTransporter\t16611739\n",
+        encoding="utf-8",
+    )
+    adapter = LewisMetSensorAdapter(
+        path,
+        _map(
+            ("HMDB0006247", ExternalIdentifier("hmdb", "HMDB0006247"), "metabolite"),
+            ("ABCA1", ExternalIdentifier("hgnc", "HGNC:29"), "gene"),
+        ),
+    )
+    edge = next(adapter.iter_edges())
+    assert edge.predicate == "metabolite_target_association"
+    assert edge.evidence_type == "metabolite_source_association"
+    assert edge.context["ligand_kind"] == "metabolite"
 
 
 def test_complex_and_metabolite_rows_are_not_split_or_inferred(tmp_path):

@@ -56,6 +56,11 @@ class LewisSourceProfile:
     citation_column: str | None = None
     ligand_kind_column: str | None = None
     receptor_kind_column: str | None = None
+    ligand_kind_default: str = "protein"
+    receptor_kind_default: str = "protein"
+    predicate: str = "ligand_receptor_interaction"
+    evidence_type: str = "curated_ligand_receptor"
+    interaction_type_column: str | None = None
     complex_separator: str | None = None
 
 
@@ -189,8 +194,8 @@ class LewisDelimitedAdapter(SourceAdapter):
                 self._report.skipped_rows += 1
                 self._report.errors.append(f"row {index}: missing ligand or receptor")
                 continue
-            ligand_kind = (row.get(self.profile.ligand_kind_column or "") or "protein").strip().lower()
-            receptor_kind = (row.get(self.profile.receptor_kind_column or "") or "protein").strip().lower()
+            ligand_kind = (row.get(self.profile.ligand_kind_column or "") or self.profile.ligand_kind_default).strip().lower()
+            receptor_kind = (row.get(self.profile.receptor_kind_column or "") or self.profile.receptor_kind_default).strip().lower()
             ligand_parts = self._resolve_side(ligand, ligand_kind)
             receptor_parts = self._resolve_side(receptor, receptor_kind)
             if not ligand_parts or not receptor_parts:
@@ -225,14 +230,15 @@ class LewisDelimitedAdapter(SourceAdapter):
                 "receptor_kind": receptor_kind,
                 "citation": row.get(self.profile.citation_column or "") or None,
                 "source_evidence": row.get(self.profile.evidence_column or "") or None,
+                "interaction_type": row.get(self.profile.interaction_type_column or "") or None,
             }
             self._edges.append(EdgeRecord(
                 subject=ligand_id,
-                predicate="ligand_receptor_interaction",
+                predicate=self.profile.predicate,
                 object=receptor_id,
                 source_record_id=f"{self.profile.source_key}:{record_id}",
                 context=context,
-                evidence_type="curated_ligand_receptor",
+                evidence_type=self.profile.evidence_type,
             ))
             self._report.emitted_interactions += 1
             self._add_membership_edges(ligand_id, ligand_parts, record_id, context)
@@ -347,4 +353,45 @@ class LewisCabelloAguilarAdapter(LewisDelimitedAdapter):
         receptor_column="receptor",
         evidence_column="sources",
         citation_column="pmid",
+    )
+
+
+@registry.register
+class LewisZhaoAdapter(LewisDelimitedAdapter):
+    """Parser for the human NeuronChat 2023 TSV list."""
+
+    descriptor = _profile_descriptor("lewis_zhao_2023", "Lewis Lab: NeuronChat 2023")
+    profile = LewisSourceProfile(
+        source_key="lewis_zhao_2023",
+        filename="Human-2023-Zhao-LR-pairs.tsv",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="\t",
+        ligand_column="lig_contributor",
+        receptor_column="target_subunit",
+        record_id_column="interaction_name",
+        ligand_kind_column="ligand_type",
+        interaction_type_column="interaction_type",
+    )
+
+
+@registry.register
+class LewisMetSensorAdapter(LewisDelimitedAdapter):
+    """Parser for human MEBOCOST metabolite-to-target associations."""
+
+    descriptor = _profile_descriptor("lewis_zheng_2022", "Lewis Lab: MEBOCOST MetSensor 2022")
+    profile = LewisSourceProfile(
+        source_key="lewis_zheng_2022",
+        filename="Human-2022-Zheng-MetSensor-pairs.tsv",
+        species="Homo sapiens",
+        taxon_id=HUMAN_TAXON,
+        delimiter="\t",
+        ligand_column="HMDB_ID",
+        receptor_column="Gene_name",
+        ligand_name_column="standard_metName",
+        receptor_name_column="Protein_name",
+        citation_column="Evidence",
+        ligand_kind_default="metabolite",
+        predicate="metabolite_target_association",
+        evidence_type="metabolite_source_association",
     )
