@@ -471,7 +471,7 @@ def test_noel_xlsx_preserves_multi_subunit_sides(tmp_path):
         "Source for interaction", "PubMed ID", "Classifications",
     ])
     worksheet.append([
-        "HLA-A", None, "LILRB1", "LILRB2", None,
+        "HLA-A", "  ", "LILRB1", "LILRB2", "  ",
         "curated", "9285411", "Antigen binding",
     ])
     workbook.save(path)

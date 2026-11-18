@@ -273,13 +273,13 @@ class LewisDelimitedAdapter(SourceAdapter):
                 row[self.profile.ligand_column] = "|".join(
                     str(row.get(column)).strip()
                     for column in self.profile.ligand_component_columns
-                    if row.get(column) not in (None, "")
+                    if row.get(column) is not None and str(row.get(column)).strip()
                 )
             if self.profile.receptor_component_columns:
                 row[self.profile.receptor_column] = "|".join(
                     str(row.get(column)).strip()
                     for column in self.profile.receptor_component_columns
-                    if row.get(column) not in (None, "")
+                    if row.get(column) is not None and str(row.get(column)).strip()
                 )
         with self.path.open("rb") as handle:
             if hashlib.file_digest(handle, "sha256").hexdigest() != source_sha256:

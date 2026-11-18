@@ -176,7 +176,7 @@ of redistribution permission. No database was populated. All sources have
 | Jin | 2005 | 1862 | 143 | 150 |
 | Shao | 3398 | 3382 | 16 | 17 |
 | Dimitrov | 4701 | 4674 | 27 | 28 |
-| Noel | 380 | 368 | 12 | 11 |
+| Noel | 380 | 370 | 10 | 11 |
 | Browaeys | 12659 | 12606 | 53 | 53 |
 
 Unresolved counts are occurrences, not unique identifiers. Cabello had 3
