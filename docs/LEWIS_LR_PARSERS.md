@@ -179,6 +179,25 @@ The command prints JSON containing hashes, counts, unresolved values, and
 ambiguities. Repeat `--source` for additional sources. Exit status 1 denotes
 an incomplete, invalid, or quarantined source; partial coverage is not success.
 
+Add `--review-unresolved` to include `unresolved_review` diagnostics. This
+requires the HGNC `alias_symbol` and `prev_symbol` columns as well. Each distinct
+input value includes its occurrence count, all matching approved HGNC identities,
+their approved symbols, and which name fields matched. Repeated alias/previous
+matches for the same identity are combined, while different identities remain
+ambiguous. Withdrawn entries are excluded. Candidate order is deterministic.
+This option never adds candidates to the identifier map, creates graph records,
+or changes the audit exit status. A unique human name match still requires
+source-specific biological and species review. No name match does not establish
+that a value is nonhuman or invalid.
+
+On the pinned inputs below, the 11 nonquarantined profiles have 1,110 unresolved
+occurrences: 604 with one HGNC candidate, 53 with multiple candidates, 13 without
+an HGNC name match, and 440 matching the HMDB identifier format. The latter need
+an explicit metabolite map; matching the format does not validate the accession
+or molecular identity. These are occurrence counts, not unique molecules or
+interaction counts. Coverage remains 33,068 candidate interactions because
+none of these review suggestions is automatically accepted.
+
 A database-free audit of the upstream commit above used only approved HGNC
 symbols (45,395 keys), without alias or former-symbol inference. The HGNC
 complete-set SHA-256 was

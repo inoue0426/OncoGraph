@@ -10,11 +10,86 @@ import argparse
 import csv
 import hashlib
 import json
+import re
+from collections import Counter
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from oncograph.sources import registry
 from oncograph.sources.base import ExternalIdentifier
 from oncograph.sources.lewis_lab import HUMAN_TAXON, LewisResolvedIdentifier
+
+HGNC_REVIEW_FIELDS = ("symbol", "alias_symbol", "prev_symbol")
+
+
+@dataclass(frozen=True)
+class HgncReviewCandidate:
+    """An HGNC name match for human review, never an approved mapping."""
+
+    hgnc_id: str
+    approved_symbol: str
+    matched_fields: tuple[str, ...]
+
+
+def hgnc_review_index(path: Path) -> dict[str, tuple[HgncReviewCandidate, ...]]:
+    """Index approved HGNC records by current, previous, and alias symbols.
+
+    Args:
+        path: Local complete-set TSV with explicit alias and previous-name fields.
+
+    Returns:
+        All candidate identities per normalized name, without resolving collisions.
+    """
+    matches: dict[str, dict[tuple[str, str], set[str]]] = {}
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        required = {*HGNC_REVIEW_FIELDS, "hgnc_id", "status"}
+        if not required.issubset(reader.fieldnames or []):
+            raise ValueError("HGNC review requires symbol, alias_symbol, prev_symbol, hgnc_id, status columns")
+        for row in reader:
+            if row["status"] != "Approved":
+                continue
+            identity = (row["hgnc_id"].strip(), row["symbol"].strip())
+            if not all(identity):
+                raise ValueError("Approved HGNC review row has an empty identity")
+            for field in HGNC_REVIEW_FIELDS:
+                for value in (row.get(field) or "").split("|"):
+                    name = value.strip().upper()
+                    if name:
+                        matches.setdefault(name, {}).setdefault(identity, set()).add(field)
+    return {
+        name: tuple(HgncReviewCandidate(identifier, symbol, tuple(sorted(fields)))
+                    for (identifier, symbol), fields in sorted(candidates.items()))
+        for name, candidates in matches.items()
+    }
+
+
+def unresolved_review(
+    values: list[str], index: dict[str, tuple[HgncReviewCandidate, ...]],
+) -> list[dict[str, object]]:
+    """Summarize unresolved occurrences and name-match candidates for review.
+
+    Args:
+        values: Unresolved parser values, including repeated occurrences.
+        index: Human HGNC candidate index from the audited snapshot.
+
+    Returns:
+        Deterministic diagnostics; no generated identifier map or inferred species.
+    """
+    results: list[dict[str, object]] = []
+    for value, occurrences in sorted(Counter(values).items()):
+        candidates = index.get(value.strip().upper(), ())
+        if len(candidates) > 1:
+            status = "ambiguous_hgnc_candidates"
+        elif candidates:
+            status = "unique_hgnc_candidate_requires_review"
+        elif re.fullmatch(r"HMDB\d{7}", value.strip(), flags=re.IGNORECASE):
+            status = "hmdb_identifier_requires_metabolite_mapping"
+        else:
+            status = "no_hgnc_name_match"
+        results.append({"input_value": value, "occurrences": occurrences, "status": status,
+                        "candidates": [asdict(candidate) for candidate in candidates]})
+    return results
 
 
 def sha256(path: Path) -> str:
@@ -63,9 +138,12 @@ def main() -> None:
     parser.add_argument("human_directory", type=Path)
     parser.add_argument("hgnc_complete_set", type=Path)
     parser.add_argument("--source", action="append", required=True)
+    parser.add_argument("--review-unresolved", action="store_true",
+                        help="Add HGNC alias/previous-symbol candidates for manual review only")
     args = parser.parse_args()
     hgnc_hash = sha256(args.hgnc_complete_set)
     mapping = approved_mapping(args.hgnc_complete_set)
+    review_index = hgnc_review_index(args.hgnc_complete_set) if args.review_unresolved else None
     results = []
     for key in args.source:
         if not key.startswith("lewis_"):
@@ -76,6 +154,8 @@ def main() -> None:
         try:
             result["source_sha256"] = sha256(path)
             result.update(cls(path, mapping).validation_report().to_dict())
+            if review_index is not None:
+                result["unresolved_review"] = unresolved_review(result["unresolved_values"], review_index)
             if sha256(path) != result["source_sha256"]:
                 raise ValueError("Source changed during audit")
         except (OSError, ValueError, RuntimeError) as exc:
