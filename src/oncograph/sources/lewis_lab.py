@@ -159,7 +159,8 @@ class LewisDelimitedAdapter(SourceAdapter):
         from ..normalization import normalize_identifier
 
         identity_types: dict[tuple[str, str], str] = {}
-        for (taxon, _symbol), candidates in self.identifier_map.items():
+        normalized_mapping: dict[tuple[int, str], list[LewisResolvedIdentifier]] = {}
+        for (taxon, symbol), candidates in self.identifier_map.items():
             if taxon != self.profile.taxon_id:
                 continue
             for candidate in candidates:
@@ -171,6 +172,13 @@ class LewisDelimitedAdapter(SourceAdapter):
                         f"Conflicting entity types for {identity}: "
                         f"{existing_type} and {candidate.entity_type}"
                     )
+                normalized_mapping.setdefault((taxon, symbol.strip().upper()), []).append(
+                    LewisResolvedIdentifier(
+                        ExternalIdentifier(identifier.namespace, identifier.value),
+                        candidate.entity_type,
+                    )
+                )
+        self.identifier_map = normalized_mapping
         self._prepared = False
         self._preparation_error: Exception | None = None
         self._entities: list[EntityRecord] = []

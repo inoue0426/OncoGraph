@@ -189,6 +189,30 @@ def test_mapping_type_conflicts_across_symbols_fail_before_import(reverse):
         LewisRamilowskiAdapter("unused.txt", _map(*rows))
 
 
+def test_equivalent_mapping_spellings_deduplicate_without_false_ambiguity(tmp_path):
+    """Namespace aliases denote the same identifier, not competing candidates."""
+    path = tmp_path / LewisRamilowskiAdapter.profile.filename
+    path.write_text(
+        "Ligand.ApprovedSymbol\tReceptor.ApprovedSymbol\nA\tB\n", encoding="utf-8",
+    )
+    mapping = {
+        (9606, " a "): (LewisResolvedIdentifier(ExternalIdentifier("uniprot", "P00001"), "protein"),),
+        (9606, "A"): (LewisResolvedIdentifier(ExternalIdentifier("uniprotkb", "P00001"), "protein"),),
+        (9606, "B"): (LewisResolvedIdentifier(ExternalIdentifier("uniprot", "P00002"), "protein"),),
+    }
+    adapter = LewisRamilowskiAdapter(path, mapping)
+    edges = list(adapter.iter_edges())
+    assert len(edges) == 1
+    assert edges[0].subject == ExternalIdentifier("uniprot", "P00001")
+    assert adapter.validation_report().valid is True
+    mapping[(9606, " a ")] = (
+        LewisResolvedIdentifier(ExternalIdentifier("uniprot", "P00003"), "protein"),
+    )
+    ambiguous = LewisRamilowskiAdapter(path, mapping)
+    assert list(ambiguous.iter_edges()) == []
+    assert ambiguous.validation_report().ambiguous_identifiers == 1
+
+
 @pytest.mark.parametrize("content, message", [
     ("", "missing required columns"),
     ("wrong\theader\n", "missing required columns"),
