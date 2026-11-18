@@ -14,7 +14,7 @@ import hashlib
 import io
 import zipfile
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from .base import (
@@ -85,6 +85,20 @@ class LewisValidationReport:
     unresolved_values: list[str] = field(default_factory=list)
     ambiguous_values: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+
+    @property
+    def valid(self) -> bool:
+        """Whether the source materialized without skipped or ambiguous rows."""
+        return not (
+            self.errors
+            or self.skipped_rows
+            or self.unresolved_identifiers
+            or self.ambiguous_identifiers
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        """Return a JSON-serializable validation report."""
+        return asdict(self) | {"valid": self.valid}
 
 
 def load_identifier_map(path: str | Path) -> dict[tuple[int, str], tuple[LewisResolvedIdentifier, ...]]:

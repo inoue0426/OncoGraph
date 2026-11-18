@@ -59,6 +59,7 @@ def test_ramilowski_parser_requires_explicit_human_symbol_map(tmp_path):
     assert report.duplicate_rows == 1
     assert report.unresolved_identifiers == 1
     assert report.unresolved_values == ["UNKNOWN"]
+    assert report.to_dict()["valid"] is False
     assert edges[0].source_record_id == "lewis_ramilowski_2015:A2M_LRP1"
     assert edges[0].context["taxon_id"] == HUMAN_TAXON
 

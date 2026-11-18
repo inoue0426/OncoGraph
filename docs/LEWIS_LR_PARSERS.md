@@ -45,6 +45,21 @@ For NicheNet, only the explicitly named `NicheNet-LR-pairs.csv` archive member
 is eligible. The separate signaling-network member is downstream regulation,
 not a ligand-receptor interaction, and is not imported.
 
+## Validation artifact
+
+Validate a permission-cleared local file before any database import:
+
+```bash
+uv run python scripts/validate_lewis_source.py \
+  lewis_ramilowski_2015 /path/to/Human-2015-Ramilowski-LR-pairs.txt \
+  --identifier-map /path/to/human-symbol-map.tsv \
+  --out /tmp/lewis-ramilowski-validation.json
+```
+
+The JSON report includes input rows, emitted entities/edges, duplicate rows,
+membership edges, skipped rows, unresolved and ambiguous values, errors, and a
+`valid` flag. The command exits nonzero unless the parse is clean.
+
 ## Biological safeguards
 
 - A source row becomes one directed evidence record; ordinary pair sources use
