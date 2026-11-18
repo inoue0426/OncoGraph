@@ -22,6 +22,7 @@ CIVIC_API = "https://civicdb.org/api/graphql"
 OUTPUT_PATH = Path("data/raw/civic_evidence.json")
 _USER_AGENT = "OncoGraph/0.1 research database"
 _HTTP_TIMEOUT = 30
+_HGVS_NULL_ERROR = "Cannot return null for non-nullable field EvidenceItem.variantHgvs"
 
 # A small, curated set of well-studied oncogenes/tumor suppressors -- not an
 # attempt to mirror all of CIViC.
@@ -30,19 +31,23 @@ GENES = ["EGFR", "BRAF", "KRAS", "ALK", "ERBB2", "TP53", "PIK3CA", "BRCA1", "BRC
 _QUERY = """
 query GeneEvidence($symbols: [String!]) {
   genes(entrezSymbols: $symbols) {
+    pageInfo { hasNextPage }
     nodes {
       name
       entrezId
       variants {
+        pageInfo { hasNextPage }
         nodes {
           id
           name
           ... on GeneVariant {
             molecularProfiles {
+              pageInfo { hasNextPage }
               nodes {
                 id
                 name
                 evidenceItems {
+                  pageInfo { hasNextPage }
                   nodes {
                     id
                     status
@@ -79,11 +84,48 @@ def _post_json(query: str, variables: dict) -> dict:
         return json.load(response)
 
 
+def require_complete_connections(value: object, path: str = "data") -> None:
+    """Reject truncated GraphQL connections before writing a source snapshot.
+
+    Args:
+        value: Nested GraphQL data containing connection objects.
+        path: Diagnostic path to the current object.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: Pagination is incomplete or its completeness is unknown.
+    """
+    if isinstance(value, dict):
+        if "nodes" in value:
+            page_info = value.get("pageInfo") or {}
+            if page_info.get("hasNextPage") is not False:
+                raise RuntimeError(
+                    f"CIViC pagination incomplete or unverified at {path}; "
+                    "refusing to publish a truncated snapshot"
+                )
+        for key, item in value.items():
+            require_complete_connections(item, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            require_complete_connections(item, f"{path}[{index}]")
+
+
 def main() -> None:
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     payload = _post_json(_QUERY, {"symbols": GENES})
+    omitted_fields = []
+    errors = payload.get("errors") or []
+    if errors and all(error.get("message") == _HGVS_NULL_ERROR for error in errors):
+        # Retry the complete query; never publish the partial GraphQL error response.
+        payload = _post_json(_QUERY.replace("                    variantHgvs\n", ""),
+                             {"symbols": GENES})
+        omitted_fields = ["EvidenceItem.variantHgvs"]
+        print("CIViC variantHgvs is unavailable; retrying with HGVS values unset.")
     if payload.get("errors"):
         raise RuntimeError(f"CIViC GraphQL query failed: {payload['errors']}")
+    require_complete_connections(payload.get("data"))
     genes = ((payload.get("data") or {}).get("genes") or {}).get("nodes", [])
     if not genes:
         raise RuntimeError("CIViC returned no genes; refusing to publish an empty snapshot")
@@ -151,6 +193,8 @@ def main() -> None:
         "accepted_evidence_records": len(records),
         "filename": OUTPUT_PATH.name,
         "sha256": hashlib.sha256(OUTPUT_PATH.read_bytes()).hexdigest(),
+        "omitted_fields": omitted_fields,
+        "omission_reason": _HGVS_NULL_ERROR if omitted_fields else None,
     }
     (OUTPUT_PATH.parent / "manifest_civic.json").write_text(
         json.dumps(manifest, indent=2) + "\n", encoding="utf-8"

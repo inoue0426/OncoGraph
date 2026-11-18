@@ -49,11 +49,13 @@ def _resolve_chembl_id(drug_name: str) -> str | None:
     data = _get_json(f"{BASE_URL}/molecule/search.json?q={quote(drug_name)}&limit=5")
     if not data:
         return None
-    for molecule in data.get("molecules", []):
-        if (molecule.get("pref_name") or "").lower() == drug_name.lower():
-            return molecule.get("molecule_chembl_id")
-    molecules = data.get("molecules", [])
-    return molecules[0].get("molecule_chembl_id") if molecules else None
+    matches = {
+        molecule["molecule_chembl_id"]
+        for molecule in data.get("molecules", [])
+        if (molecule.get("pref_name") or "").strip().casefold() == drug_name.strip().casefold()
+        and molecule.get("molecule_chembl_id")
+    }
+    return next(iter(matches)) if len(matches) == 1 else None
 
 
 def _mechanisms_for(chembl_id: str) -> list[dict]:
@@ -69,7 +71,7 @@ def _target_uniprot_and_symbol(target_chembl_id: str) -> tuple[str | None, str |
     if not targets:
         return None, None
     components = targets[0].get("target_components", [])
-    if not components:
+    if len(components) != 1:
         return None, None
     accession = components[0].get("accession")
     gene_symbol = next(

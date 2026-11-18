@@ -128,8 +128,11 @@ def load_identifier_map(path: str | Path) -> dict[tuple[int, str], tuple[LewisRe
     Duplicate keys are retained as ambiguous candidates and are never guessed.
     """
     result: dict[tuple[int, str], list[LewisResolvedIdentifier]] = {}
-    with Path(path).open(encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle, delimiter="\t")
+    with Path(path).open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t", strict=True)
+        headers = reader.fieldnames or []
+        if len(headers) != len(set(headers)):
+            raise ValueError("Identifier map has duplicate column names")
         required = {"taxon_id", "symbol", "namespace", "identifier", "entity_type"}
         missing = required - set(reader.fieldnames or ())
         if missing:
@@ -137,6 +140,8 @@ def load_identifier_map(path: str | Path) -> dict[tuple[int, str], tuple[LewisRe
         for line_number, row in enumerate(reader, start=2):
             if any(not (row.get(column) or "").strip() for column in required):
                 raise ValueError(f"Identifier map row {line_number} has an empty required field")
+            if None in row or any(value is None for value in row.values()):
+                raise ValueError(f"Identifier map row {line_number} has an incorrect field count")
             key = (int(row["taxon_id"]), row["symbol"].strip().upper())
             result.setdefault(key, []).append(
                 LewisResolvedIdentifier(
@@ -258,13 +263,14 @@ class LewisDelimitedAdapter(SourceAdapter):
                         f"Archive member not found: {self.profile.archive_member}"
                     ) from exc
             reader = csv.DictReader(
-                io.StringIO(data.decode("utf-8-sig")), delimiter=self.profile.delimiter
+                io.StringIO(data.decode("utf-8-sig")), delimiter=self.profile.delimiter,
+                strict=True,
             )
             headers = reader.fieldnames or []
             rows = list(reader)
         else:
             with self.path.open(encoding="utf-8-sig", newline="") as handle:
-                reader = csv.DictReader(handle, delimiter=self.profile.delimiter)
+                reader = csv.DictReader(handle, delimiter=self.profile.delimiter, strict=True)
                 headers = reader.fieldnames or []
                 rows = list(reader)
 
@@ -287,7 +293,13 @@ class LewisDelimitedAdapter(SourceAdapter):
         if not rows:
             raise ValueError(f"{self.profile.source_key} has no data rows")
 
-        for row in rows:
+        for row_number, row in enumerate(rows, start=2):
+            if self.profile.file_format != "xlsx" and (
+                None in row or any(value is None for value in row.values())
+            ):
+                raise ValueError(
+                    f"{self.profile.source_key} row {row_number} has an incorrect field count"
+                )
             if self.profile.ligand_component_columns:
                 row[self.profile.ligand_column] = "|".join(
                     str(row.get(column)).strip()

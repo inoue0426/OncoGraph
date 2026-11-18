@@ -158,7 +158,7 @@ def main() -> None:
                 result["unresolved_review"] = unresolved_review(result["unresolved_values"], review_index)
             if sha256(path) != result["source_sha256"]:
                 raise ValueError("Source changed during audit")
-        except (OSError, ValueError, RuntimeError) as exc:
+        except (OSError, ValueError, RuntimeError, csv.Error) as exc:
             result.update(valid=False, errors=[str(exc)])
         results.append(result)
     if sha256(args.hgnc_complete_set) != hgnc_hash:
